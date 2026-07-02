@@ -1173,7 +1173,7 @@ export const SettingsTab = ({
                   ToDoSoDo
                 </Text>
                 <Text style={{ fontSize: 12, color: theme.colors.text.muted, marginTop: 2, fontWeight: '600' }}>
-                  {t('set_about') === 'О программе' ? 'Версия 1.0.1' : 'Version 1.0.1'}
+                  {t('set_about') === 'О программе' ? 'Версия 1.0.2' : 'Version 1.0.2'}
                 </Text>
                 <Text style={{ fontSize: 13, color: theme.colors.text.secondary, textAlign: 'center', marginTop: 10, lineHeight: 18, paddingHorizontal: 10 }}>
                   {t('set_desc')}

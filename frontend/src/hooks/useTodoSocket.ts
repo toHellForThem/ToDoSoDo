@@ -215,11 +215,7 @@ export const useTodoSocket = ({
     socket.on('server:month_history', (data) => {
       startTransition(() => {
         if (data && data.history) {
-          if (shouldReplaceHistory) {
-            shouldReplaceHistory = false;
-            setRpgHistory(data.history);
-            return;
-          }
+          shouldReplaceHistory = false;
 
           setRpgHistory(prev => {
             const merged = [...prev];

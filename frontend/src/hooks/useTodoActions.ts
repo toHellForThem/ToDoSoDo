@@ -133,10 +133,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
       return;
     }
 
-    const maxUpdatedAt = todoList.length > 0
-      ? Math.max(...todoList.map(t => t.updatedAt || 0))
-      : Date.now();
-    const todayStr = getLogicalDateStr(settings?.reset_time, maxUpdatedAt);
+    const todayStr = getLogicalDateStr(settings?.reset_time);
 
     const parts = todayStr.split('-').map(Number);
     const logicalDate = new Date(parts[0], parts[1] - 1, parts[2]);
