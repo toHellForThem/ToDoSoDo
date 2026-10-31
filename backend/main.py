@@ -75,7 +75,17 @@ async def init_db():
                     daily_progress REAL,
                     pos_points INTEGER,
                     neg_points INTEGER,
+                    updated_at INTEGER DEFAULT 0,
                     PRIMARY KEY (user_id, date),
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS deleted_todos (
+                    id TEXT,
+                    user_id INTEGER,
+                    deleted_at INTEGER,
+                    PRIMARY KEY (id, user_id),
                     FOREIGN KEY (user_id) REFERENCES users (id)
                 )
             """)
@@ -92,6 +102,11 @@ async def init_db():
 
             try:
                 await db.execute("ALTER TABLE todos ADD COLUMN days TEXT DEFAULT '1111111'")
+            except Exception:
+                pass
+
+            try:
+                await db.execute("ALTER TABLE daily_history ADD COLUMN updated_at INTEGER DEFAULT 0")
             except Exception:
                 pass
 
@@ -342,15 +357,11 @@ async def handle_get_todos(sid):
 async def handle_sync(sid, data):
     session = await sio.get_session(sid)
     user_id = session.get("user_id")
-    print(f"DEBUG: SID {sid} пытается обновить задачу. В сессии user_id = |{user_id}|")
     if not user_id:
         print("Сессия без авторизации")
         return
 
     participants = list(sio.manager.get_participants("/", user_id))
-    print(
-        f"DEBUG: В комнате {user_id} сейчас сокетов: {len(participants)} | Список SID: {participants}"
-    )
 
     todo_id = data["id"]
     client_updated_at = data.get("updatedAt", 0)
@@ -359,30 +370,38 @@ async def handle_sync(sid, data):
         (todo_id, user_id),
         is_select=True,
     )
-    if not row or client_updated_at > row[0]["updated_at"]:
-        await db_query(
-            """
-            INSERT OR REPLACE INTO todos (id, text, completed, deleted, updated_at, type, progress_now, progress_end, user_id, contribution, days)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-            (
-                data["id"],
-                data["text"],
-                data["completed"],
-                data["deleted"],
-                client_updated_at,
-                data["type"],
-                str(data["progressNow"]),
-                str(data["progressEnd"]),
-                user_id,
-                data.get("contribution", 0),
-                data.get("days", "1111111")
-            ),
-        )
-        await sio.emit("server:todo_updated", data, room=user_id, skip_sid=sid)
-        print(f"Обновлено: {data['text']} (Client version was newer)")
+    is_deleted = await db_query(
+        "SELECT 1 FROM deleted_todos WHERE user_id = ? AND id = ? LIMIT 1",
+        (user_id, todo_id),
+        is_select=True,
+    )
+    if not is_deleted:
+        if not row or client_updated_at > row[0]["updated_at"]:
+            await db_query(
+                """
+                INSERT OR REPLACE INTO todos (id, text, completed, deleted, updated_at, type, progress_now, progress_end, user_id, contribution, days)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    data["id"],
+                    data["text"],
+                    data["completed"],
+                    data["deleted"],
+                    client_updated_at,
+                    data["type"],
+                    str(data["progressNow"]),
+                    str(data["progressEnd"]),
+                    user_id,
+                    data.get("contribution", 0),
+                    data.get("days", "1111111")
+                ),
+            )
+            await sio.emit("server:todo_updated", data, room=user_id, skip_sid=sid)
+            print(f"Обновлено: {data['text']} (Client version was newer)")
+        else:
+            print(f"На сервере данные новее для: {data['text']}")
     else:
-        print(f"На сервере данные новее для: {data['text']}")
+        await sio.emit("server:todo_deleted", todo_id, room=sid)
 
 
 @sio.on("client:delete_todo")
@@ -394,6 +413,10 @@ async def handle_delete_todo(sid, todo_id):
         print("Удаление без авторизации")
         return
 
+    now = int(datetime.datetime.now(timezone.utc).timestamp() * 1000)
+
+    await db_query("INSERT OR IGNORE INTO deleted_todos (id, user_id, deleted_at) VALUES (?, ?, ?)", (todo_id, user_id, now))
+    
     await db_query("DELETE FROM todos WHERE id = ? AND user_id = ?", (todo_id, user_id))
     await sio.emit("server:todo_deleted", todo_id, room=user_id, skip_sid=sid)
 
@@ -508,27 +531,35 @@ async def handle_bulk_sync_todos(sid, client_todos):
             (todo_id, user_id),
             is_select=True,
         )
-        if not row or client_updated_at > row[0]["updated_at"]:
-            await db_query(
-                """
-                INSERT OR REPLACE INTO todos (id, text, completed, deleted, updated_at, type, progress_now, progress_end, user_id, contribution, days)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    todo["id"],
-                    todo["text"],
-                    todo["completed"],
-                    todo["deleted"],
-                    client_updated_at,
-                    todo["type"],
-                    str(todo["progressNow"]),
-                    str(todo["progressEnd"]),
-                    user_id,
-                    todo.get("contribution", 0),
-                    todo.get("days", "1111111")
-                ),
-            )
-            await sio.emit("server:todo_updated", todo, room=user_id, skip_sid=sid)
+        is_deleted = await db_query(
+            "SELECT 1 FROM deleted_todos WHERE user_id = ? AND id = ? LIMIT 1",
+            (user_id, todo_id),
+            is_select=True,
+        )
+        if not is_deleted:
+            if not row or client_updated_at > row[0]["updated_at"]:
+                await db_query(
+                    """
+                    INSERT OR REPLACE INTO todos (id, text, completed, deleted, updated_at, type, progress_now, progress_end, user_id, contribution, days)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        todo["id"],
+                        todo["text"],
+                        todo["completed"],
+                        todo["deleted"],
+                        client_updated_at,
+                        todo["type"],
+                        str(todo["progressNow"]),
+                        str(todo["progressEnd"]),
+                        user_id,
+                        todo.get("contribution", 0),
+                        todo.get("days", "1111111")
+                    ),
+                )
+                await sio.emit("server:todo_updated", todo, room=user_id, skip_sid=sid)
+        else:
+            await sio.emit("server:todo_deleted", todo_id, room=sid)
 
     await handle_get_todos(sid)
 

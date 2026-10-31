@@ -8,6 +8,11 @@ backend/.env
 local.properties
 my-release-key.jks
 
+# dev
+start_desktop_windows.bat
+start_dev_windows.bat
+start_server_windows.bat
+
 # dependencies
 frontend/node_modules/
 

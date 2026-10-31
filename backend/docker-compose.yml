@@ -1,0 +1,11 @@
+services:
+  backend:
+    build: .
+    container_name: todo_sodo_backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
