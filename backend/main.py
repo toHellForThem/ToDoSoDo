@@ -40,7 +40,7 @@ def decode_token(token: str):
 
 
 async def init_db():
-    async with aiosqlite.connect("tasks.db") as db:
+    async with aiosqlite.connect("data/tasks.db") as db:
         try:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -123,7 +123,7 @@ db_conn = None
 async def lifespan(app: FastAPI):
     global db_conn
     await init_db()
-    db_conn = await aiosqlite.connect("tasks.db", timeout=10)
+    db_conn = await aiosqlite.connect("data/tasks.db", timeout=10)
     db_conn.row_factory = aiosqlite.Row
     await db_conn.execute("PRAGMA journal_mode=WAL;")
     yield
