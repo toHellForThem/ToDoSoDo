@@ -70,19 +70,9 @@
 
 Приложение готово к использованию на Android, Windows:
 
-* 🤖 **Android:** Скачать из [RuStore](https://www.rustore.ru/catalog/app/com.anonymous.toDoSoDo) или [GitHub APK](https://github.com/toHellForThem/smart-todo/releases/latest)
-* 💻 **Windows:** Скачать [.exe приложение](https://github.com/toHellForThem/smart-todo/releases/latest)
+* 🤖 **Android:** Скачать из [RuStore](https://www.rustore.ru/catalog/app/com.anonymous.toDoSoDo) или [GitHub APK](https://github.com/toHellForThem/ToDoSoDo/releases/latest)
+* 💻 **Windows:** Скачать [.exe приложение](https://github.com/toHellForThem/ToDoSoDo/releases/latest)
 * 🐧 **Linux:** В разработке ⏳
-
----
-
-## 🛠 Архитектура
-
-Приложение разделено на три основные части:
-1. **Frontend (Mobile & Web):** Написан на React Native (Expo) с использованием TypeScript. Отвечает за плавный интерфейс (`react-native-reanimated`, `react-native-paper`) и локальное хранилище ключей-значений.
-2. **Backend (Server):** Асинхронный Python-сервер на базе FastAPI.
-3. **Database:** SQLite в режиме WAL (Write-Ahead Logging) через библиотеку `aiosqlite` для неблокирующих запросов. Соединение с клиентами поддерживается через `python-socketio`.
-
 
 ---
 
@@ -93,7 +83,7 @@
 
 ### Быстрый старт
 ```bash
-git clone https://github.com/toHellForThem//ToDoSoDo.git
+git clone https://github.com/toHellForThem/ToDoSoDo.git
 cd smart-todo/backend
 cp .env.example .env
 printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
