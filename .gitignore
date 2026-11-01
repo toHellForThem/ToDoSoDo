@@ -7,11 +7,12 @@ backend/.env
 .continue
 local.properties
 my-release-key.jks
+build_linux.sh
 
 # dev
-start_desktop_windows.bat
-start_dev_windows.bat
-start_server_windows.bat
+start_desktop_*
+start_dev_*
+start_server_*
 
 # dependencies
 frontend/node_modules/
@@ -54,10 +55,7 @@ frontend/ios/
 frontend/android/
 
 # database
-backend/tasks.db
-backend/tasks.db-shm
-backend/tasks.db-wal
-backend/tasks.db-journal
+backend/data
 
 # Desktop (Electron)
 desktop/node_modules/
