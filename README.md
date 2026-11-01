@@ -84,7 +84,7 @@
 ### Быстрый старт
 ```bash
 git clone https://github.com/toHellForThem/ToDoSoDo.git
-cd smart-todo/backend
+cd ToDoSoDo/backend
 cp .env.example .env
 printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
 docker compose up -d --build
