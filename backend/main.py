@@ -1,38 +1,34 @@
 import datetime
 import json
-import os
 from contextlib import asynccontextmanager
 from datetime import timezone
 
 import aiosqlite
 import jwt
 import socketio
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from werkzeug.security import check_password_hash, generate_password_hash
 
-load_dotenv()
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-ALGORITHM = "HS256"
+from app.config import settings
 
 
 def create_access_token(user_id: int):
     payload = {
         "user_id": user_id,
-        "exp": datetime.datetime.now(timezone.utc) + datetime.timedelta(days=7),
+        "exp": datetime.datetime.now(timezone.utc) + datetime.timedelta(days=settings.jwt_expire_days),
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
 def decode_token(token: str):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
         return (payload.get("user_id"),)
     except jwt.ExpiredSignatureError:
         payload = jwt.decode(
-            token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False}
+            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm], options={"verify_exp": False}
         )
         return (payload.get("user_id"), "expired")
     except jwt.InvalidTokenError:
@@ -40,7 +36,7 @@ def decode_token(token: str):
 
 
 async def init_db():
-    async with aiosqlite.connect("data/tasks.db") as db:
+    async with aiosqlite.connect(settings.database_path) as db:
         try:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -123,19 +119,16 @@ db_conn = None
 async def lifespan(app: FastAPI):
     global db_conn
     await init_db()
-    db_conn = await aiosqlite.connect("data/tasks.db", timeout=10)
+    db_conn = await aiosqlite.connect(settings.database_path, timeout=10)
     db_conn.row_factory = aiosqlite.Row
     await db_conn.execute("PRAGMA journal_mode=WAL;")
     yield
     await db_conn.close()
 
 
-origins = [
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
-]
+origins = settings.cors_origins
 
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=settings.sio_cors_origins)
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
