@@ -4,7 +4,6 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import timezone
 
-import aiosqlite
 import jwt
 import socketio
 from fastapi import FastAPI
@@ -12,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.config import settings
+from app.database import Database
 from app.logging_config import setup_logging
 from app.schemas import Todo
 
@@ -40,95 +40,15 @@ def decode_token(token: str):
         return None
 
 
-async def init_db():
-    async with aiosqlite.connect(settings.database_path) as db:
-        try:
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    settings JSON
-                )
-            """)
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS todos (
-                    id TEXT,
-                    text TEXT,
-                    completed BOOLEAN DEFAULT FALSE,
-                    deleted BOOLEAN DEFAULT FALSE,
-                    updated_at INTEGER DEFAULT 0,
-                    type TEXT DEFAULT 'todo',
-                    progress_now TEXT DEFAULT '0',
-                    progress_end TEXT DEFAULT '1',
-                    user_id INTEGER,
-                    contribution INTEGER DEFAULT 0,
-                    days TEXT DEFAULT '1111111',
-                    PRIMARY KEY (id, user_id),
-                    FOREIGN KEY (user_id) REFERENCES users (id)
-                )
-            """)
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS daily_history (
-                    user_id INTEGER,
-                    date TEXT,
-                    mood INTEGER,
-                    daily_progress REAL,
-                    pos_points INTEGER,
-                    neg_points INTEGER,
-                    updated_at INTEGER DEFAULT 0,
-                    PRIMARY KEY (user_id, date),
-                    FOREIGN KEY (user_id) REFERENCES users (id)
-                )
-            """)
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS deleted_todos (
-                    id TEXT,
-                    user_id INTEGER,
-                    deleted_at INTEGER,
-                    PRIMARY KEY (id, user_id),
-                    FOREIGN KEY (user_id) REFERENCES users (id)
-                )
-            """)
-            
-            try:
-                await db.execute("ALTER TABLE todos ADD COLUMN contribution INTEGER DEFAULT 0")
-            except Exception:
-                pass
-
-            try:
-                await db.execute("ALTER TABLE daily_history ADD COLUMN habits_detail TEXT")
-            except Exception:
-                pass
-
-            try:
-                await db.execute("ALTER TABLE todos ADD COLUMN days TEXT DEFAULT '1111111'")
-            except Exception:
-                pass
-
-            try:
-                await db.execute("ALTER TABLE daily_history ADD COLUMN updated_at INTEGER DEFAULT 0")
-            except Exception:
-                pass
-
-            await db.commit()
-        except Exception as e:
-            logger.exception("Ошибка инициализации базы данных: %s", e)
-            raise
-
-
-db_conn = None
+db = Database(settings.database_path)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db_conn
-    await init_db()
-    db_conn = await aiosqlite.connect(settings.database_path, timeout=10)
-    db_conn.row_factory = aiosqlite.Row
-    await db_conn.execute("PRAGMA journal_mode=WAL;")
+    await db.connect()
+    await db.init_schema()
     yield
-    await db_conn.close()
+    await db.close()
 
 
 origins = settings.cors_origins
@@ -145,20 +65,6 @@ app.add_middleware(
 )
 
 socket_app = socketio.ASGIApp(sio, app)
-
-
-async def db_query(query, params=(), is_select=False):
-    try:
-        async with db_conn.execute(query, params) as cursor:
-            if is_select:
-                res = await cursor.fetchall()
-                return res
-
-            await db_conn.commit()
-            return None
-    except Exception as e:
-        logger.exception("Ошибка выполнения запроса к базе данных: %s", e)
-        raise
 
 
 @sio.on("client:register")
@@ -183,7 +89,7 @@ async def handle_register(sid, data):
     )
 
     try:
-        await db_query(
+        await db.execute(
             "INSERT INTO users (username, password_hash, settings) VALUES (?, ?, ?)",
             (username, password_hash, default_settings),
         )
@@ -211,8 +117,8 @@ async def handle_register(sid, data):
 
 @sio.on("client:login")
 async def handle_login(sid, data):
-    user = await db_query(
-        "SELECT * FROM users WHERE username = ?", (data["username"],), is_select=True
+    user = await db.fetch_all(
+        "SELECT * FROM users WHERE username = ?", (data["username"],)
     )
 
     if not user:
@@ -280,8 +186,8 @@ async def connect(sid, environ, auth):
             await sio.emit("server:auth_expired", room=sid)
             return True
 
-        user = await db_query(
-            "SELECT * FROM users WHERE id = ?", (user_id[0],), is_select=True
+        user = await db.fetch_all(
+            "SELECT * FROM users WHERE id = ?", (user_id[0],)
         )
         if not user:
             logger.warning("Пользователь с ID %s не найден в базе данных", user_id[0])
@@ -315,7 +221,7 @@ async def handle_get_todos(sid):
         logger.warning("Запрос задач без авторизации (sid=%s)", sid)
         return
 
-    rows = await db_query("SELECT * FROM todos WHERE user_id = ?", (user_id,), True)
+    rows = await db.fetch_all("SELECT * FROM todos WHERE user_id = ?", (user_id,))
 
     todos = []
     for r in rows:
@@ -348,19 +254,17 @@ async def handle_sync(sid, data):
 
     todo_id = data["id"]
     client_updated_at = data.get("updatedAt", 0)
-    row = await db_query(
+    row = await db.fetch_all(
         "SELECT updated_at FROM todos WHERE id = ? AND user_id = ?",
         (todo_id, user_id),
-        is_select=True,
     )
-    is_deleted = await db_query(
+    is_deleted = await db.fetch_all(
         "SELECT 1 FROM deleted_todos WHERE user_id = ? AND id = ? LIMIT 1",
         (user_id, todo_id),
-        is_select=True,
     )
     if not is_deleted:
         if not row or client_updated_at > row[0]["updated_at"]:
-            await db_query(
+            await db.execute(
                 """
                 INSERT OR REPLACE INTO todos (id, text, completed, deleted, updated_at, type, progress_now, progress_end, user_id, contribution, days)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -398,9 +302,12 @@ async def handle_delete_todo(sid, todo_id):
 
     now = int(datetime.datetime.now(timezone.utc).timestamp() * 1000)
 
-    await db_query("INSERT OR IGNORE INTO deleted_todos (id, user_id, deleted_at) VALUES (?, ?, ?)", (todo_id, user_id, now))
-    
-    await db_query("DELETE FROM todos WHERE id = ? AND user_id = ?", (todo_id, user_id))
+    await db.execute(
+        "INSERT OR IGNORE INTO deleted_todos (id, user_id, deleted_at) VALUES (?, ?, ?)",
+        (todo_id, user_id, now),
+    )
+
+    await db.execute("DELETE FROM todos WHERE id = ? AND user_id = ?", (todo_id, user_id))
     await sio.emit("server:todo_deleted", todo_id, room=user_id, skip_sid=sid)
 
 
@@ -425,7 +332,7 @@ async def handle_reset_todos(sid, todo_type, update_time):
     if not user_id:
         return
 
-    await db_query(
+    await db.execute(
         """
         UPDATE todos 
         SET progress_now = 0, completed = ?, updated_at = ? 
@@ -445,10 +352,9 @@ async def handle_get_month_history(sid, month_str):
         return
 
     like_pattern = f"{month_str}-%"
-    history_rows = await db_query(
+    history_rows = await db.fetch_all(
         "SELECT date, mood, daily_progress, pos_points, neg_points, habits_detail, updated_at FROM daily_history WHERE user_id = ? AND date LIKE ?",
         (user_id, like_pattern),
-        is_select=True,
     )
 
     history = []
@@ -483,13 +389,12 @@ async def handle_sync_daily_history(sid, data):
     habits_detail = data.get("habits_detail", "[]")
     client_updated_at = data.get("updatedAt", 0)
 
-    row = await db_query(
+    row = await db.fetch_all(
         "SELECT updated_at FROM daily_history WHERE user_id = ? AND date = ?",
         (user_id, date),
-        is_select=True
     )
     if not row or client_updated_at > row[0]["updated_at"]:
-        await db_query(
+        await db.execute(
             """
             INSERT OR REPLACE INTO daily_history (user_id, date, mood, daily_progress, pos_points, neg_points, habits_detail, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -509,19 +414,17 @@ async def handle_bulk_sync_todos(sid, client_todos):
     for todo in client_todos:
         todo_id = todo["id"]
         client_updated_at = todo.get("updatedAt", 0)
-        row = await db_query(
+        row = await db.fetch_all(
             "SELECT updated_at FROM todos WHERE id = ? AND user_id = ?",
             (todo_id, user_id),
-            is_select=True,
         )
-        is_deleted = await db_query(
+        is_deleted = await db.fetch_all(
             "SELECT 1 FROM deleted_todos WHERE user_id = ? AND id = ? LIMIT 1",
             (user_id, todo_id),
-            is_select=True,
         )
         if not is_deleted:
             if not row or client_updated_at > row[0]["updated_at"]:
-                await db_query(
+                await db.execute(
                     """
                     INSERT OR REPLACE INTO todos (id, text, completed, deleted, updated_at, type, progress_now, progress_end, user_id, contribution, days)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -563,13 +466,12 @@ async def handle_bulk_sync_daily_history(sid, client_history):
         habits_detail = entry.get("habits_detail", "[]")
         client_updated_at = entry.get("updatedAt", 0)
 
-        row = await db_query(
+        row = await db.fetch_all(
             "SELECT updated_at FROM daily_history WHERE user_id = ? AND date = ?",
             (user_id, date),
-            is_select=True,
         )
         if not row or client_updated_at > row[0]["updated_at"]:
-            await db_query(
+            await db.execute(
                 """
                 INSERT OR REPLACE INTO daily_history (user_id, date, mood, daily_progress, pos_points, neg_points, habits_detail, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -589,8 +491,8 @@ async def handle_update_settings(sid, settings_dict):
     if not user_id:
         return
 
-    user = await db_query(
-        "SELECT settings FROM users WHERE id = ?", (user_id,), is_select=True
+    user = await db.fetch_all(
+        "SELECT settings FROM users WHERE id = ?", (user_id,)
     )
     if user and user[0]["settings"]:
         current_settings = json.loads(user[0]["settings"])
@@ -599,7 +501,7 @@ async def handle_update_settings(sid, settings_dict):
 
         if client_updated_at > current_updated_at:
             settings_json = json.dumps(settings_dict)
-            await db_query(
+            await db.execute(
                 "UPDATE users SET settings = ? WHERE id = ?",
                 (settings_json, user_id)
             )
@@ -610,11 +512,9 @@ async def handle_update_settings(sid, settings_dict):
             await sio.emit("server:settings_updated", current_settings, room=sid)
     else:
         settings_json = json.dumps(settings_dict)
-        await db_query(
+        await db.execute(
             "UPDATE users SET settings = ? WHERE id = ?",
             (settings_json, user_id)
         )
         logger.info("Пользователь %s инициализировал настройки", user_id)
         await sio.emit("server:settings_updated", settings_dict, room=user_id, skip_sid=sid)
-
-
