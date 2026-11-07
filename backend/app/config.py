@@ -14,6 +14,8 @@ class Settings(BaseSettings):
 
     database_path: str = "data/tasks.db"
 
+    log_level: str = "INFO"
+
     cors_origins: list[str] = ['http://localhost:8081', 'http://127.0.0.1:8081']
 
     sio_cors_origins: str = "*"

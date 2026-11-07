@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 from contextlib import asynccontextmanager
 from datetime import timezone
 
@@ -12,6 +13,10 @@ from pydantic import BaseModel
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.config import settings
+from app.logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def create_access_token(user_id: int):
@@ -108,8 +113,8 @@ async def init_db():
 
             await db.commit()
         except Exception as e:
-            print(f"Ошибка базы данных: {e}")
-            raise e
+            logger.exception("Ошибка инициализации базы данных: %s", e)
+            raise
 
 
 db_conn = None
@@ -152,8 +157,8 @@ async def db_query(query, params=(), is_select=False):
             await db_conn.commit()
             return None
     except Exception as e:
-        print(f"Ошибка базы данных {e}")
-        raise e
+        logger.exception("Ошибка выполнения запроса к базе данных: %s", e)
+        raise
 
 
 from typing import Union
@@ -197,7 +202,7 @@ async def handle_register(sid, data):
             "INSERT INTO users (username, password_hash, settings) VALUES (?, ?, ?)",
             (username, password_hash, default_settings),
         )
-        print(f"Пользователь {username} успешно зарегистрирован!")
+        logger.info("Пользователь %s успешно зарегистрирован", username)
         await sio.emit("server:register_success", {"msg": "Аккаунт создан!"}, room=sid)
         await sio.emit(
             "server:auth_message",
@@ -208,7 +213,7 @@ async def handle_register(sid, data):
             room=sid,
         )
     except Exception as e:
-        print(f"Ошибка регистрации: {e}")
+        logger.exception("Ошибка регистрации пользователя %s: %s", username, e)
         await sio.emit(
             "server:auth_message",
             {
@@ -234,7 +239,7 @@ async def handle_login(sid, data):
             },
             room=sid,
         )
-        print("Логин неверный")
+        logger.warning("Попытка входа: пользователь %s не найден", data.get("username"))
         return
 
     user = user[0]
@@ -264,7 +269,7 @@ async def handle_login(sid, data):
             },
             room=sid,
         )
-        print("Пароль верный")
+        logger.info("Пользователь %s вошёл в систему", user["username"])
 
     else:
         await sio.emit(
@@ -275,18 +280,18 @@ async def handle_login(sid, data):
             },
             room=sid,
         )
-        print("Пароль неверный")
+        logger.warning("Неверный пароль для пользователя %s", data.get("username"))
 
 
 @sio.event
 async def connect(sid, environ, auth):
-    print(f"Клиент подключается: {sid}")
+    logger.info("Клиент подключается: %s", sid)
     token = auth.get("token") if auth else None
     user_id = decode_token(token)
 
     if user_id:
         if len(user_id) > 1:
-            print(f"Сессия пользователя {user_id[0]} истекла. Требуется повторный вход.")
+            logger.warning("Сессия пользователя %s истекла, требуется повторный вход", user_id[0])
             await sio.emit("server:auth_expired", room=sid)
             return True
 
@@ -294,7 +299,7 @@ async def connect(sid, environ, auth):
             "SELECT * FROM users WHERE id = ?", (user_id[0],), is_select=True
         )
         if not user:
-            print(f"Пользователь с ID {user_id[0]} не найден в базе данных.")
+            logger.warning("Пользователь с ID %s не найден в базе данных", user_id[0])
             return True
 
         user = user[0]
@@ -322,7 +327,7 @@ async def handle_get_todos(sid):
     user_id = session.get("user_id")
 
     if not user_id:
-        print("Нет задач для синхронизации")
+        logger.warning("Запрос задач без авторизации (sid=%s)", sid)
         return
 
     rows = await db_query("SELECT * FROM todos WHERE user_id = ?", (user_id,), True)
@@ -351,7 +356,7 @@ async def handle_sync(sid, data):
     session = await sio.get_session(sid)
     user_id = session.get("user_id")
     if not user_id:
-        print("Сессия без авторизации")
+        logger.warning("Синхронизация задачи без авторизации (sid=%s)", sid)
         return
 
     participants = list(sio.manager.get_participants("/", user_id))
@@ -390,9 +395,9 @@ async def handle_sync(sid, data):
                 ),
             )
             await sio.emit("server:todo_updated", data, room=user_id, skip_sid=sid)
-            print(f"Обновлено: {data['text']} (Client version was newer)")
+            logger.debug("Обновлено: %s (клиентская версия новее)", data["text"])
         else:
-            print(f"На сервере данные новее для: {data['text']}")
+            logger.debug("На сервере данные новее для: %s", data["text"])
     else:
         await sio.emit("server:todo_deleted", todo_id, room=sid)
 
@@ -403,7 +408,7 @@ async def handle_delete_todo(sid, todo_id):
     user_id = session.get("user_id")
 
     if not user_id:
-        print("Удаление без авторизации")
+        logger.warning("Удаление задачи без авторизации (sid=%s)", sid)
         return
 
     now = int(datetime.datetime.now(timezone.utc).timestamp() * 1000)
@@ -420,7 +425,7 @@ async def handle_logout(sid):
     user_id = session.get("user_id")
 
     if not user_id:
-        print("Выход без авторизации")
+        logger.warning("Выход без авторизации (sid=%s)", sid)
         return
 
     await sio.leave_room(sid, user_id)
@@ -443,7 +448,7 @@ async def handle_reset_todos(sid, todo_type, update_time):
     """,
         (False, update_time, user_id, todo_type),
     )
-    print(f"Пользователь {user_id} обновил задачи.")
+    logger.info("Пользователь %s обновил задачи (type=%s)", user_id, todo_type)
     await handle_get_todos(sid)
 
 
@@ -613,10 +618,10 @@ async def handle_update_settings(sid, settings_dict):
                 "UPDATE users SET settings = ? WHERE id = ?",
                 (settings_json, user_id)
             )
-            print(f"Пользователь {user_id} обновил настройки (новые).")
+            logger.info("Пользователь %s обновил настройки", user_id)
             await sio.emit("server:settings_updated", settings_dict, room=user_id, skip_sid=sid)
         else:
-            print(f"На сервере настройки новее для пользователя {user_id}.")
+            logger.debug("На сервере настройки новее для пользователя %s", user_id)
             await sio.emit("server:settings_updated", current_settings, room=sid)
     else:
         settings_json = json.dumps(settings_dict)
@@ -624,7 +629,7 @@ async def handle_update_settings(sid, settings_dict):
             "UPDATE users SET settings = ? WHERE id = ?",
             (settings_json, user_id)
         )
-        print(f"Пользователь {user_id} инициализировал настройки.")
+        logger.info("Пользователь %s инициализировал настройки", user_id)
         await sio.emit("server:settings_updated", settings_dict, room=user_id, skip_sid=sid)
 
 
