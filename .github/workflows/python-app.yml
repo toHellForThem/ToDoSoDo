@@ -5,9 +5,9 @@ name: Python application
 
 on:
   push:
-    branches: [ "main", "refactor/backend" ]
+    branches: [ "main", "epic/backend-refactor" ]
   pull_request:
-    branches: [ "main", "refactor/backend" ]
+    branches: [ "main", "epic/backend-refactor" ]
 
 permissions:
   contents: read
