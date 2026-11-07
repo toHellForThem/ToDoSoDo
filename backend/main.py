@@ -9,11 +9,11 @@ import jwt
 import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.config import settings
 from app.logging_config import setup_logging
+from app.schemas import Todo
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -159,21 +159,6 @@ async def db_query(query, params=(), is_select=False):
     except Exception as e:
         logger.exception("Ошибка выполнения запроса к базе данных: %s", e)
         raise
-
-
-from typing import Union
-
-class Todo(BaseModel):
-    id: str
-    text: str
-    completed: bool = False
-    deleted: bool = False
-    updatedAt: int = 0
-    type: str = "todo"
-    progressNow: Union[int, str] = 0
-    progressEnd: Union[int, str] = 1
-    contribution: int = 0
-    days: str = "1111111"
 
 
 @sio.on("client:register")
