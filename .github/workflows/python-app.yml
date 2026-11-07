@@ -7,7 +7,7 @@ on:
   push:
     branches: [ "main", "refactor/backend" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "refactor/backend" ]
 
 permissions:
   contents: read
