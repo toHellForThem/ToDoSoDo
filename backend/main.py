@@ -13,6 +13,12 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from app.config import settings
 from app.database import Database
 from app.logging_config import setup_logging
+from app.rep import (
+    DailyHistoryRepository,
+    DeletedTodosRepository,
+    TodosRepository,
+    UsersRepository,
+)
 from app.schemas import Todo
 
 setup_logging()
@@ -41,6 +47,10 @@ def decode_token(token: str):
 
 
 db = Database(settings.database_path)
+users_repo = UsersRepository(db)
+todos_repo = TodosRepository(db)
+deleted_todos_repo = DeletedTodosRepository(db)
+daily_history_repo = DailyHistoryRepository(db)
 
 
 @asynccontextmanager
@@ -89,10 +99,7 @@ async def handle_register(sid, data):
     )
 
     try:
-        await db.execute(
-            "INSERT INTO users (username, password_hash, settings) VALUES (?, ?, ?)",
-            (username, password_hash, default_settings),
-        )
+        await users_repo.create(username, password_hash, default_settings)
         logger.info("Пользователь %s успешно зарегистрирован", username)
         await sio.emit("server:register_success", {"msg": "Аккаунт создан!"}, room=sid)
         await sio.emit(
@@ -117,9 +124,7 @@ async def handle_register(sid, data):
 
 @sio.on("client:login")
 async def handle_login(sid, data):
-    user = await db.fetch_all(
-        "SELECT * FROM users WHERE username = ?", (data["username"],)
-    )
+    user = await users_repo.get_by_username(data["username"])
 
     if not user:
         await sio.emit(
@@ -132,8 +137,6 @@ async def handle_login(sid, data):
         )
         logger.warning("Попытка входа: пользователь %s не найден", data.get("username"))
         return
-
-    user = user[0]
 
     if check_password_hash(user["password_hash"], data["password"]):
         token = create_access_token(user["id"])
@@ -186,14 +189,10 @@ async def connect(sid, environ, auth):
             await sio.emit("server:auth_expired", room=sid)
             return True
 
-        user = await db.fetch_all(
-            "SELECT * FROM users WHERE id = ?", (user_id[0],)
-        )
+        user = await users_repo.get_by_id(user_id[0])
         if not user:
             logger.warning("Пользователь с ID %s не найден в базе данных", user_id[0])
             return True
-
-        user = user[0]
 
         await sio.save_session(sid, {"user_id": user["id"]})
 
@@ -221,23 +220,7 @@ async def handle_get_todos(sid):
         logger.warning("Запрос задач без авторизации (sid=%s)", sid)
         return
 
-    rows = await db.fetch_all("SELECT * FROM todos WHERE user_id = ?", (user_id,))
-
-    todos = []
-    for r in rows:
-        todo_obj = Todo(
-            id=r["id"],
-            text=r["text"],
-            completed=bool(r["completed"]),
-            deleted=bool(r["deleted"]),
-            updatedAt=int(r["updated_at"]),
-            type=r["type"],
-            progressNow=r["progress_now"],
-            progressEnd=r["progress_end"],
-            contribution=r["contribution"] if "contribution" in r.keys() else 0,
-            days=r["days"] if "days" in r.keys() else "1111111"
-        )
-        todos.append(todo_obj.model_dump())
+    todos = [todo.model_dump() for todo in await todos_repo.list_by_user(user_id)]
 
     await sio.emit("server:all_todos", todos, room=sid)
 
@@ -250,39 +233,13 @@ async def handle_sync(sid, data):
         logger.warning("Синхронизация задачи без авторизации (sid=%s)", sid)
         return
 
-    participants = list(sio.manager.get_participants("/", user_id))
-
     todo_id = data["id"]
     client_updated_at = data.get("updatedAt", 0)
-    row = await db.fetch_all(
-        "SELECT updated_at FROM todos WHERE id = ? AND user_id = ?",
-        (todo_id, user_id),
-    )
-    is_deleted = await db.fetch_all(
-        "SELECT 1 FROM deleted_todos WHERE user_id = ? AND id = ? LIMIT 1",
-        (user_id, todo_id),
-    )
+    server_updated_at = await todos_repo.get_updated_at(todo_id, user_id)
+    is_deleted = await deleted_todos_repo.exists(user_id, todo_id)
     if not is_deleted:
-        if not row or client_updated_at > row[0]["updated_at"]:
-            await db.execute(
-                """
-                INSERT OR REPLACE INTO todos (id, text, completed, deleted, updated_at, type, progress_now, progress_end, user_id, contribution, days)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    data["id"],
-                    data["text"],
-                    data["completed"],
-                    data["deleted"],
-                    client_updated_at,
-                    data["type"],
-                    str(data["progressNow"]),
-                    str(data["progressEnd"]),
-                    user_id,
-                    data.get("contribution", 0),
-                    data.get("days", "1111111")
-                ),
-            )
+        if server_updated_at is None or client_updated_at > server_updated_at:
+            await todos_repo.upsert(Todo(**data), user_id)
             await sio.emit("server:todo_updated", data, room=user_id, skip_sid=sid)
             logger.debug("Обновлено: %s (клиентская версия новее)", data["text"])
         else:
@@ -302,12 +259,8 @@ async def handle_delete_todo(sid, todo_id):
 
     now = int(datetime.datetime.now(timezone.utc).timestamp() * 1000)
 
-    await db.execute(
-        "INSERT OR IGNORE INTO deleted_todos (id, user_id, deleted_at) VALUES (?, ?, ?)",
-        (todo_id, user_id, now),
-    )
-
-    await db.execute("DELETE FROM todos WHERE id = ? AND user_id = ?", (todo_id, user_id))
+    await deleted_todos_repo.add(todo_id, user_id, now)
+    await todos_repo.delete(todo_id, user_id)
     await sio.emit("server:todo_deleted", todo_id, room=user_id, skip_sid=sid)
 
 
@@ -332,14 +285,7 @@ async def handle_reset_todos(sid, todo_type, update_time):
     if not user_id:
         return
 
-    await db.execute(
-        """
-        UPDATE todos 
-        SET progress_now = 0, completed = ?, updated_at = ? 
-        WHERE user_id = ? AND type = ?
-    """,
-        (False, update_time, user_id, todo_type),
-    )
+    await todos_repo.reset_by_type(user_id, todo_type, update_time)
     logger.info("Пользователь %s обновил задачи (type=%s)", user_id, todo_type)
     await handle_get_todos(sid)
 
@@ -351,25 +297,7 @@ async def handle_get_month_history(sid, month_str):
     if not user_id:
         return
 
-    like_pattern = f"{month_str}-%"
-    history_rows = await db.fetch_all(
-        "SELECT date, mood, daily_progress, pos_points, neg_points, habits_detail, updated_at FROM daily_history WHERE user_id = ? AND date LIKE ?",
-        (user_id, like_pattern),
-    )
-
-    history = []
-    for r in history_rows:
-        history.append(
-            {
-                "date": r["date"],
-                "mood": r["mood"],
-                "daily_progress": r["daily_progress"],
-                "pos_points": r["pos_points"],
-                "neg_points": r["neg_points"],
-                "habits_detail": r["habits_detail"] if "habits_detail" in r.keys() else "[]",
-                "updatedAt": r["updated_at"] if "updated_at" in r.keys() else 0,
-            }
-        )
+    history = await daily_history_repo.list_by_month(user_id, month_str)
 
     await sio.emit("server:month_history", {"month": month_str, "history": history}, room=sid)
 
@@ -382,25 +310,11 @@ async def handle_sync_daily_history(sid, data):
         return
 
     date = data["date"]
-    mood = data.get("mood")
-    daily_progress = data.get("daily_progress", 0.0)
-    pos_points = data.get("pos_points", 0)
-    neg_points = data.get("neg_points", 0)
-    habits_detail = data.get("habits_detail", "[]")
     client_updated_at = data.get("updatedAt", 0)
 
-    row = await db.fetch_all(
-        "SELECT updated_at FROM daily_history WHERE user_id = ? AND date = ?",
-        (user_id, date),
-    )
-    if not row or client_updated_at > row[0]["updated_at"]:
-        await db.execute(
-            """
-            INSERT OR REPLACE INTO daily_history (user_id, date, mood, daily_progress, pos_points, neg_points, habits_detail, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-            (user_id, date, mood, daily_progress, pos_points, neg_points, habits_detail, client_updated_at),
-        )
+    server_updated_at = await daily_history_repo.get_updated_at(user_id, date)
+    if server_updated_at is None or client_updated_at > server_updated_at:
+        await daily_history_repo.upsert(data, user_id)
         await sio.emit("server:daily_history_updated", data, room=user_id, skip_sid=sid)
 
 
@@ -414,35 +328,11 @@ async def handle_bulk_sync_todos(sid, client_todos):
     for todo in client_todos:
         todo_id = todo["id"]
         client_updated_at = todo.get("updatedAt", 0)
-        row = await db.fetch_all(
-            "SELECT updated_at FROM todos WHERE id = ? AND user_id = ?",
-            (todo_id, user_id),
-        )
-        is_deleted = await db.fetch_all(
-            "SELECT 1 FROM deleted_todos WHERE user_id = ? AND id = ? LIMIT 1",
-            (user_id, todo_id),
-        )
+        server_updated_at = await todos_repo.get_updated_at(todo_id, user_id)
+        is_deleted = await deleted_todos_repo.exists(user_id, todo_id)
         if not is_deleted:
-            if not row or client_updated_at > row[0]["updated_at"]:
-                await db.execute(
-                    """
-                    INSERT OR REPLACE INTO todos (id, text, completed, deleted, updated_at, type, progress_now, progress_end, user_id, contribution, days)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        todo["id"],
-                        todo["text"],
-                        todo["completed"],
-                        todo["deleted"],
-                        client_updated_at,
-                        todo["type"],
-                        str(todo["progressNow"]),
-                        str(todo["progressEnd"]),
-                        user_id,
-                        todo.get("contribution", 0),
-                        todo.get("days", "1111111")
-                    ),
-                )
+            if server_updated_at is None or client_updated_at > server_updated_at:
+                await todos_repo.upsert(Todo(**todo), user_id)
                 await sio.emit("server:todo_updated", todo, room=user_id, skip_sid=sid)
         else:
             await sio.emit("server:todo_deleted", todo_id, room=sid)
@@ -459,25 +349,11 @@ async def handle_bulk_sync_daily_history(sid, client_history):
 
     for entry in client_history:
         date = entry["date"]
-        mood = entry.get("mood")
-        daily_progress = entry.get("daily_progress", 0.0)
-        pos_points = entry.get("pos_points", 0)
-        neg_points = entry.get("neg_points", 0)
-        habits_detail = entry.get("habits_detail", "[]")
         client_updated_at = entry.get("updatedAt", 0)
 
-        row = await db.fetch_all(
-            "SELECT updated_at FROM daily_history WHERE user_id = ? AND date = ?",
-            (user_id, date),
-        )
-        if not row or client_updated_at > row[0]["updated_at"]:
-            await db.execute(
-                """
-                INSERT OR REPLACE INTO daily_history (user_id, date, mood, daily_progress, pos_points, neg_points, habits_detail, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (user_id, date, mood, daily_progress, pos_points, neg_points, habits_detail, client_updated_at),
-            )
+        server_updated_at = await daily_history_repo.get_updated_at(user_id, date)
+        if server_updated_at is None or client_updated_at > server_updated_at:
+            await daily_history_repo.upsert(entry, user_id)
             await sio.emit("server:daily_history_updated", entry, room=user_id, skip_sid=sid)
 
     cur_month = datetime.datetime.now().strftime("%Y-%m")
@@ -491,30 +367,20 @@ async def handle_update_settings(sid, settings_dict):
     if not user_id:
         return
 
-    user = await db.fetch_all(
-        "SELECT settings FROM users WHERE id = ?", (user_id,)
-    )
-    if user and user[0]["settings"]:
-        current_settings = json.loads(user[0]["settings"])
+    user = await users_repo.get_by_id(user_id)
+    if user and user["settings"]:
+        current_settings = json.loads(user["settings"])
         current_updated_at = current_settings.get("updatedAt", 0)
         client_updated_at = settings_dict.get("updatedAt", 0)
 
         if client_updated_at > current_updated_at:
-            settings_json = json.dumps(settings_dict)
-            await db.execute(
-                "UPDATE users SET settings = ? WHERE id = ?",
-                (settings_json, user_id)
-            )
+            await users_repo.update_settings(user_id, json.dumps(settings_dict))
             logger.info("Пользователь %s обновил настройки", user_id)
             await sio.emit("server:settings_updated", settings_dict, room=user_id, skip_sid=sid)
         else:
             logger.debug("На сервере настройки новее для пользователя %s", user_id)
             await sio.emit("server:settings_updated", current_settings, room=sid)
     else:
-        settings_json = json.dumps(settings_dict)
-        await db.execute(
-            "UPDATE users SET settings = ? WHERE id = ?",
-            (settings_json, user_id)
-        )
+        await users_repo.update_settings(user_id, json.dumps(settings_dict))
         logger.info("Пользователь %s инициализировал настройки", user_id)
         await sio.emit("server:settings_updated", settings_dict, room=user_id, skip_sid=sid)
