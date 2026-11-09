@@ -2,6 +2,8 @@
 frontend/App.js.backup
 backend/venv/
 backend/__pycache__/
+__pycache__/
+*.pyc
 frontend/.env
 backend/.env
 .continue
@@ -56,6 +58,11 @@ frontend/android/
 
 # database
 backend/data
+
+# tests
+backend/.coverage
+backend/.pytest_cache/
+backend/htmlcov/
 
 # Desktop (Electron)
 desktop/node_modules/
