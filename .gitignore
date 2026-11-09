@@ -59,6 +59,11 @@ frontend/android/
 # database
 backend/data
 
+# tests
+backend/.coverage
+backend/.pytest_cache/
+backend/htmlcov/
+
 # Desktop (Electron)
 desktop/node_modules/
 desktop/dist-mac-win-linux/
