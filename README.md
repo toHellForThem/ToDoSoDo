@@ -2,6 +2,9 @@
   <h1>🚀 ToDoSoDo</h1>
   <p><i>Кроссплатформенное приложение для управления задачами с упором на удобство, универсальность и offline-first архитектуру.</i></p>
 
+  <!-- Бэйджи CI -->
+  <a href="https://github.com/toHellForThem/ToDoSoDo/actions/workflows/python-app.yml"><img src="https://github.com/toHellForThem/ToDoSoDo/actions/workflows/python-app.yml/badge.svg" alt="CI" /></a>
+
   <!-- Бэйджи с технологиями -->
   <img src="https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React Native" />
   <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
