@@ -11,7 +11,6 @@
 
 import json
 import logging
-import re
 from collections.abc import Mapping
 from typing import Annotated, Any, Literal
 
@@ -27,9 +26,13 @@ from pydantic import (
     ValidationError as PydanticValidationError,
 )
 
-logger = logging.getLogger(__name__)
+from app.logical_day import (
+    DEFAULT_TIMEZONE,
+    normalize_reset_time,
+    normalize_timezone,
+)
 
-RESET_TIME_PATTERN = re.compile(r"^(\d{1,2}):(\d{1,2})$")
+logger = logging.getLogger(__name__)
 
 MainPage = Literal["todo", "rpg", "daily"]
 ThemeName = Literal["default", "dark", "mint", "pink"]
@@ -58,23 +61,6 @@ class ShortcutSettings(BaseModel):
     mood_view: ShortcutKey = "mod+x"
 
 
-def normalize_reset_time(value: Any) -> str | None:
-    """Приводит время сброса к виду ``HH:MM`` или возвращает ``None``.
-
-    В отличие от остальных полей, здесь допускается нормализация: клиент
-    может прислать ``"9:5"`` или значение с пробелами по краям.
-    """
-    if not isinstance(value, str):
-        return None
-    match = RESET_TIME_PATTERN.fullmatch(value.strip())
-    if not match:
-        return None
-    hours, minutes = int(match.group(1)), int(match.group(2))
-    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
-        return None
-    return f"{hours:02d}:{minutes:02d}"
-
-
 class UserSettings(BaseModel):
     """Полный набор пользовательских настроек с дефолтами."""
 
@@ -84,6 +70,7 @@ class UserSettings(BaseModel):
     theme: ThemeName = "default"
     soft_delete: bool = True
     reset_time: str = "00:00"
+    timezone: str = DEFAULT_TIMEZONE
     rpg_subtab: RpgSubtab = "dashboard"
     reset_enabled: bool = True
     language: Language = "ru"
@@ -98,11 +85,19 @@ class UserSettings(BaseModel):
             raise ValueError("reset_time должен быть строкой в формате HH:MM")
         return normalized
 
+    @field_validator("timezone", mode="before")
+    @classmethod
+    def _validate_timezone(cls, value: Any) -> str:
+        normalized = normalize_timezone(value)
+        if normalized is None:
+            raise ValueError("timezone должен быть именем IANA-пояса")
+        return normalized
+
 
 _FIELD_ADAPTERS: dict[str, TypeAdapter[Any]] = {
     name: TypeAdapter(field.annotation)
     for name, field in UserSettings.model_fields.items()
-    if name != "reset_time"
+    if name not in {"reset_time", "timezone"}
 }
 _SHORTCUT_ADAPTER: TypeAdapter[Any] = TypeAdapter(ShortcutKey)
 
@@ -150,6 +145,10 @@ def _validate_field(name: str, value: Any) -> Any:
     """Валидирует одно поле, подменяя некорректное значение дефолтом."""
     if name == "reset_time":
         normalized = normalize_reset_time(value)
+        if normalized is not None:
+            return normalized
+    elif name == "timezone":
+        normalized = normalize_timezone(value)
         if normalized is not None:
             return normalized
     else:

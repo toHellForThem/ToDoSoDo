@@ -274,6 +274,7 @@ def test_normalize_settings_replaces_invalid_values():
         {
             "theme": "neon",
             "reset_time": "25:00",
+            "timezone": "Mars/Olympus",
             "language": "de",
             "soft_delete": "nope",
             "shortcuts": {"rpg_tab": ""},
@@ -281,6 +282,12 @@ def test_normalize_settings_replaces_invalid_values():
     )
 
     assert normalized == default_settings()
+
+
+def test_normalize_settings_keeps_valid_timezone():
+    normalized = normalize_settings({"timezone": "Asia/Ashgabat"})
+
+    assert normalized["timezone"] == "Asia/Ashgabat"
 
 
 def test_normalize_settings_accepts_json_string():
