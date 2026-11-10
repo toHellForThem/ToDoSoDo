@@ -115,6 +115,65 @@ async def test_todos_reset_by_type(db, make_user):
     assert str(todos["t2"].progressNow) == "2"
 
 
+async def test_todos_reset_by_type_is_idempotent(db, make_user):
+    user_id = await make_user()
+    repo = TodosRepository(db)
+    await repo.upsert(
+        Todo(
+            id="t1",
+            text="daily",
+            type="daily",
+            completed=True,
+            progressNow=3,
+            updatedAt=10,
+        ),
+        user_id,
+    )
+
+    await repo.reset_by_type(user_id, "daily", 999)
+    await repo.reset_by_type(user_id, "daily", 999)
+
+    todo = (await repo.list_by_user(user_id))[0]
+    assert todo.updatedAt == 999
+    assert str(todo.progressNow) == "0"
+
+
+async def test_todos_reset_by_type_skips_deleted_and_newer(db, make_user):
+    user_id = await make_user()
+    repo = TodosRepository(db)
+    await repo.upsert(
+        Todo(
+            id="deleted",
+            text="daily",
+            type="daily",
+            completed=True,
+            progressNow=3,
+            deleted=True,
+            updatedAt=10,
+        ),
+        user_id,
+    )
+    await repo.upsert(
+        Todo(
+            id="newer",
+            text="daily",
+            type="daily",
+            completed=True,
+            progressNow=4,
+            updatedAt=1000,
+        ),
+        user_id,
+    )
+
+    await repo.reset_by_type(user_id, "daily", 999)
+
+    todos = {todo.id: todo for todo in await repo.list_by_user(user_id)}
+    assert todos["deleted"].completed is True
+    assert str(todos["deleted"].progressNow) == "3"
+    assert todos["newer"].completed is True
+    assert str(todos["newer"].progressNow) == "4"
+
+
 async def test_tombstone_add_and_exists(db, make_user):
     user_id = await make_user()
     repo = DeletedTodosRepository(db)
