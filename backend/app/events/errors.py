@@ -25,9 +25,13 @@ async def emit_auth_error(
     )
 
 
-async def emit_error(sio: socketio.AsyncServer, sid: str, message: str) -> None:
-    """Отправляет общую ошибку конкретному клиенту."""
-    await sio.emit(ServerEvent.ERROR, {"message": message}, room=sid)
+async def emit_error(
+    sio: socketio.AsyncServer, sid: str, message: str, code: str = "error"
+) -> None:
+    """Отправляет ошибку с машиночитаемым кодом конкретному клиенту."""
+    await sio.emit(
+        ServerEvent.ERROR, {"code": code, "message": message}, room=sid
+    )
 
 
 def handle_service_errors(
@@ -42,10 +46,12 @@ def handle_service_errors(
                 return await handler(sid, *args)
             except ServiceError as exc:
                 logger.warning("Ошибка в %s: %s", handler.__name__, exc.message)
-                await emit_error(sio, sid, exc.message)
+                await emit_error(sio, sid, exc.message, exc.code)
             except Exception:
                 logger.exception("Необработанная ошибка в %s", handler.__name__)
-                await emit_error(sio, sid, "Внутренняя ошибка сервера")
+                await emit_error(
+                    sio, sid, "Внутренняя ошибка сервера", "internal_error"
+                )
 
         return wrapper
 

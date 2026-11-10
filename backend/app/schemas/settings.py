@@ -59,10 +59,14 @@ class ShortcutSettings(BaseModel):
 
 
 def normalize_reset_time(value: Any) -> str | None:
-    """Приводит время сброса к виду ``HH:MM`` или возвращает ``None``."""
+    """Приводит время сброса к виду ``HH:MM`` или возвращает ``None``.
+
+    В отличие от остальных полей, здесь допускается нормализация: клиент
+    может прислать ``"9:5"`` или значение с пробелами по краям.
+    """
     if not isinstance(value, str):
         return None
-    match = RESET_TIME_PATTERN.match(value.strip())
+    match = RESET_TIME_PATTERN.fullmatch(value.strip())
     if not match:
         return None
     hours, minutes = int(match.group(1)), int(match.group(2))

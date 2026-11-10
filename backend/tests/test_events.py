@@ -232,6 +232,19 @@ async def test_delete_todo_removes_it(sessions):
     assert await owner_recorder.wait(ServerEvent.ALL_TODOS) == []
 
 
+async def test_garbage_payload_returns_validation_error(sessions):
+    owner, owner_recorder, _, _ = sessions
+
+    await owner.emit(ClientEvent.SYNC_TODO, {"id": "t1", "days": "nope"})
+    error = await owner_recorder.wait(ServerEvent.ERROR)
+    assert error["code"] == "validation_error"
+    assert "Некорректная задача" in error["message"]
+
+    owner_recorder.clear()
+    await owner.emit(ClientEvent.GET_TODOS)
+    assert await owner_recorder.wait(ServerEvent.ALL_TODOS) == []
+
+
 async def test_bulk_sync_returns_remaining_todos(sessions):
     owner, owner_recorder, _, _ = sessions
 

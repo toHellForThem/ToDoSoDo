@@ -31,10 +31,11 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
     @handle_service_errors(sio)
     @authenticated(sio)
     async def handle_sync_daily_history(sid, user_id, data):
-        if await services.daily_history.sync(user_id, data):
+        entry, updated = await services.daily_history.sync(user_id, data)
+        if updated:
             await sio.emit(
                 ServerEvent.DAILY_HISTORY_UPDATED,
-                data,
+                entry,
                 room=user_id,
                 skip_sid=sid,
             )

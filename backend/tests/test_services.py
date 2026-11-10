@@ -5,9 +5,11 @@ import json
 from datetime import timezone
 
 import jwt
+import pydantic
 import pytest
 
 from app.config import settings
+from app.schemas import DailyHistory, Todo
 from app.schemas.settings import (
     ShortcutSettings,
     UserSettings,
@@ -147,7 +149,7 @@ async def test_bulk_sync_returns_outcome_per_todo(services, make_user):
         ],
     )
 
-    outcomes = {todo["id"]: outcome for todo, outcome in results}
+    outcomes = {outcome.todo["id"]: outcome for outcome in results}
     assert outcomes["t1"].updated is False
     assert outcomes["t2"].deleted is True
     assert outcomes["t3"].updated is True
@@ -178,18 +180,15 @@ async def test_reset_by_type_resets_progress(services, make_user):
 async def test_history_sync_uses_lww(services, make_user):
     user_id = await make_user()
 
-    assert (
-        await services.daily_history.sync(
-            user_id, {"date": "2026-01-15", "mood": 2, "updatedAt": 10}
-        )
-        is True
+    _, updated = await services.daily_history.sync(
+        user_id, {"date": "2026-01-15", "mood": 2, "updatedAt": 10}
     )
-    assert (
-        await services.daily_history.sync(
-            user_id, {"date": "2026-01-15", "mood": 1, "updatedAt": 5}
-        )
-        is False
+    assert updated is True
+
+    _, updated = await services.daily_history.sync(
+        user_id, {"date": "2026-01-15", "mood": 1, "updatedAt": 5}
     )
+    assert updated is False
 
     entries = await services.daily_history.get_month(user_id, "2026-01")
     assert entries[0]["mood"] == 2
@@ -357,3 +356,139 @@ async def test_settings_update_migrates_stored_settings(services, db, make_user)
         "SELECT settings FROM users WHERE id = ?", (user_id,)
     )
     assert json.loads(row["settings"]) == actual
+
+
+def test_todo_accepts_tv_show_episode_string():
+    todo = Todo.model_validate(
+        {"id": "t1", "type": "tv_show", "progressNow": "2-5", "progressEnd": 10}
+    )
+
+    assert todo.type == "tv_show"
+    assert todo.progressNow == "2-5"
+
+
+def test_todo_accepts_numeric_progress_strings():
+    todo = Todo.model_validate(
+        {"id": "t1", "progressNow": "3", "progressEnd": "10", "contribution": -1}
+    )
+
+    assert todo.contribution == -1
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"text": "no id"},
+        {"id": "", "text": "empty id"},
+        {"id": "   ", "text": "blank id"},
+        {"id": "t1", "text": "x" * 2001},
+        {"id": "t1", "days": "1111111\n"},
+        {"id": "t1", "days": "1111111 "},
+        {"id": "t1", "progressNow": " 3"},
+        {"id": "t1", "type": "unknown"},
+        {"id": "t1", "days": "1111"},
+        {"id": "t1", "days": "2222222"},
+        {"id": "t1", "contribution": -2},
+        {"id": "t1", "type": "habit", "contribution": 5},
+        {"id": "t1", "updatedAt": -1},
+        {"id": "t1", "progressNow": -3},
+        {"id": "t1", "progressNow": "abc"},
+        {"id": "t1", "progressNow": True},
+        {"id": "t1", "type": "tv_show", "progressNow": "s1e2"},
+        {"id": "t1", "type": "tv_show", "progressNow": 5},
+        {"id": "t1", "type": "tv_show", "progressNow": "1-2\n"},
+    ],
+)
+def test_todo_rejects_garbage(payload):
+    with pytest.raises(pydantic.ValidationError):
+        Todo.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"date": "2026-1-1"},
+        {"date": "2026-02-30"},
+        {"date": None},
+        {"date": "2026-01-01\n"},
+        {"date": " 2026-01-01"},
+        {"date": "2026-01-01", "mood": 7},
+        {"date": "2026-01-01", "mood": 0},
+        {"date": "2026-01-01", "habits_detail": "{broken"},
+        {"date": "2026-01-01", "habits_detail": '{"a": 1}'},
+        {"date": "2026-01-01", "pos_points": -1},
+        {"date": "2026-01-01", "updatedAt": -5},
+        {"date": "2026-01-01", "updatedAt": True},
+        {"date": "2026-01-01", "mood": True},
+    ],
+)
+def test_history_rejects_garbage(payload):
+    with pytest.raises(pydantic.ValidationError):
+        DailyHistory.model_validate(payload)
+
+
+async def test_sync_rejects_garbage_without_writing(services, db, make_user):
+    user_id = await make_user()
+
+    with pytest.raises(ValidationError):
+        await services.todos.sync(user_id, {"id": "t1", "days": "abc"})
+
+    row = await db.fetch_one(
+        "SELECT COUNT(*) AS total FROM todos WHERE user_id = ?", (user_id,)
+    )
+    assert row["total"] == 0
+
+
+async def test_bulk_sync_rejects_whole_batch_with_garbage(services, make_user):
+    user_id = await make_user()
+
+    with pytest.raises(ValidationError):
+        await services.todos.bulk_sync(
+            user_id,
+            [{"id": "t1"}, {"id": "t2", "type": "habit", "contribution": 9}],
+        )
+
+    assert await services.todos.list_todos(user_id) == []
+
+
+async def test_delete_rejects_invalid_id(services, make_user):
+    user_id = await make_user()
+
+    for todo_id in (None, "", "   ", 42, "x" * 65):
+        with pytest.raises(ValidationError):
+            await services.todos.delete(user_id, todo_id)
+
+
+async def test_reset_rejects_invalid_payload(services, make_user):
+    user_id = await make_user()
+
+    with pytest.raises(ValidationError):
+        await services.todos.reset_by_type(user_id, "unknown", 1)
+    with pytest.raises(ValidationError):
+        await services.todos.reset_by_type(user_id, "daily", "now")
+
+
+async def test_history_rejects_garbage_and_bad_month(services, make_user):
+    user_id = await make_user()
+
+    with pytest.raises(ValidationError):
+        await services.daily_history.sync(user_id, {"date": "15.01.2026"})
+    with pytest.raises(ValidationError):
+        await services.daily_history.get_month(user_id, "2026-13")
+    with pytest.raises(ValidationError):
+        await services.daily_history.get_month(user_id, "2026-01 ")
+    with pytest.raises(ValidationError):
+        await services.daily_history.bulk_sync(user_id, {"date": "2026-01-01"})
+
+
+def test_normalize_settings_is_tolerant_only_for_reset_time():
+    normalized = normalize_settings('{"reset_time": " 9:5 ", "language": "en"}')
+
+    assert normalized["reset_time"] == "09:05"
+    assert normalized["language"] == "en"
+
+
+def test_normalize_settings_does_not_strip_other_fields():
+    normalized = normalize_settings('{"language": " en"}')
+
+    assert normalized["language"] == "ru"
