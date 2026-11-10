@@ -26,11 +26,13 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
     @authenticated(sio)
     async def handle_sync(sid, user_id, data):
         outcome = await services.todos.sync(user_id, data)
+        if outcome.todo is None:
+            return
         if outcome.deleted:
-            await sio.emit(ServerEvent.TODO_DELETED, data["id"], room=sid)
+            await sio.emit(ServerEvent.TODO_DELETED, outcome.todo["id"], room=sid)
         elif outcome.updated:
             await sio.emit(
-                ServerEvent.TODO_UPDATED, data, room=user_id, skip_sid=sid
+                ServerEvent.TODO_UPDATED, outcome.todo, room=user_id, skip_sid=sid
             )
 
     @sio.on(ClientEvent.DELETE_TODO)
@@ -53,12 +55,14 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
     @handle_service_errors(sio)
     @authenticated(sio)
     async def handle_bulk_sync_todos(sid, user_id, client_todos):
-        for todo, outcome in await services.todos.bulk_sync(user_id, client_todos):
+        for outcome in await services.todos.bulk_sync(user_id, client_todos):
+            if outcome.todo is None:
+                continue
             if outcome.deleted:
-                await sio.emit(ServerEvent.TODO_DELETED, todo["id"], room=sid)
+                await sio.emit(ServerEvent.TODO_DELETED, outcome.todo["id"], room=sid)
             elif outcome.updated:
                 await sio.emit(
-                    ServerEvent.TODO_UPDATED, todo, room=user_id, skip_sid=sid
+                    ServerEvent.TODO_UPDATED, outcome.todo, room=user_id, skip_sid=sid
                 )
 
         await send_todos(sid, user_id)
