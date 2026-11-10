@@ -65,7 +65,9 @@ class TodosRepository(BaseRepository):
     @staticmethod
     def _to_model(row: aiosqlite.Row) -> Todo:
         keys = row.keys()
-        return Todo(
+        # ``model_construct`` не валидирует уже сохранённые строки: старые
+        # записи с устаревшими полями не должны ломать чтение списка задач.
+        return Todo.model_construct(
             id=row["id"],
             text=row["text"],
             completed=bool(row["completed"]),
