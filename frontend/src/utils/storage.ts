@@ -22,6 +22,8 @@ export interface UserSettings {
   theme: string;
   soft_delete: boolean;
   reset_time: string;
+  /** IANA-пояс пользователя: общий для всех устройств аккаунта. */
+  timezone: string;
   rpg_subtab: string;
   reset_enabled: boolean;
   language: string;
@@ -89,12 +91,24 @@ const getSystemLanguage = () => {
   }
 };
 
+const getSystemTimezone = (): string => {
+  try {
+    if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    }
+  } catch (error) {
+    // Hermes без ICU — используем UTC, пользователь сможет поменять пояс.
+  }
+  return 'UTC';
+};
+
 export const getDefaultSettings = (): UserSettings => {
   const settings: UserSettings = {
     main_page: 'todo',
     theme: 'default',
     soft_delete: true,
     reset_time: '00:00',
+    timezone: getSystemTimezone(),
     rpg_subtab: 'dashboard',
     reset_enabled: true,
     language: getSystemLanguage(),
