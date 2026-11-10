@@ -9,7 +9,12 @@ import {
   TodoType
 } from '../utils/storage';
 import { socket } from '../utils/socket';
-import { getLogicalDateStr } from '../utils/date';
+import {
+  getLogicalDateStr,
+  getLogicalDayStartMs,
+  getNextResetMs,
+} from '../utils/date';
+import { computeDailyStats } from '../utils/dailyStats';
 
 
 export const useTodoActions = (mainTab: string, settings: UserSettings) => {
@@ -19,25 +24,18 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
 
     const localSettings = AuthStorage.getSettings();
     if (localSettings?.reset_enabled !== false) {
-      const resetTimeStr = localSettings?.reset_time || '00:00';
-      const parts = resetTimeStr.split(':').map(Number);
-      const timeToReset = (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]))
-        ? [parts[0], parts[1], 0, 0]
-        : [0, 0, 0, 0];
-
-      let startOfToday = new Date().setHours(
-        timeToReset[0],
-        timeToReset[1],
-        timeToReset[2],
-        timeToReset[3],
+      const startOfToday = getLogicalDayStartMs(
+        localSettings?.reset_time,
+        localSettings?.timezone
       );
-      if (startOfToday > Date.now()) {
-        startOfToday -= 86400000;
-      }
 
       let hasChanges = false;
       const updatedList = list.map(item => {
-        if ((item.type === 'daily' || item.type === 'habit') && item.updatedAt < startOfToday) {
+        if (
+          (item.type === 'daily' || item.type === 'habit') &&
+          !item.deleted &&
+          item.updatedAt < startOfToday
+        ) {
           hasChanges = true;
           return {
             ...item,
@@ -77,46 +75,27 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
   }, [rpgHistory]);
 
   useEffect(() => {
-    let timerId;
+    let timerId: ReturnType<typeof setTimeout> | undefined;
 
     const scheduleNextReset = () => {
       const resetEnabled = settings?.reset_enabled !== false;
       if (!resetEnabled) return;
 
       const resetTimeStr = settings?.reset_time || '00:00';
-      const parts = resetTimeStr.split(':').map(Number);
-      const timeToReset = (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]))
-        ? [parts[0], parts[1], 0, 0]
-        : [0, 0, 0, 0];
-
-      const now = new Date();
-      const tomorrow = new Date(now);
-
-      tomorrow.setHours(
-        timeToReset[0],
-        timeToReset[1],
-        timeToReset[2],
-        timeToReset[3],
-      );
-
-      if (tomorrow <= now) {
-        tomorrow.setDate(tomorrow.getDate() + 1);
-      }
-      const msUntilMidnight = tomorrow.getTime() - now.getTime();
-      let toUpdatedAt = Date.now();
+      const resetAt = getNextResetMs(resetTimeStr, settings?.timezone);
+      const msUntilReset = Math.max(0, resetAt - Date.now());
 
       timerId = setTimeout(() => {
-        toUpdatedAt = tomorrow.getTime();
         setTodoList(prev => prev.map(item =>
-          item.type === 'daily' || item.type === 'habit'
-            ? { ...item, progressNow: 0, completed: false, updatedAt: toUpdatedAt }
+          (item.type === 'daily' || item.type === 'habit') && !item.deleted
+            ? { ...item, progressNow: 0, completed: false, updatedAt: resetAt }
             : item
         ));
-        socket.emit('client:confirm_reset', 'daily', toUpdatedAt);
-        socket.emit('client:confirm_reset', 'habit', toUpdatedAt);
+        socket.emit('client:confirm_reset', 'daily', resetAt);
+        socket.emit('client:confirm_reset', 'habit', resetAt);
 
         scheduleNextReset();
-      }, msUntilMidnight);
+      }, msUntilReset);
     };
 
     scheduleNextReset();
@@ -133,49 +112,8 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
       return;
     }
 
-    const todayStr = getLogicalDateStr(settings?.reset_time);
-
-    const parts = todayStr.split('-').map(Number);
-    const logicalDate = new Date(parts[0], parts[1] - 1, parts[2]);
-    const logicalDayIdx = (logicalDate.getDay() + 6) % 7; // 0 for Mon, 6 for Sun
-
-    const dailies = todoList.filter(item => {
-      if (item.type !== 'daily' || item.deleted) return false;
-      const daysStr = item.days || '1111111';
-      return daysStr[logicalDayIdx] === '1';
-    });
-
-    const hasAnyDaily = todoList.some(item => item.type === 'daily' && !item.deleted);
-
-    let progress = 0.0;
-    if (dailies.length > 0) {
-      const { needProgress, nowProgress } = dailies.reduce((acc, item) => {
-        const need = parseInt(String(item.progressEnd), 10) || 0;
-        const now = parseInt(String(item.progressNow), 10) || 0;
-        acc.needProgress += need;
-        acc.nowProgress += now;
-        return acc;
-      }, { needProgress: 0, nowProgress: 0 });
-      progress = needProgress > 0 ? nowProgress / needProgress : 1.0;
-    } else if (hasAnyDaily) {
-      progress = 1.0;
-    }
-
-    const positiveCount = todoList
-      .filter(item => item.type === 'habit' && item.contribution === 1 && !item.deleted)
-      .reduce((sum, h) => sum + (parseInt(String(h.progressNow), 10) || 0), 0);
-    const negativeCount = todoList
-      .filter(item => item.type === 'habit' && item.contribution === -1 && !item.deleted)
-      .reduce((sum, h) => sum + (parseInt(String(h.progressNow), 10) || 0), 0);
-
-    const habitsSnapshot = todoList
-      .filter(item => item.type === 'habit' && !item.deleted)
-      .map(item => ({
-        id: item.id,
-        text: item.text,
-        contribution: item.contribution,
-        progressNow: parseInt(String(item.progressNow), 10) || 0
-      }));
+    const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
+    const stats = computeDailyStats(todoList, todayStr);
 
     setRpgHistory(prev => {
       const existingEntry = prev.find(h => h.date === todayStr);
@@ -184,19 +122,19 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
       const updatedEntry = {
         date: todayStr,
         mood: moodValue,
-        daily_progress: progress,
-        pos_points: positiveCount,
-        neg_points: negativeCount,
-        habits_detail: JSON.stringify(habitsSnapshot),
+        daily_progress: stats.dailyProgress,
+        pos_points: stats.posPoints,
+        neg_points: stats.negPoints,
+        habits_detail: stats.habitsDetail,
         updatedAt: Date.now()
       };
 
       if (
         existingEntry &&
-        existingEntry.daily_progress === progress &&
-        existingEntry.pos_points === positiveCount &&
-        existingEntry.neg_points === negativeCount &&
-        existingEntry.habits_detail === updatedEntry.habits_detail
+        existingEntry.daily_progress === stats.dailyProgress &&
+        existingEntry.pos_points === stats.posPoints &&
+        existingEntry.neg_points === stats.negPoints &&
+        existingEntry.habits_detail === stats.habitsDetail
       ) {
         return prev;
       }
@@ -418,57 +356,18 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
 
   const handleMoodChange = useCallback((moodValue: number) => {
     isHistoryLoadedRef.current = true;
-    const todayStr = getLogicalDateStr(settings?.reset_time);
-
-    const parts = todayStr.split('-').map(Number);
-    const logicalDate = new Date(parts[0], parts[1] - 1, parts[2]);
-    const logicalDayIdx = (logicalDate.getDay() + 6) % 7;
-
-    const dailies = todoList.filter(item => {
-      if (item.type !== 'daily' || item.deleted) return false;
-      const daysStr = item.days || '1111111';
-      return daysStr[logicalDayIdx] === '1';
-    });
-
-    const hasAnyDaily = todoList.some(item => item.type === 'daily' && !item.deleted);
-
-    let progress = 0.0;
-    if (dailies.length > 0) {
-      const { needProgress, nowProgress } = dailies.reduce((acc, item) => {
-        acc.needProgress += (Number(item.progressEnd) || 0);
-        acc.nowProgress += (Number(item.progressNow) || 0);
-        return acc;
-      }, { needProgress: 0, nowProgress: 0 });
-      progress = needProgress > 0 ? nowProgress / needProgress : 1.0;
-    } else if (hasAnyDaily) {
-      progress = 1.0;
-    }
-
-    const positiveCount = todoList
-      .filter(item => item.type === 'habit' && item.contribution === 1 && !item.deleted)
-      .reduce((sum, h) => sum + (parseInt(String(h.progressNow), 10) || 0), 0);
-    const negativeCount = todoList
-      .filter(item => item.type === 'habit' && item.contribution === -1 && !item.deleted)
-      .reduce((sum, h) => sum + (parseInt(String(h.progressNow), 10) || 0), 0);
-
-    const habitsSnapshot = todoList
-      .filter(item => item.type === 'habit' && !item.deleted)
-      .map(item => ({
-        id: item.id,
-        text: item.text,
-        contribution: item.contribution,
-        progressNow: parseInt(String(item.progressNow), 10) || 0
-      }));
+    const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
+    const stats = computeDailyStats(todoList, todayStr);
 
     setRpgHistory(prev => {
       const existingIndex = prev.findIndex(h => h.date === todayStr);
       const updatedEntry = {
         date: todayStr,
         mood: moodValue,
-        daily_progress: progress,
-        pos_points: positiveCount,
-        neg_points: negativeCount,
-        habits_detail: JSON.stringify(habitsSnapshot),
+        daily_progress: stats.dailyProgress,
+        pos_points: stats.posPoints,
+        neg_points: stats.negPoints,
+        habits_detail: stats.habitsDetail,
         updatedAt: Date.now()
       };
 
@@ -483,7 +382,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
       socket.emit('client:sync_daily_history', updatedEntry);
       return newHistory;
     });
-  }, [todoList]);
+  }, [todoList, settings]);
 
   return {
     todoList,

@@ -30,7 +30,8 @@ import { getStyles as getItemStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { FillProgress } from '../components/FillProgress';
 import { useTranslation } from '../utils/LanguageContext';
-import { Todo, TodoType } from '../utils/storage'
+import { getLogicalDateStr, getLogicalDayIndex } from '../utils/date';
+import { Todo, TodoType, UserSettings } from '../utils/storage'
 
 
 interface DailyItemProps {
@@ -84,6 +85,7 @@ interface DailyTabProps {
   dailyProgressEnd: number;
   setDailyProgressEnd: Dispatch<SetStateAction<number>>;
   isWideScreen: boolean;
+  settings: UserSettings;
   selectedTaskId: string | null;
   focusInputTrigger: number;
   isActive: boolean;
@@ -372,6 +374,7 @@ export const DailyTab = memo(({
   dailyProgressEnd,
   setDailyProgressEnd,
   isWideScreen,
+  settings,
   selectedTaskId,
   focusInputTrigger,
   isActive,
@@ -391,11 +394,18 @@ export const DailyTab = memo(({
     }
   }, [focusInputTrigger, isActive]);
 
+  const todayDayIdx = useMemo(
+    () =>
+      getLogicalDayIndex(
+        getLogicalDateStr(settings?.reset_time, settings?.timezone)
+      ),
+    [settings?.reset_time, settings?.timezone]
+  );
+
   const dailies = useMemo(() =>
     todoList
       .filter(item => {
         if (item.type !== 'daily' || item.deleted) return false;
-        const todayDayIdx = (new Date().getDay() + 6) % 7;
         const daysStr = item.days || '1111111';
         return daysStr[todayDayIdx] === '1';
       })
@@ -404,7 +414,7 @@ export const DailyTab = memo(({
         if (!a.completed && b.completed) return -1;
         return 0;
       }),
-    [todoList]
+    [todoList, todayDayIdx]
   );
 
   useEffect(() => {

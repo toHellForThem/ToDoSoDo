@@ -23,6 +23,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getStyles } from './RpgTab.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { getLogicalDateStr } from '../utils/date';
+import { computeDailyStats } from '../utils/dailyStats';
 import { useTranslation } from '../utils/LanguageContext';
 import { CalendarModal, SelectedDayDetail, CalendarCell } from '../components/CalendarModal';
 import { HabitsSubtab } from './rpg/HabitsSubtab';
@@ -151,7 +152,10 @@ export const RpgTab = memo(({
   const currentScrollY = useRef(0);
 
   const today = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => getLogicalDateStr(settings?.reset_time), [settings?.reset_time]);
+  const todayStr = useMemo(
+    () => getLogicalDateStr(settings?.reset_time, settings?.timezone),
+    [settings?.reset_time, settings?.timezone]
+  );
 
   const [viewDate, setViewDate] = useState(() => new Date());
 
@@ -285,41 +289,15 @@ export const RpgTab = memo(({
   };
 
   const dailyStats = useMemo(() => {
-    const parts = todayStr.split('-').map(Number);
-    const logicalDate = new Date(parts[0], parts[1] - 1, parts[2]);
-    const logicalDayIdx = (logicalDate.getDay() + 6) % 7;
-
-    const dailies = todoList.filter(item => {
-      if (item.type !== 'daily' || item.deleted) return false;
-      const daysStr = item.days || '1111111';
-      return daysStr[logicalDayIdx] === '1';
-    });
-
-    const hasAnyDaily = todoList.some(item => item.type === 'daily' && !item.deleted);
-
-    let dailiesProgress = 0;
-    if (dailies.length > 0) {
-      const { needProgress, nowProgress } = dailies.reduce((acc, item) => {
-        acc.needProgress += (Number(item.progressEnd) || 0);
-        acc.nowProgress += (Number(item.progressNow) || 0);
-        return acc;
-      }, { needProgress: 0, nowProgress: 0 });
-      dailiesProgress = Math.round((nowProgress / needProgress) * 100);
-    } else if (hasAnyDaily) {
-      dailiesProgress = 100;
-    }
-
-    const positiveCount = positiveHabits.reduce((sum, h) => sum + (Number(h.progressNow) || 0), 0);
-    const negativeCount = negativeHabits.reduce((sum, h) => sum + (Number(h.progressNow) || 0), 0);
-    const neutralCount = neutralHabits.reduce((sum, h) => sum + (Number(h.progressNow) || 0), 0);
+    const stats = computeDailyStats(todoList, todayStr);
 
     return {
-      dailiesProgress,
-      positiveCount,
-      negativeCount,
-      neutralCount,
+      dailiesProgress: Math.round(stats.dailyProgress * 100),
+      positiveCount: stats.posPoints,
+      negativeCount: stats.negPoints,
+      neutralCount: stats.neutralPoints,
     };
-  }, [todoList, positiveHabits, negativeHabits, neutralHabits, todayStr]);
+  }, [todoList, todayStr]);
 
   const todayMood = useMemo(() => {
     const todayLog = rpgHistory.find(h => h.date === todayStr);

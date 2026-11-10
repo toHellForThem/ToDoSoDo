@@ -9,6 +9,7 @@ import {
   Todo,
   RpgHistoryItem
 } from '../utils/storage';
+import { getLogicalDayStartMs } from '../utils/date';
 
 
 interface UseTodoSocketProps {
@@ -67,6 +68,20 @@ export const useTodoSocket = ({
         socket.emit('client:update_settings', finalSettings);
       } else {
         finalSettings = { ...localSettings, ...serverSettings };
+        // Если на сервере настройки ещё не кастомизировали (updatedAt = 0),
+        // забираем пояс устройства, чтобы новые аккаунты не жили в UTC.
+        if (
+          serverUpdatedAt === 0 &&
+          localSettings.timezone &&
+          localSettings.timezone !== finalSettings.timezone
+        ) {
+          finalSettings = {
+            ...finalSettings,
+            timezone: localSettings.timezone,
+            updatedAt: Date.now()
+          };
+          socket.emit('client:update_settings', finalSettings);
+        }
       }
 
       AuthStorage.setSettings(finalSettings);
@@ -77,30 +92,23 @@ export const useTodoSocket = ({
     });
 
     socket.on('server:all_todos', (serverTodos) => {
-      const resetTimeStr = settings?.reset_time || '00:00';
-      const parts = resetTimeStr.split(':').map(Number);
-      const timeToReset = (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]))
-        ? [parts[0], parts[1], 0, 0]
-        : [0, 0, 0, 0];
-
-      let startOfToday = new Date().setHours(
-        timeToReset[0],
-        timeToReset[1],
-        timeToReset[2],
-        timeToReset[3]
+      const startOfToday = getLogicalDayStartMs(
+        settings?.reset_time,
+        settings?.timezone
       );
       const resetTypes = new Set();
-
-      if (startOfToday > Date.now()) {
-        startOfToday -= 86400000;
-      }
 
       if (shouldReplaceTodos) {
         shouldReplaceTodos = false;
 
         const processedTodos = serverTodos.map(sItem => {
           let processedItem = { ...sItem };
-          if (settings?.reset_enabled !== false && (processedItem.type === 'daily' || processedItem.type === 'habit') && processedItem.updatedAt < startOfToday) {
+          if (
+            settings?.reset_enabled !== false &&
+            !processedItem.deleted &&
+            (processedItem.type === 'daily' || processedItem.type === 'habit') &&
+            processedItem.updatedAt < startOfToday
+          ) {
             processedItem.progressNow = 0;
             processedItem.completed = false;
             processedItem.updatedAt = startOfToday;
@@ -129,7 +137,12 @@ export const useTodoSocket = ({
           serverTodos.forEach(sItem => {
             let processedItem = { ...sItem };
 
-            if (settings?.reset_enabled !== false && (processedItem.type === 'daily' || processedItem.type === 'habit') && processedItem.updatedAt < startOfToday) {
+            if (
+              settings?.reset_enabled !== false &&
+              !processedItem.deleted &&
+              (processedItem.type === 'daily' || processedItem.type === 'habit') &&
+              processedItem.updatedAt < startOfToday
+            ) {
               processedItem.progressNow = 0;
               processedItem.completed = false;
               processedItem.updatedAt = startOfToday;

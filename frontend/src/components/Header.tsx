@@ -94,7 +94,7 @@ export const Header = memo(({
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();
-  const todayStr = getLogicalDateStr(settings?.reset_time);
+  const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
   const todayEntry = rpgHistory?.find(item => item.date === todayStr);
   const currentMoodValue = todayEntry ? todayEntry.mood : null;
 

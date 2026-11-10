@@ -28,6 +28,7 @@ import { useTodoSocket } from './src/hooks/useTodoSocket';
 import { useMoodSheet } from './src/hooks/useMoodSheet';
 import { useShortcuts } from './src/hooks/useShortcuts';
 import { AuthStorage, DEFAULT_SHORTCUTS, Todo, UserSettings } from './src/utils/storage';
+import { getLogicalDateStr, getLogicalDayIndex } from './src/utils/date';
 import { socket } from './src/utils/socket';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -62,6 +63,7 @@ const TAB_VIEWS = {
         dailyProgressEnd={props.dailyProgressEnd}
         setDailyProgressEnd={props.setDailyProgressEnd}
         isWideScreen={props.isWideScreen}
+        settings={props.settings}
         selectedTaskId={props.selectedTaskId}
         focusInputTrigger={props.focusInputTrigger}
         isActive={props.mainTab === 'daily'}
@@ -392,7 +394,9 @@ export default function App() {
         });
     }
     if (mainTab === 'daily') {
-      const todayDayIdx = (new Date().getDay() + 6) % 7;
+      const todayDayIdx = getLogicalDayIndex(
+        getLogicalDateStr(settings?.reset_time, settings?.timezone)
+      );
       return todoList
         .filter(item => {
           if (item.type !== 'daily' || (isRecycle ? !item.deleted : item.deleted)) return false;
@@ -417,7 +421,14 @@ export default function App() {
       }
     }
     return [];
-  }, [mainTab, rpgSubtab, activeView, todoList]);
+  }, [
+    mainTab,
+    rpgSubtab,
+    activeView,
+    todoList,
+    settings?.reset_time,
+    settings?.timezone,
+  ]);
 
   const shortcuts = settings?.shortcuts || DEFAULT_SHORTCUTS;
 
