@@ -1,12 +1,19 @@
 """Тесты бизнес-логики сервисов."""
 
 import datetime
+import json
 from datetime import timezone
 
 import jwt
 import pytest
 
 from app.config import settings
+from app.schemas.settings import (
+    ShortcutSettings,
+    UserSettings,
+    default_settings,
+    normalize_settings,
+)
 from app.services import AuthError, ConflictError, ValidationError
 
 
@@ -31,7 +38,7 @@ async def test_login_returns_token_and_settings(services):
     result = await services.auth.login("alice", "secret")
 
     assert result["username"] == "alice"
-    assert result["settings"]["main_page"] == "todo"
+    assert result["settings"] == default_settings()
     user_id, expired = services.auth.decode_token(result["token"])
     assert user_id == result["user_id"]
     assert expired is False
@@ -208,11 +215,11 @@ async def test_settings_client_newer_applied(services, make_user):
     await services.settings.update(user_id, {"theme": "dark", "updatedAt": 10})
 
     actual, applied = await services.settings.update(
-        user_id, {"theme": "light", "updatedAt": 20}
+        user_id, {"theme": "pink", "updatedAt": 20}
     )
 
     assert applied is True
-    assert actual["theme"] == "light"
+    assert actual["theme"] == "pink"
 
 
 async def test_settings_server_newer_wins(services, make_user):
@@ -220,7 +227,7 @@ async def test_settings_server_newer_wins(services, make_user):
     await services.settings.update(user_id, {"theme": "dark", "updatedAt": 10})
 
     actual, applied = await services.settings.update(
-        user_id, {"theme": "light", "updatedAt": 5}
+        user_id, {"theme": "pink", "updatedAt": 5}
     )
 
     assert applied is False
@@ -236,4 +243,117 @@ async def test_settings_initialized_when_missing(services, db, make_user):
     )
 
     assert applied is True
-    assert actual == {"theme": "dark", "updatedAt": 0}
+    assert actual["theme"] == "dark"
+    assert set(actual) == set(UserSettings.model_fields)
+
+
+def test_default_settings_cover_full_contract():
+    defaults = default_settings()
+
+    assert set(defaults) == set(UserSettings.model_fields)
+    assert defaults["shortcuts"] == ShortcutSettings().model_dump()
+    assert defaults["updatedAt"] == 0
+
+
+def test_normalize_settings_merges_partial_and_ignores_unknown():
+    normalized = normalize_settings(
+        {
+            "theme": "dark",
+            "unknown_key": 1,
+            "shortcuts": {"rpg_tab": "ctrl+9"},
+        }
+    )
+
+    assert normalized["theme"] == "dark"
+    assert "unknown_key" not in normalized
+    assert normalized["shortcuts"]["rpg_tab"] == "ctrl+9"
+    assert normalized["shortcuts"]["todo_tab"] == "mod+2"
+
+
+def test_normalize_settings_replaces_invalid_values():
+    normalized = normalize_settings(
+        {
+            "theme": "neon",
+            "reset_time": "25:00",
+            "language": "de",
+            "soft_delete": "nope",
+            "shortcuts": {"rpg_tab": ""},
+        }
+    )
+
+    assert normalized == default_settings()
+
+
+def test_normalize_settings_accepts_json_string():
+    normalized = normalize_settings('{"theme": "pink", "reset_time": "9:5"}')
+
+    assert normalized["theme"] == "pink"
+    assert normalized["reset_time"] == "09:05"
+
+
+def test_normalize_settings_handles_broken_json():
+    assert normalize_settings("{not json") == default_settings()
+
+
+async def test_register_stores_full_default_settings(services, db):
+    await services.auth.register("alice", "secret")
+
+    row = await db.fetch_one("SELECT settings FROM users WHERE username = ?", ("alice",))
+
+    assert json.loads(row["settings"]) == default_settings()
+
+
+async def test_login_migrates_legacy_settings(services, db):
+    await services.auth.register("alice", "secret")
+    row = await db.fetch_one("SELECT id FROM users WHERE username = ?", ("alice",))
+    legacy = {"main_page": "rpg", "theme": "mint", "soft_delete": False}
+    await db.execute(
+        "UPDATE users SET settings = ? WHERE id = ?", (json.dumps(legacy), row["id"])
+    )
+
+    result = await services.auth.login("alice", "secret")
+
+    actual = result["settings"]
+    assert actual["main_page"] == "rpg"
+    assert actual["theme"] == "mint"
+    assert actual["soft_delete"] is False
+    assert actual["reset_time"] == "00:00"
+    assert actual["shortcuts"]["rpg_tab"] == "mod+1"
+
+    stored = await db.fetch_one("SELECT settings FROM users WHERE id = ?", (row["id"],))
+    assert json.loads(stored["settings"]) == actual
+
+
+async def test_settings_update_stores_full_contract(services, db, make_user):
+    user_id = await make_user()
+
+    actual, applied = await services.settings.update(
+        user_id, {"theme": "dark", "updatedAt": 10}
+    )
+
+    assert applied is True
+    assert set(actual) == set(UserSettings.model_fields)
+    row = await db.fetch_one(
+        "SELECT settings FROM users WHERE id = ?", (user_id,)
+    )
+    assert json.loads(row["settings"]) == actual
+
+
+async def test_settings_update_migrates_stored_settings(services, db, make_user):
+    user_id = await make_user()
+    stored = {"theme": "dark", "updatedAt": 100}
+    await db.execute(
+        "UPDATE users SET settings = ? WHERE id = ?", (json.dumps(stored), user_id)
+    )
+
+    actual, applied = await services.settings.update(
+        user_id, {"theme": "pink", "updatedAt": 5}
+    )
+
+    assert applied is False
+    assert actual["theme"] == "dark"
+    assert actual["language"] == "ru"
+    row = await db.fetch_one(
+        "SELECT settings FROM users WHERE id = ?", (user_id,)
+    )
+    assert json.loads(row["settings"]) == actual

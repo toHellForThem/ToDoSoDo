@@ -1,6 +1,5 @@
 """Socket-события аутентификации: регистрация, вход, подключение и выход."""
 
-import json
 import logging
 
 import socketio
@@ -92,7 +91,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             {
                 "username": user["username"],
                 "token": token,
-                "settings": json.loads(user["settings"]),
+                "settings": await services.auth.load_settings(user),
             },
             room=sid,
         )

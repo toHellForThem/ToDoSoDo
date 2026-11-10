@@ -1,7 +1,6 @@
 """Сервис аутентификации: регистрация, вход и работа с JWT."""
 
 import datetime
-import json
 import logging
 from datetime import timezone
 from typing import Any
@@ -11,11 +10,14 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.config import settings
 from app.rep import UsersRepository
+from app.schemas.settings import (
+    default_settings,
+    dump_settings,
+    normalize_user_settings,
+)
 from app.services.errors import AuthError, ConflictError, ValidationError
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_SETTINGS = {"main_page": "todo", "theme": "default", "soft_delete": True}
 
 
 class AuthService:
@@ -61,7 +63,7 @@ class AuthService:
         password_hash = generate_password_hash(password)
         try:
             await self._users.create(
-                username, password_hash, json.dumps(DEFAULT_SETTINGS)
+                username, password_hash, dump_settings(default_settings())
             )
         except Exception as exc:
             logger.exception("Ошибка регистрации пользователя %s: %s", username, exc)
@@ -84,8 +86,18 @@ class AuthService:
             "user_id": user["id"],
             "username": user["username"],
             "token": self.create_access_token(user["id"]),
-            "settings": json.loads(user["settings"]),
+            "settings": await self.load_settings(user),
         }
+
+    async def load_settings(self, user: Any) -> dict[str, Any]:
+        """Возвращает полный набор настроек, попутно мигрируя старые записи."""
+        normalized, changed = normalize_user_settings(user["settings"])
+        if changed:
+            await self._users.update_settings(user["id"], dump_settings(normalized))
+            logger.info(
+                "Настройки пользователя %s приведены к полному контракту", user["id"]
+            )
+        return normalized
 
     async def get_user(self, user_id: int):
         return await self._users.get_by_id(user_id)
