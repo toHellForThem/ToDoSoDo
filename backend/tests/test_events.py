@@ -300,15 +300,14 @@ async def test_settings_lww_over_events(sessions):
     owner, owner_recorder, _, observer_recorder = sessions
 
     await owner.emit(ClientEvent.UPDATE_SETTINGS, {"theme": "dark", "updatedAt": 10})
-    assert await observer_recorder.wait(ServerEvent.SETTINGS_UPDATED) == {
-        "theme": "dark",
-        "updatedAt": 10,
-    }
+    data = await observer_recorder.wait(ServerEvent.SETTINGS_UPDATED)
+    assert data["theme"] == "dark"
+    assert data["updatedAt"] == 10
+    assert data["reset_time"] == "00:00"
 
     owner_recorder.clear()
     await owner.emit(ClientEvent.UPDATE_SETTINGS, {"theme": "light", "updatedAt": 1})
 
-    assert await owner_recorder.wait(ServerEvent.SETTINGS_UPDATED) == {
-        "theme": "dark",
-        "updatedAt": 10,
-    }
+    data = await owner_recorder.wait(ServerEvent.SETTINGS_UPDATED)
+    assert data["theme"] == "dark"
+    assert data["updatedAt"] == 10
