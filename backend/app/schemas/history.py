@@ -7,15 +7,15 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
+MONTH_PATTERN = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
 
 
 def validate_month(month: object) -> str:
-    """Проверяет месяц в формате ``YYYY-MM`` и возвращает его без пробелов."""
-    if not isinstance(month, str) or not MONTH_PATTERN.match(month.strip()):
+    """Проверяет месяц в формате ``YYYY-MM`` без нормализации значения."""
+    if not isinstance(month, str) or not MONTH_PATTERN.fullmatch(month):
         raise ValueError("month должен быть строкой в формате YYYY-MM")
-    return month.strip()
+    return month
 
 
 class DailyHistory(BaseModel):
@@ -42,14 +42,13 @@ class DailyHistory(BaseModel):
     @field_validator("date")
     @classmethod
     def _validate_date(cls, value: str) -> str:
-        if not isinstance(value, str) or not DATE_PATTERN.match(value.strip()):
+        if not isinstance(value, str) or not DATE_PATTERN.fullmatch(value):
             raise ValueError("date должен быть строкой в формате YYYY-MM-DD")
-        normalized = value.strip()
         try:
-            datetime.date.fromisoformat(normalized)
+            datetime.date.fromisoformat(value)
         except ValueError as exc:
             raise ValueError("date должен быть существующей датой") from exc
-        return normalized
+        return value
 
     @field_validator("habits_detail", mode="before")
     @classmethod

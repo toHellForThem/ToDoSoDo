@@ -380,7 +380,11 @@ def test_todo_accepts_numeric_progress_strings():
     [
         {"text": "no id"},
         {"id": "", "text": "empty id"},
+        {"id": "   ", "text": "blank id"},
         {"id": "t1", "text": "x" * 2001},
+        {"id": "t1", "days": "1111111\n"},
+        {"id": "t1", "days": "1111111 "},
+        {"id": "t1", "progressNow": " 3"},
         {"id": "t1", "type": "unknown"},
         {"id": "t1", "days": "1111"},
         {"id": "t1", "days": "2222222"},
@@ -392,6 +396,7 @@ def test_todo_accepts_numeric_progress_strings():
         {"id": "t1", "progressNow": True},
         {"id": "t1", "type": "tv_show", "progressNow": "s1e2"},
         {"id": "t1", "type": "tv_show", "progressNow": 5},
+        {"id": "t1", "type": "tv_show", "progressNow": "1-2\n"},
     ],
 )
 def test_todo_rejects_garbage(payload):
@@ -405,6 +410,8 @@ def test_todo_rejects_garbage(payload):
         {"date": "2026-1-1"},
         {"date": "2026-02-30"},
         {"date": None},
+        {"date": "2026-01-01\n"},
+        {"date": " 2026-01-01"},
         {"date": "2026-01-01", "mood": 7},
         {"date": "2026-01-01", "mood": 0},
         {"date": "2026-01-01", "habits_detail": "{broken"},
@@ -469,4 +476,19 @@ async def test_history_rejects_garbage_and_bad_month(services, make_user):
     with pytest.raises(ValidationError):
         await services.daily_history.get_month(user_id, "2026-13")
     with pytest.raises(ValidationError):
+        await services.daily_history.get_month(user_id, "2026-01 ")
+    with pytest.raises(ValidationError):
         await services.daily_history.bulk_sync(user_id, {"date": "2026-01-01"})
+
+
+def test_normalize_settings_is_tolerant_only_for_reset_time():
+    normalized = normalize_settings('{"reset_time": " 9:5 ", "language": "en"}')
+
+    assert normalized["reset_time"] == "09:05"
+    assert normalized["language"] == "en"
+
+
+def test_normalize_settings_does_not_strip_other_fields():
+    normalized = normalize_settings('{"language": " en"}')
+
+    assert normalized["language"] == "ru"

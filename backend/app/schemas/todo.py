@@ -14,8 +14,8 @@ from pydantic import (
 )
 
 DAYS_PATTERN = r"^[01]{7}$"
-_PROGRESS_PATTERN = re.compile(r"^\d+$")
-_EPISODE_PATTERN = re.compile(r"^\d+-\d+$")
+_PROGRESS_PATTERN = re.compile(r"\d+")
+_EPISODE_PATTERN = re.compile(r"\d+-\d+")
 
 
 class TodoType(str, Enum):
@@ -35,10 +35,8 @@ def _as_non_negative_int(value: object) -> int | None:
         return None
     if isinstance(value, int):
         return value if value >= 0 else None
-    if isinstance(value, str):
-        stripped = value.strip()
-        if _PROGRESS_PATTERN.match(stripped):
-            return int(stripped)
+    if isinstance(value, str) and _PROGRESS_PATTERN.fullmatch(value):
+        return int(value)
     return None
 
 
@@ -47,7 +45,7 @@ class Todo(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True)
 
-    id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+    id: Annotated[str, StringConstraints(min_length=1, max_length=64)]
     text: Annotated[str, StringConstraints(max_length=2000)] = ""
     completed: bool = False
     deleted: bool = False
@@ -58,6 +56,13 @@ class Todo(BaseModel):
     # Для привычек это знак вклада (-1/0/1), для daily — текущий прогресс.
     contribution: int = Field(default=0, ge=-1)
     days: Annotated[str, StringConstraints(pattern=DAYS_PATTERN)] = "1111111"
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("id задачи не может быть пустым")
+        return value
 
     @field_validator(
         "updatedAt", "contribution", "progressNow", "progressEnd", mode="before"
@@ -76,7 +81,7 @@ class Todo(BaseModel):
         if self.type == TodoType.TV_SHOW:
             if not (
                 isinstance(self.progressNow, str)
-                and _EPISODE_PATTERN.match(self.progressNow.strip())
+                and _EPISODE_PATTERN.fullmatch(self.progressNow)
             ):
                 raise ValueError(
                     "progressNow для tv_show должен быть строкой в формате S-E"
@@ -93,13 +98,12 @@ class Todo(BaseModel):
 
 
 def validate_todo_id(todo_id: object) -> str:
-    """Проверяет идентификатор задачи и возвращает его без пробелов."""
+    """Проверяет идентификатор задачи без нормализации значения."""
     if not isinstance(todo_id, str):
         raise ValueError("id задачи должен быть строкой")
-    stripped = todo_id.strip()
-    if not stripped or len(stripped) > 64:
+    if not todo_id.strip() or len(todo_id) > 64:
         raise ValueError("id задачи должен содержать от 1 до 64 символов")
-    return stripped
+    return todo_id
 
 
 __all__ = ["DAYS_PATTERN", "Todo", "TodoType", "validate_todo_id"]
