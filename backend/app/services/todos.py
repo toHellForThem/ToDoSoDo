@@ -15,11 +15,24 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SyncOutcome:
-    """Результат синхронизации одной задачи."""
+    """Результат синхронизации одной задачи.
+
+    ``todo`` — версия клиента, ``server_todo`` — актуальная серверная версия
+    при конфликте.  ``status`` используется для ``server:ack``.
+    """
 
     updated: bool = False
     deleted: bool = False
     todo: dict[str, Any] | None = None
+    server_todo: dict[str, Any] | None = None
+
+    @property
+    def status(self) -> str:
+        if self.deleted:
+            return "deleted"
+        if self.updated:
+            return "applied"
+        return "conflict"
 
 
 class TodoService:
@@ -38,7 +51,8 @@ class TodoService:
         todo = validate_payload(Todo, data, "Некорректная задача")
         return await self._sync_model(user_id, todo)
 
-    async def delete(self, user_id: int, todo_id: Any) -> None:
+    async def delete(self, user_id: int, todo_id: Any) -> str:
+        """Удаляет задачу и возвращает нормализованный идентификатор."""
         try:
             normalized_id = validate_todo_id(todo_id)
         except ValueError as exc:
@@ -47,6 +61,7 @@ class TodoService:
         now = int(datetime.datetime.now(timezone.utc).timestamp() * 1000)
         await self._deleted.add(normalized_id, user_id, now)
         await self._todos.delete(normalized_id, user_id)
+        return normalized_id
 
     async def reset_by_type(
         self, user_id: int, todo_type: Any, update_time: Any
@@ -85,8 +100,12 @@ class TodoService:
             logger.debug("Обновлено: %s (клиентская версия новее)", todo.text)
             return SyncOutcome(updated=True, todo=payload)
 
+        server_todo = await self._todos.get_by_id(todo.id, user_id)
         logger.debug("На сервере данные новее для: %s", todo.text)
-        return SyncOutcome(todo=payload)
+        return SyncOutcome(
+            todo=payload,
+            server_todo=server_todo.model_dump() if server_todo else None,
+        )
 
     @staticmethod
     def _validate_bulk(client_todos: Any) -> list[Todo]:

@@ -27,6 +27,19 @@ class DailyHistoryRepository(BaseRepository):
         )
         return row["updated_at"] if row else None
 
+    async def get_by_date(self, user_id: int, date: str) -> dict[str, Any] | None:
+        """Возвращает запись истории за дату или ``None``."""
+        row = await self._db.fetch_one(
+            """
+            SELECT date, mood, daily_progress, pos_points, neg_points,
+                   habits_detail, updated_at
+            FROM daily_history
+            WHERE user_id = ? AND date = ?
+            """,
+            (user_id, date),
+        )
+        return self._to_dict(row) if row else None
+
     async def upsert(self, entry: dict[str, Any], user_id: int) -> None:
         await self._db.execute(
             """

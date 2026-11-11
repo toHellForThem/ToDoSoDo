@@ -4,7 +4,12 @@ import logging
 from typing import Any
 
 from app.rep import UsersRepository
-from app.schemas.settings import dump_settings, normalize_settings, parse_settings
+from app.schemas.settings import (
+    default_settings,
+    dump_settings,
+    normalize_settings,
+    parse_settings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +19,14 @@ class SettingsService:
 
     def __init__(self, users: UsersRepository) -> None:
         self._users = users
+
+    async def get(self, user_id: int) -> dict[str, Any]:
+        """Возвращает актуальные настройки пользователя с дефолтами."""
+        user = await self._users.get_by_id(user_id)
+        stored = self._stored_settings(user)
+        if stored is None:
+            return default_settings()
+        return normalize_settings(stored)
 
     async def update(
         self, user_id: int, settings_dict: dict[str, Any]

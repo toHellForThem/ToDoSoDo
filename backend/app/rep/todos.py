@@ -22,6 +22,14 @@ class TodosRepository(BaseRepository):
         )
         return row["updated_at"] if row else None
 
+    async def get_by_id(self, todo_id: str, user_id: int) -> Todo | None:
+        """Возвращает задачу пользователя или ``None``."""
+        row = await self._db.fetch_one(
+            "SELECT * FROM todos WHERE id = ? AND user_id = ?",
+            (todo_id, user_id),
+        )
+        return self._to_model(row) if row else None
+
     async def upsert(self, todo: Todo, user_id: int) -> None:
         await self._db.execute(
             """
