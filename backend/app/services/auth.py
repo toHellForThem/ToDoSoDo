@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+import re
 from datetime import timezone
 from typing import Any
 
@@ -18,6 +19,37 @@ from app.schemas.settings import (
 from app.services.errors import AuthError, ConflictError, ValidationError
 
 logger = logging.getLogger(__name__)
+
+USERNAME_PATTERN = re.compile(r"^[a-z0-9_.-]{3,32}$")
+PASSWORD_MIN_LENGTH = 6
+PASSWORD_MAX_LENGTH = 128
+
+
+def normalize_username(username: Any) -> str:
+    """Приводит логин к нижнему регистру и проверяет допустимые символы."""
+    if not isinstance(username, str):
+        raise ValidationError("Логин должен быть строкой")
+    normalized = username.strip().lower()
+    if not USERNAME_PATTERN.fullmatch(normalized):
+        raise ValidationError(
+            "Логин: 3-32 символа, буквы, цифры, _ . -"
+        )
+    return normalized
+
+
+def validate_password(password: Any) -> str:
+    """Проверяет политику пароля при регистрации."""
+    if not isinstance(password, str) or not password:
+        raise ValidationError("Заполните все поля!")
+    if len(password) < PASSWORD_MIN_LENGTH:
+        raise ValidationError(
+            f"Пароль должен быть не короче {PASSWORD_MIN_LENGTH} символов"
+        )
+    if len(password) > PASSWORD_MAX_LENGTH:
+        raise ValidationError(
+            f"Пароль должен быть не длиннее {PASSWORD_MAX_LENGTH} символов"
+        )
+    return password
 
 
 class AuthService:
@@ -56,29 +88,37 @@ class AuthService:
         except jwt.InvalidTokenError:
             return None, False
 
-    async def register(self, username: str | None, password: str | None) -> None:
-        if not username or not password:
-            raise ValidationError("Заполните все поля!")
+    async def register(self, username: Any, password: Any) -> None:
+        normalized = normalize_username(username)
+        if await self._users.get_by_username(normalized):
+            raise ConflictError("Такой логин уже занят")
 
+        validate_password(password)
         password_hash = generate_password_hash(password)
         try:
             await self._users.create(
-                username, password_hash, dump_settings(default_settings())
+                normalized, password_hash, dump_settings(default_settings())
             )
         except Exception as exc:
-            logger.exception("Ошибка регистрации пользователя %s: %s", username, exc)
+            logger.exception(
+                "Ошибка регистрации пользователя %s: %s", normalized, exc
+            )
             raise ConflictError("Такой логин уже занят") from exc
 
-        logger.info("Пользователь %s успешно зарегистрирован", username)
+        logger.info("Пользователь %s успешно зарегистрирован", normalized)
 
-    async def login(self, username: str, password: str) -> dict[str, Any]:
-        user = await self._users.get_by_username(username)
+    async def login(self, username: Any, password: Any) -> dict[str, Any]:
+        normalized = normalize_username(username)
+        if not isinstance(password, str) or not password:
+            raise AuthError("Заполните все поля!")
+
+        user = await self._users.get_by_username(normalized)
         if not user:
-            logger.warning("Попытка входа: пользователь %s не найден", username)
+            logger.warning("Попытка входа: пользователь %s не найден", normalized)
             raise AuthError("Такого пользователя не существует")
 
         if not check_password_hash(user["password_hash"], password):
-            logger.warning("Неверный пароль для пользователя %s", username)
+            logger.warning("Неверный пароль для пользователя %s", normalized)
             raise AuthError("Неверный пароль")
 
         logger.info("Пользователь %s вошёл в систему", user["username"])
