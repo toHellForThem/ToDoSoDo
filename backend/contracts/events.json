@@ -7,6 +7,7 @@
     "processed"
   ],
   "client_events": {
+    "BULK_DELETE_TODOS": "client:bulk_delete_todos",
     "BULK_SYNC_DAILY_HISTORY": "client:bulk_sync_daily_history",
     "BULK_SYNC_TODOS": "client:bulk_sync_todos",
     "CONFIRM_RESET": "client:confirm_reset",
