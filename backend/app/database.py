@@ -1,70 +1,14 @@
-"""Работа с SQLite: подключение, схема и запросы."""
+"""Работа с SQLite: подключение, миграции и запросы."""
 
+import asyncio
 import logging
-import sqlite3
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, AsyncIterator, Sequence
 
 import aiosqlite
 
 logger = logging.getLogger(__name__)
-
-SCHEMA_STATEMENTS: tuple[str, ...] = (
-    """
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        settings JSON
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS todos (
-        id TEXT,
-        text TEXT,
-        completed BOOLEAN DEFAULT FALSE,
-        deleted BOOLEAN DEFAULT FALSE,
-        updated_at INTEGER DEFAULT 0,
-        type TEXT DEFAULT 'todo',
-        progress_now TEXT DEFAULT '0',
-        progress_end TEXT DEFAULT '1',
-        user_id INTEGER,
-        contribution INTEGER DEFAULT 0,
-        days TEXT DEFAULT '1111111',
-        PRIMARY KEY (id, user_id),
-        FOREIGN KEY (user_id) REFERENCES users (id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS daily_history (
-        user_id INTEGER,
-        date TEXT,
-        mood INTEGER,
-        daily_progress REAL,
-        pos_points INTEGER,
-        neg_points INTEGER,
-        updated_at INTEGER DEFAULT 0,
-        PRIMARY KEY (user_id, date),
-        FOREIGN KEY (user_id) REFERENCES users (id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS deleted_todos (
-        id TEXT,
-        user_id INTEGER,
-        deleted_at INTEGER,
-        PRIMARY KEY (id, user_id),
-        FOREIGN KEY (user_id) REFERENCES users (id)
-    )
-    """,
-)
-
-MIGRATION_STATEMENTS: tuple[str, ...] = (
-    "ALTER TABLE todos ADD COLUMN contribution INTEGER DEFAULT 0",
-    "ALTER TABLE daily_history ADD COLUMN habits_detail TEXT",
-    "ALTER TABLE todos ADD COLUMN days TEXT DEFAULT '1111111'",
-    "ALTER TABLE daily_history ADD COLUMN updated_at INTEGER DEFAULT 0",
-)
 
 
 class Database:
@@ -74,6 +18,7 @@ class Database:
         self._path = path
         self._timeout = timeout
         self._conn: aiosqlite.Connection | None = None
+        self._transaction_depth = 0
 
     @property
     def connection(self) -> aiosqlite.Connection:
@@ -87,6 +32,7 @@ class Database:
         self._conn = await aiosqlite.connect(self._path, timeout=self._timeout)
         self._conn.row_factory = aiosqlite.Row
         await self._conn.execute("PRAGMA journal_mode=WAL;")
+        await self._conn.execute("PRAGMA busy_timeout = 5000;")
         logger.info("Подключение к базе данных установлено: %s", self._path)
 
     async def close(self) -> None:
@@ -98,28 +44,54 @@ class Database:
 
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[aiosqlite.Connection]:
-        """Контекстный менеджер для ручной работы с соединением."""
-        yield self.connection
+        """Единая транзакция: коммит на выходе, откат при исключении."""
+        conn = self.connection
+        self._transaction_depth += 1
+        try:
+            yield conn
+        except Exception:
+            self._transaction_depth -= 1
+            if self._transaction_depth == 0:
+                await conn.rollback()
+            raise
+        else:
+            self._transaction_depth -= 1
+            if self._transaction_depth == 0:
+                await conn.commit()
 
     async def init_schema(self) -> None:
-        conn = self.connection
+        """Применяет Alembic-миграции к базе."""
         try:
-            for statement in SCHEMA_STATEMENTS:
-                await conn.execute(statement)
-            for statement in MIGRATION_STATEMENTS:
-                try:
-                    await conn.execute(statement)
-                except sqlite3.OperationalError:
-                    logger.debug("Миграция уже применена: %s", statement)
-            await conn.commit()
+            await asyncio.to_thread(self._run_migrations)
         except Exception:
             logger.exception("Ошибка инициализации схемы базы данных")
             raise
 
-    async def execute(self, query: str, params: Sequence[Any] = ()) -> None:
+    def _run_migrations(self) -> None:
+        from alembic.config import Config
+
+        from alembic import command
+
+        base_dir = Path(__file__).resolve().parent.parent
+        config = Config(str(base_dir / "alembic.ini"))
+        config.attributes["configure_logger"] = False
+        config.set_main_option("script_location", str(base_dir / "alembic"))
+        config.set_main_option("sqlalchemy.url", f"sqlite:///{self._path}")
+        command.upgrade(config, "head")
+        logger.info("Миграции базы данных применены")
+
+    async def execute(self, query: str, params: Sequence[Any] = ()) -> int:
+        """Выполняет запрос и возвращает число затронутых строк.
+
+        Внутри ``transaction()`` коммит не делается — он происходит на
+        выходе из транзакции.
+        """
         try:
-            await self.connection.execute(query, params)
-            await self.connection.commit()
+            cursor = await self.connection.execute(query, params)
+            rowcount = cursor.rowcount
+            if self._transaction_depth == 0:
+                await self.connection.commit()
+            return rowcount
         except Exception:
             logger.exception("Ошибка выполнения запроса к базе данных")
             raise
