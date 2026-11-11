@@ -261,6 +261,9 @@ async def test_bulk_sync_returns_remaining_todos(sessions):
     todos = await owner_recorder.wait(ServerEvent.ALL_TODOS)
     assert sorted(todo["id"] for todo in todos) == ["t1", "t2"]
 
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["status"] == "processed"
+
 
 async def test_confirm_reset_returns_reset_todos(sessions):
     owner, owner_recorder, _, observer_recorder = sessions
@@ -323,9 +326,11 @@ async def test_settings_lww_over_events(sessions):
     owner_recorder.clear()
     await owner.emit(ClientEvent.UPDATE_SETTINGS, {"theme": "light", "updatedAt": 1})
 
-    data = await owner_recorder.wait(ServerEvent.SETTINGS_UPDATED)
-    assert data["theme"] == "dark"
-    assert data["updatedAt"] == 10
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["status"] == "conflict"
+    assert ack["data"]["theme"] == "dark"
+    assert ack["data"]["updatedAt"] == 10
+    assert ServerEvent.SETTINGS_UPDATED not in owner_recorder.names()
 
 
 async def test_sync_todo_ack_applied_with_request_id(sessions):
@@ -368,9 +373,7 @@ async def test_sync_todo_conflict_returns_server_version(sessions):
     assert ack["status"] == "conflict"
     assert ack["data"]["text"] == "server"
     assert ack["data"]["updatedAt"] == 100
-
-    updated = await owner_recorder.wait(ServerEvent.TODO_UPDATED)
-    assert updated["text"] == "server"
+    assert ServerEvent.TODO_UPDATED not in owner_recorder.names()
 
 
 async def test_sync_todo_tombstone_ack(sessions):
@@ -524,3 +527,19 @@ async def test_legacy_payload_ack_has_no_request_id(sessions):
     ack = await owner_recorder.wait(ServerEvent.ACK)
     assert ack["request_id"] is None
     assert ack["status"] == "applied"
+
+
+async def test_read_event_error_has_no_ack(sessions):
+    owner, owner_recorder, _, _ = sessions
+
+    await owner.emit(
+        ClientEvent.GET_MONTH_HISTORY,
+        {"request_id": "m1", "payload": "2026-13"},
+    )
+
+    error = await owner_recorder.wait(ServerEvent.ERROR)
+    assert error["request_id"] == "m1"
+    assert error["code"] == "validation_error"
+
+    await asyncio.sleep(0.2)
+    assert ServerEvent.ACK not in owner_recorder.names()
