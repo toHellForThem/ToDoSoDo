@@ -30,6 +30,7 @@ import {
   getDefaultSettings
 } from '../utils/storage';
 import { socket, updateSocketUrlAndReconnect } from '../utils/socket';
+import { request } from '../utils/protocol';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
 
@@ -356,7 +357,7 @@ export const SettingsTab = ({
     setSettings(updated);
     AuthStorage.setSettings(updated);
     if (authMode === 'auth') {
-      socket.emit('client:update_settings', updated);
+      socket.emit('client:update_settings', request(updated));
     }
     if (key === 'main_page' && setMainTab) {
       setMainTab(value as string);

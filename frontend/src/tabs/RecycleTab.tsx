@@ -14,6 +14,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { getStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { socket } from '../utils/socket';
+import { request } from '../utils/protocol';
 import { Todo } from '../utils/storage'
 
 
@@ -65,7 +66,7 @@ const RecycleItem = memo(({
       });
     });
     if (updated) {
-      socket.emit('client:sync_todo', updated);
+      socket.emit('client:sync_todo', request(updated));
     }
   }, [socket, item.id, setTodoList]);
 
