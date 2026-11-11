@@ -22,6 +22,7 @@ async def emit_auth_error(
     request_id: str | None = None,
 ) -> None:
     """Отправляет ошибку аутентификации конкретному клиенту."""
+    logger.warning("auth_error sid=%s request_id=%s", sid, request_id)
     payload = {"status": "error", "message": message}
     if request_id is not None:
         payload["request_id"] = request_id
@@ -37,6 +38,9 @@ async def emit_error(
     event: str | None = None,
 ) -> None:
     """Отправляет ошибку с кодом и ``request_id`` конкретному клиенту."""
+    logger.warning(
+        "error event=%s code=%s request_id=%s", event, code, request_id
+    )
     await sio.emit(
         ServerEvent.ERROR,
         {

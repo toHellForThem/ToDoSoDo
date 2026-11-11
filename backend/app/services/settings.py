@@ -38,18 +38,18 @@ class SettingsService:
 
         if stored is None:
             await self._save(user_id, client_settings)
-            logger.info("Пользователь %s инициализировал настройки", user_id)
+            logger.debug("Пользователь %s инициализировал настройки", user_id)
             return client_settings, True
 
         current_settings = normalize_settings(stored)
         if client_settings["updatedAt"] > current_settings["updatedAt"]:
             await self._save(user_id, client_settings)
-            logger.info("Пользователь %s обновил настройки", user_id)
+            logger.debug("Пользователь %s обновил настройки", user_id)
             return client_settings, True
 
         if stored != current_settings:
             await self._save(user_id, current_settings)
-            logger.info(
+            logger.debug(
                 "Настройки пользователя %s приведены к полному контракту", user_id
             )
 

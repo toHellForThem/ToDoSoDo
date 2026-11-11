@@ -14,7 +14,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.UPDATE_SETTINGS)
     @handle_service_errors(sio, ClientEvent.UPDATE_SETTINGS, ack=True)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.UPDATE_SETTINGS)
     async def handle_update_settings(sid, user_id, settings_dict):
         request = parse_request(settings_dict)
         actual_settings, applied = await services.settings.update(

@@ -172,7 +172,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
         return True
 
     @sio.on(ClientEvent.LOGOUT)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.LOGOUT)
     async def handle_logout(sid, user_id):
         await sio.leave_room(sid, user_id)
         await sio.save_session(sid, {})

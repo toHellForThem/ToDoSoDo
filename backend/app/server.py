@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import Database
@@ -54,6 +55,23 @@ def create_server(database_path: str | None = None) -> Server:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.get("/health")
+    async def health():
+        """Проверяет, что приложение и база данных живы."""
+        try:
+            await db.fetch_one("SELECT 1 FROM users LIMIT 1")
+        except Exception:
+            logger.exception("Healthcheck не прошёл")
+            return JSONResponse(
+                {"status": "error", "database": "error"}, status_code=503
+            )
+        return {"status": "ok", "database": "ok"}
+
+    @app.get("/version")
+    async def version():
+        """Возвращает версию приложения."""
+        return {"version": settings.app_version}
 
     register_all(sio, services)
 

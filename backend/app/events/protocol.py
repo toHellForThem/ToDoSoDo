@@ -18,12 +18,15 @@ Ack отправляется только на мутирующие событи
 ``server:state``).
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 import socketio
 
 from app.events.names import ServerEvent
+
+logger = logging.getLogger(__name__)
 
 
 class AckStatus:
@@ -80,6 +83,9 @@ async def emit_ack(
     data: Any = None,
 ) -> None:
     """Отправляет явный ответ на клиентское событие."""
+    logger.debug(
+        "ack event=%s request_id=%s status=%s", event, request_id, status
+    )
     await sio.emit(
         ServerEvent.ACK,
         {

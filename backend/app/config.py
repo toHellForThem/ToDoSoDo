@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS512"
     jwt_expire_days: int = 7
 
+    app_version: str = "1.0.2"
+
     database_path: str = "data/tasks.db"
 
     # Сколько дней tombstone блокирует пересоздание задачи с тем же id.
