@@ -14,6 +14,7 @@ class ClientEvent:
     DELETE_TODO = "client:delete_todo"
     CONFIRM_RESET = "client:confirm_reset"
     BULK_SYNC_TODOS = "client:bulk_sync_todos"
+    BULK_DELETE_TODOS = "client:bulk_delete_todos"
 
     GET_MONTH_HISTORY = "client:get_month_history"
     SYNC_DAILY_HISTORY = "client:sync_daily_history"

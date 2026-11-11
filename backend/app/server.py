@@ -39,6 +39,7 @@ def create_server(database_path: str | None = None) -> Server:
     async def lifespan(app: FastAPI):
         await db.connect()
         await db.init_schema()
+        await services.todos.cleanup_tombstones()
         yield
         await db.close()
 

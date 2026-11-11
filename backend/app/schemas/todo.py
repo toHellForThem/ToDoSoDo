@@ -97,6 +97,27 @@ class Todo(BaseModel):
         return self
 
 
+class DeletedTodo(BaseModel):
+    """Tombstone, присланный клиентом после офлайн-удаления."""
+
+    id: Annotated[str, StringConstraints(min_length=1, max_length=64)]
+    deletedAt: int | None = Field(default=None, ge=0)
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("id задачи не может быть пустым")
+        return value
+
+    @field_validator("deletedAt", mode="before")
+    @classmethod
+    def _reject_booleans(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("boolean недопустим в метке удаления")
+        return value
+
+
 def validate_todo_id(todo_id: object) -> str:
     """Проверяет идентификатор задачи без нормализации значения."""
     if not isinstance(todo_id, str):
@@ -106,4 +127,10 @@ def validate_todo_id(todo_id: object) -> str:
     return todo_id
 
 
-__all__ = ["DAYS_PATTERN", "Todo", "TodoType", "validate_todo_id"]
+__all__ = [
+    "DAYS_PATTERN",
+    "DeletedTodo",
+    "Todo",
+    "TodoType",
+    "validate_todo_id",
+]

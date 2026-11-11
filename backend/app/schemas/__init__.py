@@ -9,10 +9,11 @@ from app.schemas.settings import (
     normalize_settings,
     normalize_user_settings,
 )
-from app.schemas.todo import Todo, TodoType, validate_todo_id
+from app.schemas.todo import DeletedTodo, Todo, TodoType, validate_todo_id
 
 __all__ = [
     "DailyHistory",
+    "DeletedTodo",
     "ShortcutSettings",
     "Todo",
     "TodoType",
