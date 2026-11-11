@@ -87,7 +87,8 @@ class TodoService:
         self, user_id: int, client_todos: Any
     ) -> list[SyncOutcome]:
         todos = self._validate_bulk(client_todos)
-        return [await self._sync_model(user_id, todo) for todo in todos]
+        async with self._todos.transaction():
+            return [await self._sync_model(user_id, todo) for todo in todos]
 
     async def _sync_model(self, user_id: int, todo: Todo) -> SyncOutcome:
         payload = todo.model_dump()

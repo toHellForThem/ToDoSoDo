@@ -32,7 +32,8 @@ class DailyHistoryService:
         self, user_id: int, entries: Any
     ) -> list[tuple[dict[str, Any], bool]]:
         models = self._validate_bulk(entries)
-        return [await self._sync_model(user_id, model) for model in models]
+        async with self._history.transaction():
+            return [await self._sync_model(user_id, model) for model in models]
 
     async def _sync_model(
         self, user_id: int, entry: DailyHistory
