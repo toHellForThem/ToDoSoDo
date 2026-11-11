@@ -138,6 +138,25 @@ async def test_delete_removes_todo_and_keeps_tombstone(services, db, make_user):
     assert row is not None
 
 
+async def test_bulk_sync_rolls_back_on_failure(
+    services, make_user, monkeypatch
+):
+    user_id = await make_user()
+
+    async def boom(_user_id, todo):
+        await services.todos._todos.upsert(todo, _user_id)
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(services.todos, "_sync_model", boom)
+
+    with pytest.raises(RuntimeError):
+        await services.todos.bulk_sync(
+            user_id, [{"id": "t1", "text": "x", "updatedAt": 1}]
+        )
+
+    assert await services.todos.list_todos(user_id) == []
+
+
 async def test_bulk_sync_returns_outcome_per_todo(services, make_user):
     user_id = await make_user()
     await services.todos.sync(
