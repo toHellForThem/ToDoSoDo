@@ -196,6 +196,28 @@ async def test_tombstone_scoped_by_user(db, make_user):
     assert await repo.exists(second, "t1") is False
 
 
+async def test_tombstone_delete_older_than(db, make_user):
+    user_id = await make_user()
+    repo = DeletedTodosRepository(db)
+    await repo.add("old", user_id, 100)
+    await repo.add("new", user_id, 200)
+
+    removed = await repo.delete_older_than(150)
+
+    assert removed == 1
+    assert await repo.exists(user_id, "old") is False
+    assert await repo.exists(user_id, "new") is True
+
+
+async def test_tombstone_exists_respects_cutoff(db, make_user):
+    user_id = await make_user()
+    repo = DeletedTodosRepository(db)
+    await repo.add("t1", user_id, 100)
+
+    assert await repo.exists(user_id, "t1", 50) is True
+    assert await repo.exists(user_id, "t1", 150) is False
+
+
 async def test_daily_history_month_filter(db, make_user):
     user_id = await make_user()
     repo = DailyHistoryRepository(db)

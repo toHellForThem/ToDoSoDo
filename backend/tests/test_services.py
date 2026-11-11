@@ -123,6 +123,73 @@ async def test_sync_reports_tombstone(services, make_user):
     assert outcome.status == "deleted"
 
 
+async def test_tombstone_ttl_allows_recreation(services, make_user):
+    user_id = await make_user()
+    now = int(datetime.datetime.now(timezone.utc).timestamp() * 1000)
+    expired = now - 31 * 24 * 60 * 60 * 1000
+    await services.todos.delete(user_id, "t1", expired)
+
+    outcome = await services.todos.sync(
+        user_id, {"id": "t1", "text": "reborn", "updatedAt": 1}
+    )
+
+    assert outcome.updated is True
+    assert outcome.deleted is False
+
+
+async def test_cleanup_tombstones_removes_expired(services, make_user):
+    user_id = await make_user()
+    now = int(datetime.datetime.now(timezone.utc).timestamp() * 1000)
+    await services.todos.delete(user_id, "old", now - 31 * 24 * 60 * 60 * 1000)
+    await services.todos.delete(user_id, "new", now)
+
+    removed = await services.todos.cleanup_tombstones()
+
+    assert removed == 1
+    old = await services.todos.sync(
+        user_id, {"id": "old", "text": "x", "updatedAt": 1}
+    )
+    new = await services.todos.sync(
+        user_id, {"id": "new", "text": "x", "updatedAt": 1}
+    )
+    assert old.updated is True
+    assert new.deleted is True
+
+
+async def test_bulk_delete_creates_tombstones(services, make_user):
+    user_id = await make_user()
+    await services.todos.sync(
+        user_id, {"id": "t1", "text": "x", "updatedAt": 1}
+    )
+    deleted_at = int(datetime.datetime.now(timezone.utc).timestamp() * 1000)
+
+    deleted = await services.todos.bulk_delete(
+        user_id, [{"id": "t1", "deletedAt": deleted_at}]
+    )
+
+    assert deleted == ["t1"]
+    assert await services.todos.list_todos(user_id) == []
+    outcome = await services.todos.sync(
+        user_id, {"id": "t1", "text": "again", "updatedAt": 999}
+    )
+    assert outcome.deleted is True
+
+
+async def test_bulk_delete_rejects_garbage(services, make_user):
+    user_id = await make_user()
+
+    with pytest.raises(ValidationError):
+        await services.todos.bulk_delete(user_id, {"id": "t1"})
+    with pytest.raises(ValidationError):
+        await services.todos.bulk_delete(
+            user_id, [{"id": "t1", "deletedAt": -1}]
+        )
+    with pytest.raises(ValidationError):
+        await services.todos.bulk_delete(
+            user_id, [{"id": "t1", "deletedAt": True}]
+        )
+
+
 async def test_delete_removes_todo_and_keeps_tombstone(services, db, make_user):
     user_id = await make_user()
     await services.todos.sync(user_id, {"id": "t1", "text": "x", "updatedAt": 1})

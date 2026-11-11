@@ -409,6 +409,33 @@ async def test_delete_todo_ack_with_request_id(sessions):
     assert ack["data"] == {"id": "t1"}
 
 
+async def test_bulk_delete_todos_ack_and_broadcast(sessions):
+    owner, owner_recorder, _, observer_recorder = sessions
+
+    await owner.emit(
+        ClientEvent.SYNC_TODO, {"id": "t1", "text": "x", "updatedAt": 1}
+    )
+    await observer_recorder.wait(ServerEvent.TODO_UPDATED)
+    owner_recorder.clear()
+    observer_recorder.clear()
+
+    deleted_at = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+    await owner.emit(
+        ClientEvent.BULK_DELETE_TODOS,
+        {
+            "request_id": "bd1",
+            "payload": [{"id": "t1", "deletedAt": deleted_at}],
+        },
+    )
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["request_id"] == "bd1"
+    assert ack["event"] == ClientEvent.BULK_DELETE_TODOS
+    assert ack["status"] == "processed"
+    assert ack["data"]["results"] == [{"id": "t1", "status": "deleted"}]
+    assert await observer_recorder.wait(ServerEvent.TODO_DELETED) == "t1"
+
+
 async def test_settings_conflict_ack_returns_server_version(sessions):
     owner, owner_recorder, _, observer_recorder = sessions
 
