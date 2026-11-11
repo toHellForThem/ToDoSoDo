@@ -22,12 +22,14 @@ SERVER_EVENTS = [
     ServerEvent.AUTH_EXPIRED,
     ServerEvent.REGISTER_SUCCESS,
     ServerEvent.LOGIN_SUCCESS,
+    ServerEvent.STATE,
     ServerEvent.ALL_TODOS,
     ServerEvent.TODO_UPDATED,
     ServerEvent.TODO_DELETED,
     ServerEvent.MONTH_HISTORY,
     ServerEvent.DAILY_HISTORY_UPDATED,
     ServerEvent.SETTINGS_UPDATED,
+    ServerEvent.ACK,
     ServerEvent.ERROR,
 ]
 
@@ -259,6 +261,9 @@ async def test_bulk_sync_returns_remaining_todos(sessions):
     todos = await owner_recorder.wait(ServerEvent.ALL_TODOS)
     assert sorted(todo["id"] for todo in todos) == ["t1", "t2"]
 
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["status"] == "processed"
+
 
 async def test_confirm_reset_returns_reset_todos(sessions):
     owner, owner_recorder, _, observer_recorder = sessions
@@ -321,6 +326,220 @@ async def test_settings_lww_over_events(sessions):
     owner_recorder.clear()
     await owner.emit(ClientEvent.UPDATE_SETTINGS, {"theme": "light", "updatedAt": 1})
 
-    data = await owner_recorder.wait(ServerEvent.SETTINGS_UPDATED)
-    assert data["theme"] == "dark"
-    assert data["updatedAt"] == 10
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["status"] == "conflict"
+    assert ack["data"]["theme"] == "dark"
+    assert ack["data"]["updatedAt"] == 10
+    assert ServerEvent.SETTINGS_UPDATED not in owner_recorder.names()
+
+
+async def test_sync_todo_ack_applied_with_request_id(sessions):
+    owner, owner_recorder, _, _ = sessions
+
+    await owner.emit(
+        ClientEvent.SYNC_TODO,
+        {
+            "request_id": "r1",
+            "payload": {"id": "t1", "text": "task", "updatedAt": 100},
+        },
+    )
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["request_id"] == "r1"
+    assert ack["event"] == ClientEvent.SYNC_TODO
+    assert ack["status"] == "applied"
+    assert ack["data"]["id"] == "t1"
+
+
+async def test_sync_todo_conflict_returns_server_version(sessions):
+    owner, owner_recorder, _, observer_recorder = sessions
+
+    await owner.emit(
+        ClientEvent.SYNC_TODO, {"id": "t1", "text": "server", "updatedAt": 100}
+    )
+    await observer_recorder.wait(ServerEvent.TODO_UPDATED)
+    owner_recorder.clear()
+
+    await owner.emit(
+        ClientEvent.SYNC_TODO,
+        {
+            "request_id": "r2",
+            "payload": {"id": "t1", "text": "client", "updatedAt": 50},
+        },
+    )
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["request_id"] == "r2"
+    assert ack["status"] == "conflict"
+    assert ack["data"]["text"] == "server"
+    assert ack["data"]["updatedAt"] == 100
+    assert ServerEvent.TODO_UPDATED not in owner_recorder.names()
+
+
+async def test_sync_todo_tombstone_ack(sessions):
+    owner, owner_recorder, _, _ = sessions
+
+    await owner.emit(ClientEvent.DELETE_TODO, "t1")
+    owner_recorder.clear()
+
+    await owner.emit(
+        ClientEvent.SYNC_TODO,
+        {
+            "request_id": "r3",
+            "payload": {"id": "t1", "text": "again", "updatedAt": 999},
+        },
+    )
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["status"] == "deleted"
+    assert ack["data"] == {"id": "t1"}
+
+
+async def test_delete_todo_ack_with_request_id(sessions):
+    owner, owner_recorder, _, _ = sessions
+
+    await owner.emit(
+        ClientEvent.DELETE_TODO, {"request_id": "d1", "payload": "t1"}
+    )
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["request_id"] == "d1"
+    assert ack["event"] == ClientEvent.DELETE_TODO
+    assert ack["status"] == "applied"
+    assert ack["data"] == {"id": "t1"}
+
+
+async def test_settings_conflict_ack_returns_server_version(sessions):
+    owner, owner_recorder, _, observer_recorder = sessions
+
+    await owner.emit(ClientEvent.UPDATE_SETTINGS, {"theme": "dark", "updatedAt": 10})
+    await observer_recorder.wait(ServerEvent.SETTINGS_UPDATED)
+    owner_recorder.clear()
+
+    await owner.emit(
+        ClientEvent.UPDATE_SETTINGS,
+        {"request_id": "s1", "payload": {"theme": "pink", "updatedAt": 5}},
+    )
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["request_id"] == "s1"
+    assert ack["status"] == "conflict"
+    assert ack["data"]["theme"] == "dark"
+    assert ack["data"]["updatedAt"] == 10
+
+
+async def test_history_conflict_ack_returns_server_entry(sessions):
+    owner, owner_recorder, _, observer_recorder = sessions
+
+    await owner.emit(
+        ClientEvent.SYNC_DAILY_HISTORY,
+        {"date": "2026-01-15", "mood": 3, "updatedAt": 10},
+    )
+    await observer_recorder.wait(ServerEvent.DAILY_HISTORY_UPDATED)
+    owner_recorder.clear()
+
+    await owner.emit(
+        ClientEvent.SYNC_DAILY_HISTORY,
+        {
+            "request_id": "h1",
+            "payload": {"date": "2026-01-15", "mood": 1, "updatedAt": 5},
+        },
+    )
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["request_id"] == "h1"
+    assert ack["status"] == "conflict"
+    assert ack["data"]["mood"] == 3
+
+
+async def test_get_state_returns_todos_settings_history(sessions):
+    owner, owner_recorder, _, observer_recorder = sessions
+
+    await owner.emit(
+        ClientEvent.SYNC_TODO, {"id": "t1", "text": "task", "updatedAt": 100}
+    )
+    await observer_recorder.wait(ServerEvent.TODO_UPDATED)
+    await owner.emit(
+        ClientEvent.SYNC_DAILY_HISTORY,
+        {"date": "2026-01-15", "mood": 3, "updatedAt": 5},
+    )
+    await observer_recorder.wait(ServerEvent.DAILY_HISTORY_UPDATED)
+    owner_recorder.clear()
+
+    await owner.emit(
+        ClientEvent.GET_STATE, {"request_id": "st1", "payload": "2026-01"}
+    )
+
+    state = await owner_recorder.wait(ServerEvent.STATE)
+    assert state["request_id"] == "st1"
+    assert [todo["id"] for todo in state["todos"]] == ["t1"]
+    assert state["settings"]["theme"] == "default"
+    assert state["history"]["month"] == "2026-01"
+    assert [entry["date"] for entry in state["history"]["entries"]] == [
+        "2026-01-15"
+    ]
+
+
+async def test_unauthorized_event_returns_error_with_request_id(connect):
+    client, recorder = await connect()
+
+    await client.emit(
+        ClientEvent.SYNC_TODO,
+        {"request_id": "u1", "payload": {"id": "t1", "text": "x"}},
+    )
+
+    error = await recorder.wait(ServerEvent.ERROR)
+    assert error["code"] == "unauthorized"
+    assert error["request_id"] == "u1"
+
+
+async def test_validation_error_includes_request_id(sessions):
+    owner, owner_recorder, _, _ = sessions
+
+    await owner.emit(
+        ClientEvent.SYNC_TODO,
+        {"request_id": "bad1", "payload": {"id": "t1", "days": "nope"}},
+    )
+
+    error = await owner_recorder.wait(ServerEvent.ERROR)
+    assert error["request_id"] == "bad1"
+    assert error["event"] == ClientEvent.SYNC_TODO
+    assert error["code"] == "validation_error"
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["request_id"] == "bad1"
+    assert ack["status"] == "rejected"
+
+
+async def test_connect_with_invalid_token_emits_auth_expired(connect):
+    _, recorder = await connect(auth={"token": "not-a-token"})
+
+    await recorder.wait(ServerEvent.AUTH_EXPIRED)
+
+
+async def test_legacy_payload_ack_has_no_request_id(sessions):
+    owner, owner_recorder, _, _ = sessions
+
+    await owner.emit(
+        ClientEvent.SYNC_TODO, {"id": "t1", "text": "task", "updatedAt": 100}
+    )
+
+    ack = await owner_recorder.wait(ServerEvent.ACK)
+    assert ack["request_id"] is None
+    assert ack["status"] == "applied"
+
+
+async def test_read_event_error_has_no_ack(sessions):
+    owner, owner_recorder, _, _ = sessions
+
+    await owner.emit(
+        ClientEvent.GET_MONTH_HISTORY,
+        {"request_id": "m1", "payload": "2026-13"},
+    )
+
+    error = await owner_recorder.wait(ServerEvent.ERROR)
+    assert error["request_id"] == "m1"
+    assert error["code"] == "validation_error"
+
+    await asyncio.sleep(0.2)
+    assert ServerEvent.ACK not in owner_recorder.names()

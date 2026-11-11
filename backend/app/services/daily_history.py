@@ -42,7 +42,9 @@ class DailyHistoryService:
         if server_updated_at is None or entry.updatedAt > server_updated_at:
             await self._history.upsert(payload, user_id)
             return payload, True
-        return payload, False
+
+        server_entry = await self._history.get_by_date(user_id, entry.date)
+        return server_entry or payload, False
 
     @staticmethod
     def _validate_bulk(entries: Any) -> list[DailyHistory]:
