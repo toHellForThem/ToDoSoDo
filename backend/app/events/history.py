@@ -41,7 +41,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
         )
 
     @sio.on(ClientEvent.SYNC_DAILY_HISTORY)
-    @handle_service_errors(sio, ClientEvent.SYNC_DAILY_HISTORY)
+    @handle_service_errors(sio, ClientEvent.SYNC_DAILY_HISTORY, ack=True)
     @authenticated(sio)
     async def handle_sync_daily_history(sid, user_id, data):
         request = parse_request(data)
@@ -67,7 +67,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
         )
 
     @sio.on(ClientEvent.BULK_SYNC_DAILY_HISTORY)
-    @handle_service_errors(sio, ClientEvent.BULK_SYNC_DAILY_HISTORY)
+    @handle_service_errors(sio, ClientEvent.BULK_SYNC_DAILY_HISTORY, ack=True)
     @authenticated(sio)
     async def handle_bulk_sync_daily_history(sid, user_id, client_history):
         request = parse_request(client_history)
@@ -97,7 +97,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             sid,
             ClientEvent.BULK_SYNC_DAILY_HISTORY,
             request.request_id,
-            AckStatus.APPLIED,
+            AckStatus.PROCESSED,
             {"results": results},
         )
 

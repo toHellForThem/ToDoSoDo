@@ -10,7 +10,12 @@
 * ``applied`` — изменение клиента применено;
 * ``conflict`` — на сервере более новая версия, в ``data`` лежит она;
 * ``deleted`` — задача удалена (tombstone), повторное создание запрещено;
-* ``rejected`` — изменение отклонено (например, некорректный payload).
+* ``rejected`` — изменение отклонено (например, некорректный payload);
+* ``processed`` — batch обработан, детали в ``data.results``.
+
+Ack отправляется только на мутирующие события. Read-события отвечают
+своим обычным событием (``server:all_todos``, ``server:month_history``,
+``server:state``).
 """
 
 from dataclasses import dataclass
@@ -28,6 +33,7 @@ class AckStatus:
     CONFLICT = "conflict"
     DELETED = "deleted"
     REJECTED = "rejected"
+    PROCESSED = "processed"
 
 
 @dataclass(frozen=True)

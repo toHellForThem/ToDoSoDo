@@ -50,9 +50,15 @@ async def emit_error(
 
 
 def handle_service_errors(
-    sio: socketio.AsyncServer, event: str | None = None
+    sio: socketio.AsyncServer,
+    event: str | None = None,
+    ack: bool = False,
 ) -> Callable[[Handler], Handler]:
-    """Превращает доменные и неожиданные исключения в ``server:error``."""
+    """Превращает доменные и неожиданные исключения в ``server:error``.
+
+    ``ack=True`` дополнительно отправляет ``server:ack`` со статусом
+    ``rejected``.  Включается только для мутирующих событий.
+    """
 
     def decorator(handler: Handler) -> Handler:
         @functools.wraps(handler)
@@ -65,7 +71,7 @@ def handle_service_errors(
                 await emit_error(
                     sio, sid, exc.message, exc.code, request_id, event
                 )
-                if event is not None:
+                if ack and event is not None:
                     await emit_ack(
                         sio, sid, event, request_id, AckStatus.REJECTED
                     )
@@ -79,6 +85,10 @@ def handle_service_errors(
                     request_id,
                     event,
                 )
+                if ack and event is not None:
+                    await emit_ack(
+                        sio, sid, event, request_id, AckStatus.REJECTED
+                    )
 
         return wrapper
 

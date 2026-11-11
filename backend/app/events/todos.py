@@ -30,14 +30,13 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
         await send_todos(sid, user_id)
 
     @sio.on(ClientEvent.SYNC_TODO)
-    @handle_service_errors(sio, ClientEvent.SYNC_TODO)
+    @handle_service_errors(sio, ClientEvent.SYNC_TODO, ack=True)
     @authenticated(sio)
     async def handle_sync(sid, user_id, data):
         request = parse_request(data)
         outcome = await services.todos.sync(user_id, request.payload)
 
         if outcome.deleted:
-            await sio.emit(ServerEvent.TODO_DELETED, outcome.todo["id"], room=sid)
             await emit_ack(
                 sio,
                 sid,
@@ -62,9 +61,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             )
             return
 
-        # Конфликт: отдаём клиенту актуальную серверную версию.
-        if outcome.server_todo is not None:
-            await sio.emit(ServerEvent.TODO_UPDATED, outcome.server_todo, room=sid)
+        # Конфликт: серверная версия приходит в ack, без дублирующего события.
         await emit_ack(
             sio,
             sid,
@@ -75,7 +72,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
         )
 
     @sio.on(ClientEvent.DELETE_TODO)
-    @handle_service_errors(sio, ClientEvent.DELETE_TODO)
+    @handle_service_errors(sio, ClientEvent.DELETE_TODO, ack=True)
     @authenticated(sio)
     async def handle_delete_todo(sid, user_id, todo_id):
         request = parse_request(todo_id)
@@ -93,7 +90,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
         )
 
     @sio.on(ClientEvent.CONFIRM_RESET)
-    @handle_service_errors(sio, ClientEvent.CONFIRM_RESET)
+    @handle_service_errors(sio, ClientEvent.CONFIRM_RESET, ack=True)
     @authenticated(sio)
     async def handle_reset_todos(sid, user_id, *args):
         request = parse_request_args(args)
@@ -110,7 +107,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
         )
 
     @sio.on(ClientEvent.BULK_SYNC_TODOS)
-    @handle_service_errors(sio, ClientEvent.BULK_SYNC_TODOS)
+    @handle_service_errors(sio, ClientEvent.BULK_SYNC_TODOS, ack=True)
     @authenticated(sio)
     async def handle_bulk_sync_todos(sid, user_id, client_todos):
         request = parse_request(client_todos)
@@ -138,7 +135,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             sid,
             ClientEvent.BULK_SYNC_TODOS,
             request.request_id,
-            AckStatus.APPLIED,
+            AckStatus.PROCESSED,
             {"results": results},
         )
 

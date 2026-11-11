@@ -13,7 +13,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
     """Регистрирует хендлеры настроек на сервере."""
 
     @sio.on(ClientEvent.UPDATE_SETTINGS)
-    @handle_service_errors(sio, ClientEvent.UPDATE_SETTINGS)
+    @handle_service_errors(sio, ClientEvent.UPDATE_SETTINGS, ack=True)
     @authenticated(sio)
     async def handle_update_settings(sid, user_id, settings_dict):
         request = parse_request(settings_dict)
@@ -30,7 +30,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             )
             status = AckStatus.APPLIED
         else:
-            await sio.emit(ServerEvent.SETTINGS_UPDATED, actual_settings, room=sid)
+            # Конфликт: серверная версия приходит в ack, без дубля.
             status = AckStatus.CONFLICT
 
         await emit_ack(
