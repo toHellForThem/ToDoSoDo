@@ -190,6 +190,46 @@ async def test_bulk_delete_rejects_garbage(services, make_user):
         )
 
 
+async def test_bulk_delete_validates_whole_batch(services, make_user):
+    user_id = await make_user()
+    await services.todos.sync(
+        user_id, {"id": "t1", "text": "x", "updatedAt": 1}
+    )
+
+    with pytest.raises(ValidationError):
+        await services.todos.bulk_delete(
+            user_id,
+            [
+                {"id": "t1", "deletedAt": 1},
+                {"id": "t2", "deletedAt": -1},
+            ],
+        )
+
+    assert [todo["id"] for todo in await services.todos.list_todos(user_id)] == [
+        "t1"
+    ]
+
+
+async def test_bulk_delete_is_idempotent(services, db, make_user):
+    user_id = await make_user()
+    await services.todos.sync(
+        user_id, {"id": "t1", "text": "x", "updatedAt": 1}
+    )
+
+    await services.todos.bulk_delete(
+        user_id, [{"id": "t1", "deletedAt": 100}]
+    )
+    await services.todos.bulk_delete(
+        user_id, [{"id": "t1", "deletedAt": 200}]
+    )
+
+    row = await db.fetch_one(
+        "SELECT deleted_at FROM deleted_todos WHERE id = ? AND user_id = ?",
+        ("t1", user_id),
+    )
+    assert row["deleted_at"] == 100
+
+
 async def test_delete_removes_todo_and_keeps_tombstone(services, db, make_user):
     user_id = await make_user()
     await services.todos.sync(user_id, {"id": "t1", "text": "x", "updatedAt": 1})

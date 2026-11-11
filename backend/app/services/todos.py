@@ -83,15 +83,20 @@ class TodoService:
         return normalized_id
 
     async def bulk_delete(self, user_id: int, items: Any) -> list[str]:
-        """Применяет tombstones, накопленные клиентом офлайн."""
+        """Применяет tombstones, накопленные клиентом офлайн.
+
+        Сначала валидируется весь батч, и только потом выполняются
+        удаления: невалидный элемент не оставляет частичных изменений.
+        """
         if not isinstance(items, list):
             raise ValidationError("Список удалённых задач должен быть массивом")
 
+        models = [
+            validate_payload(DeletedTodo, item, "Некорректная запись удаления")
+            for item in items
+        ]
         deleted_ids: list[str] = []
-        for item in items:
-            model = validate_payload(
-                DeletedTodo, item, "Некорректная запись удаления"
-            )
+        for model in models:
             deleted_ids.append(
                 await self.delete(user_id, model.id, model.deletedAt)
             )
