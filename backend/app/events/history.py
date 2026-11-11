@@ -33,7 +33,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.GET_MONTH_HISTORY)
     @handle_service_errors(sio, ClientEvent.GET_MONTH_HISTORY)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.GET_MONTH_HISTORY)
     async def handle_get_month_history(sid, user_id, month_str):
         request = parse_request(month_str)
         await send_month_history(
@@ -42,7 +42,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.SYNC_DAILY_HISTORY)
     @handle_service_errors(sio, ClientEvent.SYNC_DAILY_HISTORY, ack=True)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.SYNC_DAILY_HISTORY)
     async def handle_sync_daily_history(sid, user_id, data):
         request = parse_request(data)
         entry, updated = await services.daily_history.sync(user_id, request.payload)
@@ -68,7 +68,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.BULK_SYNC_DAILY_HISTORY)
     @handle_service_errors(sio, ClientEvent.BULK_SYNC_DAILY_HISTORY, ack=True)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.BULK_SYNC_DAILY_HISTORY)
     async def handle_bulk_sync_daily_history(sid, user_id, client_history):
         request = parse_request(client_history)
         results = []

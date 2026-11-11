@@ -25,13 +25,13 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.GET_TODOS)
     @handle_service_errors(sio, ClientEvent.GET_TODOS)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.GET_TODOS)
     async def handle_get_todos(sid, user_id):
         await send_todos(sid, user_id)
 
     @sio.on(ClientEvent.SYNC_TODO)
     @handle_service_errors(sio, ClientEvent.SYNC_TODO, ack=True)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.SYNC_TODO)
     async def handle_sync(sid, user_id, data):
         request = parse_request(data)
         outcome = await services.todos.sync(user_id, request.payload)
@@ -73,7 +73,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.DELETE_TODO)
     @handle_service_errors(sio, ClientEvent.DELETE_TODO, ack=True)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.DELETE_TODO)
     async def handle_delete_todo(sid, user_id, todo_id):
         request = parse_request(todo_id)
         deleted_id = await services.todos.delete(user_id, request.payload)
@@ -91,7 +91,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.CONFIRM_RESET)
     @handle_service_errors(sio, ClientEvent.CONFIRM_RESET, ack=True)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.CONFIRM_RESET)
     async def handle_reset_todos(sid, user_id, *args):
         request = parse_request_args(args)
         todo_type, update_time = _unpack_reset(request.payload)
@@ -108,7 +108,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.BULK_SYNC_TODOS)
     @handle_service_errors(sio, ClientEvent.BULK_SYNC_TODOS, ack=True)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.BULK_SYNC_TODOS)
     async def handle_bulk_sync_todos(sid, user_id, client_todos):
         request = parse_request(client_todos)
         results = []

@@ -21,7 +21,7 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.GET_STATE)
     @handle_service_errors(sio, ClientEvent.GET_STATE)
-    @authenticated(sio)
+    @authenticated(sio, ClientEvent.GET_STATE)
     async def handle_get_state(sid, user_id, data=None):
         request = parse_request(data)
         month = request.payload if isinstance(request.payload, str) else None

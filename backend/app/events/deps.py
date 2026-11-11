@@ -20,7 +20,9 @@ async def get_user_id(sio: socketio.AsyncServer, sid: str) -> int | None:
     return session.get("user_id")
 
 
-def authenticated(sio: socketio.AsyncServer) -> Callable[[Handler], Handler]:
+def authenticated(
+    sio: socketio.AsyncServer, event: str | None = None
+) -> Callable[[Handler], Handler]:
     """Пропускает вызов только для авторизованных клиентов.
 
     Обёрнутый хендлер получает ``user_id`` вторым аргументом:
@@ -30,10 +32,11 @@ def authenticated(sio: socketio.AsyncServer) -> Callable[[Handler], Handler]:
     def decorator(handler: Handler) -> Handler:
         @functools.wraps(handler)
         async def wrapper(sid: str, *args: Any) -> Any:
+            name = event or handler.__name__
             user_id = await get_user_id(sio, sid)
             if not user_id:
                 logger.warning(
-                    "Событие %s без авторизации (sid=%s)", handler.__name__, sid
+                    "Событие %s без авторизации (sid=%s)", name, sid
                 )
                 await emit_error(
                     sio,
@@ -43,6 +46,7 @@ def authenticated(sio: socketio.AsyncServer) -> Callable[[Handler], Handler]:
                     extract_request_id(args),
                 )
                 return None
+            logger.info("Событие %s: user_id=%s sid=%s", name, user_id, sid)
             return await handler(sid, user_id, *args)
 
         return wrapper
