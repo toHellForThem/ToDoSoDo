@@ -94,18 +94,14 @@ class TodoService:
         if await self._deleted.exists(user_id, todo.id):
             return SyncOutcome(deleted=True, todo=payload)
 
-        server_updated_at = await self._todos.get_updated_at(todo.id, user_id)
-        if server_updated_at is None or todo.updatedAt > server_updated_at:
+        server_todo = await self._todos.get_by_id(todo.id, user_id)
+        if server_todo is None or todo.updatedAt > server_todo.updatedAt:
             await self._todos.upsert(todo, user_id)
             logger.debug("Обновлено: %s (клиентская версия новее)", todo.text)
             return SyncOutcome(updated=True, todo=payload)
 
-        server_todo = await self._todos.get_by_id(todo.id, user_id)
         logger.debug("На сервере данные новее для: %s", todo.text)
-        return SyncOutcome(
-            todo=payload,
-            server_todo=server_todo.model_dump() if server_todo else None,
-        )
+        return SyncOutcome(todo=payload, server_todo=server_todo.model_dump())
 
     @staticmethod
     def _validate_bulk(client_todos: Any) -> list[Todo]:
