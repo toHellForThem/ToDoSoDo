@@ -1,6 +1,7 @@
 import { useEffect, startTransition, Dispatch, SetStateAction } from 'react';
 import Toast from 'react-native-toast-message';
 import { socket } from '../utils/socket';
+import { AckPayload, ServerErrorPayload, request } from '../utils/protocol';
 import {
   AuthStorage,
   RpgStorage,
@@ -50,8 +51,8 @@ export const useTodoSocket = ({
       const localTodos = TodoStorage.getAll();
       const localHistory = RpgStorage.getHistory();
 
-      socket.emit('client:bulk_sync_todos', localTodos);
-      socket.emit('client:bulk_sync_daily_history', localHistory);
+      socket.emit('client:bulk_sync_todos', request(localTodos));
+      socket.emit('client:bulk_sync_daily_history', request(localHistory));
 
       setAuthMode('auth');
       setAuthState('');
@@ -65,7 +66,7 @@ export const useTodoSocket = ({
       let finalSettings;
       if (localUpdatedAt > serverUpdatedAt) {
         finalSettings = localSettings;
-        socket.emit('client:update_settings', finalSettings);
+        socket.emit('client:update_settings', request(finalSettings));
       } else {
         finalSettings = { ...localSettings, ...serverSettings };
         // Если на сервере настройки ещё не кастомизировали (updatedAt = 0),
@@ -80,7 +81,7 @@ export const useTodoSocket = ({
             timezone: localSettings.timezone,
             updatedAt: Date.now()
           };
-          socket.emit('client:update_settings', finalSettings);
+          socket.emit('client:update_settings', request(finalSettings));
         }
       }
 
@@ -123,7 +124,7 @@ export const useTodoSocket = ({
 
         if (resetTypes.size > 0) {
           resetTypes.forEach(type => {
-            socket.emit('client:confirm_reset', type, startOfToday);
+            socket.emit('client:confirm_reset', request({ type, updatedAt: startOfToday }));
           });
         }
         return;
@@ -160,7 +161,7 @@ export const useTodoSocket = ({
                 merged[localIndex] = processedItem;
                 hasChanges = true;
               } else if ((lItem.updatedAt || 0) > processedItem.updatedAt) {
-                socket.emit('client:sync_todo', lItem);
+                socket.emit('client:sync_todo', request(lItem));
               }
             }
           });
@@ -170,7 +171,7 @@ export const useTodoSocket = ({
 
       if (resetTypes.size > 0) {
         resetTypes.forEach(type => {
-          socket.emit('client:confirm_reset', type, startOfToday);
+          socket.emit('client:confirm_reset', request({ type, updatedAt: startOfToday }));
         });
       }
     });
@@ -270,6 +271,77 @@ export const useTodoSocket = ({
       });
     });
 
+    socket.on('server:ack', (ack: AckPayload) => {
+      const { event, status, data } = ack;
+
+      if (status === 'conflict') {
+        Toast.show({
+          type: 'info',
+          text1: 'Синхронизация',
+          text2: 'Изменение не применено: на сервере более новая версия',
+          visibilityTime: 3000
+        });
+      }
+
+      if (event === 'client:sync_todo') {
+        if (status === 'conflict' && data) {
+          const serverTodo = data as Todo;
+          startTransition(() => {
+            setTodoList(prev => {
+              const index = prev.findIndex(t => t.id === serverTodo.id);
+              if (index === -1) {
+                return [...prev, serverTodo];
+              }
+              const next = [...prev];
+              next[index] = serverTodo;
+              return next;
+            });
+          });
+        } else if (status === 'deleted' && data?.id) {
+          const deletedId = data.id as string;
+          startTransition(() => {
+            setTodoList(prev => prev.filter(t => t.id !== deletedId));
+          });
+        }
+      } else if (event === 'client:update_settings' && status === 'conflict' && data) {
+        const serverSettings = data as UserSettings;
+        AuthStorage.setSettings(serverSettings);
+        setSettings(serverSettings);
+        if (setMainTab && serverSettings?.main_page) {
+          setMainTab(serverSettings.main_page);
+        }
+      } else if (
+        event === 'client:sync_daily_history' &&
+        status === 'conflict' &&
+        data
+      ) {
+        const serverEntry = data as RpgHistoryItem;
+        startTransition(() => {
+          setRpgHistory(prev => {
+            const index = prev.findIndex(h => h.date === serverEntry.date);
+            if (index === -1) {
+              return [...prev, serverEntry];
+            }
+            const next = [...prev];
+            next[index] = serverEntry;
+            return next;
+          });
+        });
+      }
+    });
+
+    socket.on('server:error', (error: ServerErrorPayload) => {
+      if (error.code === 'unauthorized') {
+        return;
+      }
+      Toast.show({
+        type: 'error',
+        text1: 'Синхронизация',
+        text2: error.message,
+        visibilityTime: 4000
+      });
+    });
+
     return () => {
       socket.off('connect');
       socket.off('server:all_todos');
@@ -281,6 +353,8 @@ export const useTodoSocket = ({
       socket.off('server:month_history');
       socket.off('server:daily_history_updated');
       socket.off('server:settings_updated');
+      socket.off('server:ack');
+      socket.off('server:error');
     };
   }, [setTodoList, setAuthMode, setAuthState, setRpgHistory, setSettings, settings, setMainTab]);
 };

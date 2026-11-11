@@ -9,6 +9,7 @@ import {
   TodoType
 } from '../utils/storage';
 import { socket } from '../utils/socket';
+import { request } from '../utils/protocol';
 import {
   getLogicalDateStr,
   getLogicalDayStartMs,
@@ -91,8 +92,8 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
             ? { ...item, progressNow: 0, completed: false, updatedAt: resetAt }
             : item
         ));
-        socket.emit('client:confirm_reset', 'daily', resetAt);
-        socket.emit('client:confirm_reset', 'habit', resetAt);
+        socket.emit('client:confirm_reset', request({ type: 'daily', updatedAt: resetAt }));
+        socket.emit('client:confirm_reset', request({ type: 'habit', updatedAt: resetAt }));
 
         scheduleNextReset();
       }, msUntilReset);
@@ -148,7 +149,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
         newHistory = [...prev, updatedEntry];
       }
 
-      socket.emit('client:sync_daily_history', updatedEntry);
+      socket.emit('client:sync_daily_history', request(updatedEntry));
       return newHistory;
     });
   }, [todoList, settings]);
@@ -179,7 +180,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
         days: days,
       };
       setTodoList(prev => [newTodo, ...prev]);
-      socket.emit('client:sync_todo', newTodo);
+      socket.emit('client:sync_todo', request(newTodo));
     }
   }, [mainTab]);
 
@@ -195,7 +196,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
       });
     });
     if (updated) {
-      socket.emit('client:sync_todo', updated);
+      socket.emit('client:sync_todo', request(updated));
     }
   }, []);
 
@@ -317,7 +318,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
       });
     });
     if (updated) {
-      socket.emit('client:sync_todo', updated);
+      socket.emit('client:sync_todo', request(updated));
     }
   }, []);
 
@@ -325,7 +326,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
     setTodoList(prev => {
       const todoToDelete = prev.find(item => item.id === id);
       if (todoToDelete) {
-        socket.emit('client:delete_todo', id);
+        socket.emit('client:delete_todo', request(id));
       }
       return prev.filter(item => item.id !== id);
     });
@@ -349,7 +350,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
       });
     });
     if (updated) {
-      socket.emit('client:sync_todo', updated);
+      socket.emit('client:sync_todo', request(updated));
     }
   }, []);
 
@@ -379,7 +380,7 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
         newHistory = [...prev, updatedEntry];
       }
 
-      socket.emit('client:sync_daily_history', updatedEntry);
+      socket.emit('client:sync_daily_history', request(updatedEntry));
       return newHistory;
     });
   }, [todoList, settings]);
