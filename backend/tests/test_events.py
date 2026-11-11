@@ -10,6 +10,7 @@ import datetime
 import functools
 import socket
 
+import aiohttp
 import pytest_asyncio
 import socketio
 import uvicorn
@@ -543,3 +544,21 @@ async def test_read_event_error_has_no_ack(sessions):
 
     await asyncio.sleep(0.2)
     assert ServerEvent.ACK not in owner_recorder.names()
+
+
+async def test_health_endpoint(server_url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"{server_url}/health") as response:
+            assert response.status == 200
+            assert await response.json() == {
+                "status": "ok",
+                "database": "ok",
+            }
+
+
+async def test_version_endpoint(server_url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"{server_url}/version") as response:
+            assert response.status == 200
+            data = await response.json()
+            assert data["version"]
