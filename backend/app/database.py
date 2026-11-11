@@ -116,10 +116,13 @@ class Database:
             logger.exception("Ошибка инициализации схемы базы данных")
             raise
 
-    async def execute(self, query: str, params: Sequence[Any] = ()) -> None:
+    async def execute(self, query: str, params: Sequence[Any] = ()) -> int:
+        """Выполняет запрос и возвращает число затронутых строк."""
         try:
-            await self.connection.execute(query, params)
+            cursor = await self.connection.execute(query, params)
+            rowcount = cursor.rowcount
             await self.connection.commit()
+            return rowcount
         except Exception:
             logger.exception("Ошибка выполнения запроса к базе данных")
             raise

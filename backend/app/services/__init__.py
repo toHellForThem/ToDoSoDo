@@ -1,5 +1,6 @@
 """Сервисы бизнес-логики и composition root."""
 
+from app.config import settings as app_settings
 from app.database import Database
 from app.rep import (
     DailyHistoryRepository,
@@ -30,7 +31,9 @@ class Services:
         daily_history_repo = DailyHistoryRepository(db)
 
         self.auth = AuthService(users_repo)
-        self.todos = TodoService(todos_repo, deleted_todos_repo)
+        self.todos = TodoService(
+            todos_repo, deleted_todos_repo, app_settings.tombstone_ttl_days
+        )
         self.daily_history = DailyHistoryService(daily_history_repo)
         self.settings = SettingsService(users_repo)
 

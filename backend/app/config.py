@@ -14,6 +14,9 @@ class Settings(BaseSettings):
 
     database_path: str = "data/tasks.db"
 
+    # Сколько дней tombstone блокирует пересоздание задачи с тем же id.
+    tombstone_ttl_days: int = 30
+
     log_level: str = "INFO"
 
     cors_origins: list[str] = ['http://localhost:8081', 'http://127.0.0.1:8081']

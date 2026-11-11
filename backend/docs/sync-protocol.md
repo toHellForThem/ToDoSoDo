@@ -42,9 +42,10 @@
 
 `server:ack` отправляется на `client:sync_todo`, `client:delete_todo`,
 `client:update_settings`, `client:sync_daily_history`,
-`client:confirm_reset`, `client:bulk_sync_todos` и
-`client:bulk_sync_daily_history`. На `client:get_todos`,
-`client:get_month_history` и `client:get_state` ack не отправляется.
+`client:confirm_reset`, `client:bulk_sync_todos`,
+`client:bulk_delete_todos` и `client:bulk_sync_daily_history`.
+На `client:get_todos`, `client:get_month_history` и `client:get_state`
+ack не отправляется.
 
 Для bulk-событий верхний `status` — `processed`, а `data.results`
 содержит статус каждого элемента:
@@ -81,6 +82,30 @@
 * серверная версия новее или равна — не применяется, `status = conflict`,
   серверная версия приходит только в `data` (без дублирующего события);
 * задача в tombstone — `status = deleted`, `data = {"id": ...}`.
+
+## Tombstones и офлайн-удаление
+
+Tombstone живёт `TOMBSTONE_TTL_DAYS` (по умолчанию 30 дней) и всё это
+время блокирует пересоздание задачи с тем же `id`. Просроченные
+tombstones удаляются при старте сервера.
+
+Клиент, удаливший задачи офлайн, при подключении отправляет накопленные
+tombstones отдельным событием:
+
+```json
+{
+  "request_id": "uuid",
+  "payload": [
+    {"id": "t1", "deletedAt": 1760000000000},
+    {"id": "t2", "deletedAt": 1760000001000}
+  ]
+}
+```
+
+Событие: `client:bulk_delete_todos`. Ответ — `server:ack` со статусом
+`processed` и `data.results` по каждому `id`; другим сессиям уходит
+`server:todo_deleted`. В `client:bulk_sync_todos` tombstones не
+передаются — это отдельный контракт.
 
 ## Первичная загрузка: `client:get_state`
 

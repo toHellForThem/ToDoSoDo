@@ -106,6 +106,30 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             {"type": todo_type, "updatedAt": update_time},
         )
 
+    @sio.on(ClientEvent.BULK_DELETE_TODOS)
+    @handle_service_errors(sio, ClientEvent.BULK_DELETE_TODOS, ack=True)
+    @authenticated(sio)
+    async def handle_bulk_delete_todos(sid, user_id, client_deleted):
+        request = parse_request(client_deleted)
+        deleted_ids = await services.todos.bulk_delete(user_id, request.payload)
+        for todo_id in deleted_ids:
+            await sio.emit(
+                ServerEvent.TODO_DELETED, todo_id, room=user_id, skip_sid=sid
+            )
+        await emit_ack(
+            sio,
+            sid,
+            ClientEvent.BULK_DELETE_TODOS,
+            request.request_id,
+            AckStatus.PROCESSED,
+            {
+                "results": [
+                    {"id": todo_id, "status": AckStatus.DELETED}
+                    for todo_id in deleted_ids
+                ]
+            },
+        )
+
     @sio.on(ClientEvent.BULK_SYNC_TODOS)
     @handle_service_errors(sio, ClientEvent.BULK_SYNC_TODOS, ack=True)
     @authenticated(sio)
