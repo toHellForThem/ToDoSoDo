@@ -34,6 +34,33 @@ async def test_register_duplicate_raises_conflict(services):
         await services.auth.register("alice", "other")
 
 
+async def test_register_normalizes_username(services):
+    await services.auth.register("  Alice  ", "secret")
+
+    result = await services.auth.login("ALICE", "secret")
+
+    assert result["username"] == "alice"
+
+
+async def test_register_duplicate_is_case_insensitive(services):
+    await services.auth.register("Alice", "secret")
+
+    with pytest.raises(ConflictError):
+        await services.auth.register("alice", "secret2")
+
+
+async def test_register_rejects_short_password(services):
+    with pytest.raises(ValidationError):
+        await services.auth.register("alice", "12345")
+
+
+async def test_register_rejects_invalid_username(services):
+    with pytest.raises(ValidationError):
+        await services.auth.register("al ice", "secret")
+    with pytest.raises(ValidationError):
+        await services.auth.register("ab", "secret")
+
+
 async def test_login_returns_token_and_settings(services):
     await services.auth.register("alice", "secret")
 
