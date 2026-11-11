@@ -6,6 +6,9 @@ from typing import Any, Awaitable, Callable
 
 import socketio
 
+from app.events.errors import emit_error
+from app.events.protocol import extract_request_id
+
 logger = logging.getLogger(__name__)
 
 Handler = Callable[..., Awaitable[Any]]
@@ -31,6 +34,13 @@ def authenticated(sio: socketio.AsyncServer) -> Callable[[Handler], Handler]:
             if not user_id:
                 logger.warning(
                     "Событие %s без авторизации (sid=%s)", handler.__name__, sid
+                )
+                await emit_error(
+                    sio,
+                    sid,
+                    "Требуется авторизация",
+                    "unauthorized",
+                    extract_request_id(args),
                 )
                 return None
             return await handler(sid, user_id, *args)
