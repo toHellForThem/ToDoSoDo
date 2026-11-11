@@ -102,6 +102,9 @@ async def test_sync_keeps_newer_server_version(services, make_user):
 
     assert outcome.updated is False
     assert outcome.deleted is False
+    assert outcome.status == "conflict"
+    assert outcome.server_todo["text"] == "server"
+    assert outcome.server_todo["updatedAt"] == 100
     assert [todo["text"] for todo in await services.todos.list_todos(user_id)] == [
         "server"
     ]
@@ -117,14 +120,16 @@ async def test_sync_reports_tombstone(services, make_user):
 
     assert outcome.deleted is True
     assert outcome.updated is False
+    assert outcome.status == "deleted"
 
 
 async def test_delete_removes_todo_and_keeps_tombstone(services, db, make_user):
     user_id = await make_user()
     await services.todos.sync(user_id, {"id": "t1", "text": "x", "updatedAt": 1})
 
-    await services.todos.delete(user_id, "t1")
+    deleted_id = await services.todos.delete(user_id, "t1")
 
+    assert deleted_id == "t1"
     assert await services.todos.list_todos(user_id) == []
     row = await db.fetch_one(
         "SELECT deleted_at FROM deleted_todos WHERE id = ? AND user_id = ?",
@@ -185,10 +190,11 @@ async def test_history_sync_uses_lww(services, make_user):
     )
     assert updated is True
 
-    _, updated = await services.daily_history.sync(
+    entry, updated = await services.daily_history.sync(
         user_id, {"date": "2026-01-15", "mood": 1, "updatedAt": 5}
     )
     assert updated is False
+    assert entry["mood"] == 2
 
     entries = await services.daily_history.get_month(user_id, "2026-01")
     assert entries[0]["mood"] == 2
@@ -243,6 +249,24 @@ async def test_settings_initialized_when_missing(services, db, make_user):
 
     assert applied is True
     assert actual["theme"] == "dark"
+    assert set(actual) == set(UserSettings.model_fields)
+
+
+async def test_settings_get_returns_defaults_when_missing(services, db, make_user):
+    user_id = await make_user()
+    await db.execute("UPDATE users SET settings = NULL WHERE id = ?", (user_id,))
+
+    assert await services.settings.get(user_id) == default_settings()
+
+
+async def test_settings_get_returns_stored_contract(services, make_user):
+    user_id = await make_user()
+    await services.settings.update(user_id, {"theme": "dark", "updatedAt": 10})
+
+    actual = await services.settings.get(user_id)
+
+    assert actual["theme"] == "dark"
+    assert actual["updatedAt"] == 10
     assert set(actual) == set(UserSettings.model_fields)
 
 
