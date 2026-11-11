@@ -1,31 +1,67 @@
 """Socket-события аутентификации: регистрация, вход, подключение и выход."""
 
 import logging
+from typing import Any
 
 import socketio
 
+from app.config import settings
 from app.events.deps import authenticated
 from app.events.errors import emit_auth_error
 from app.events.names import ClientEvent, ServerEvent
 from app.events.protocol import parse_request
 from app.services import AuthError, ConflictError, Services, ValidationError
+from app.services.rate_limit import RateLimiter
 
 logger = logging.getLogger(__name__)
+
+
+def _rate_key(payload: dict[str, Any]) -> str:
+    """Ключ rate limit: нормализованный логин или anonymous."""
+    username = payload.get("username")
+    if isinstance(username, str) and username.strip():
+        return username.strip().lower()
+    return "anonymous"
 
 
 def register(sio: socketio.AsyncServer, services: Services) -> None:
     """Регистрирует хендлеры аутентификации на сервере."""
 
+    login_limiter = RateLimiter(
+        settings.auth_rate_limit_attempts,
+        settings.auth_rate_limit_window_seconds,
+    )
+    register_limiter = RateLimiter(
+        settings.auth_rate_limit_attempts,
+        settings.auth_rate_limit_window_seconds,
+    )
+    register_sid_limiter = RateLimiter(
+        settings.auth_rate_limit_attempts,
+        settings.auth_rate_limit_window_seconds,
+    )
+
     @sio.on(ClientEvent.REGISTER)
     async def handle_register(sid, data):
         request = parse_request(data)
         payload = request.payload if isinstance(request.payload, dict) else {}
+        key = _rate_key(payload)
+        if not register_limiter.allow(key) or not register_sid_limiter.allow(sid):
+            await emit_auth_error(
+                sio,
+                sid,
+                "Слишком много попыток регистрации, попробуйте позже",
+                request.request_id,
+            )
+            return
+
         username = payload.get("username")
         try:
             await services.auth.register(username, payload.get("password"))
         except (ValidationError, ConflictError) as exc:
             await emit_auth_error(sio, sid, exc.message, request.request_id)
             return
+
+        register_limiter.reset(key)
 
         await sio.emit(
             ServerEvent.REGISTER_SUCCESS, {"msg": "Аккаунт создан!"}, room=sid
@@ -43,13 +79,30 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
     async def handle_login(sid, data):
         request = parse_request(data)
         payload = request.payload if isinstance(request.payload, dict) else {}
+        key = _rate_key(payload)
+        if not login_limiter.allow(key):
+            await emit_auth_error(
+                sio,
+                sid,
+                "Слишком много попыток входа, попробуйте позже",
+                request.request_id,
+            )
+            return
+
         try:
             result = await services.auth.login(
                 payload.get("username"), payload.get("password")
             )
-        except AuthError as exc:
-            await emit_auth_error(sio, sid, exc.message, request.request_id)
+        except (AuthError, ValidationError):
+            await emit_auth_error(
+                sio,
+                sid,
+                "Неверный логин или пароль",
+                request.request_id,
+            )
             return
+
+        login_limiter.reset(key)
 
         await sio.save_session(sid, {"user_id": result["user_id"]})
         await sio.enter_room(sid, result["user_id"])

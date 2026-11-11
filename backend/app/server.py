@@ -44,7 +44,7 @@ def create_server(database_path: str | None = None) -> Server:
         await db.close()
 
     sio = socketio.AsyncServer(
-        async_mode="asgi", cors_allowed_origins=settings.sio_cors_origins
+        async_mode="asgi", cors_allowed_origins=settings.sio_origins
     )
     app = FastAPI(lifespan=lifespan)
     app.add_middleware(

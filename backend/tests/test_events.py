@@ -176,8 +176,67 @@ async def test_login_with_wrong_password_returns_auth_error(connect):
 
     assert await recorder.wait(ServerEvent.AUTH_MESSAGE) == {
         "status": "error",
-        "message": "Неверный пароль",
+        "message": "Неверный логин или пароль",
     }
+
+
+async def test_login_failure_message_is_generic(connect):
+    client, recorder = await connect()
+    await _register_and_login(client, recorder)
+
+    for payload in (
+        {"username": "alice", "password": "wrong"},
+        {"username": "ghost", "password": "secret"},
+        {"username": "bad login", "password": "secret"},
+    ):
+        recorder.clear()
+        await client.emit(ClientEvent.LOGIN, payload)
+        message = await recorder.wait(ServerEvent.AUTH_MESSAGE)
+        assert message == {
+            "status": "error",
+            "message": "Неверный логин или пароль",
+        }
+
+
+async def test_register_rate_limit_by_sid(connect):
+    client, recorder = await connect()
+
+    for index in range(5):
+        await client.emit(
+            ClientEvent.REGISTER,
+            {"username": f"user{index}", "password": "secret"},
+        )
+        await recorder.wait(ServerEvent.REGISTER_SUCCESS)
+        recorder.clear()
+
+    await client.emit(
+        ClientEvent.REGISTER, {"username": "user5", "password": "secret"}
+    )
+    message = await recorder.wait(ServerEvent.AUTH_MESSAGE)
+    assert "Слишком много попыток" in message["message"]
+
+
+async def test_login_rate_limit(connect):
+    client, recorder = await connect()
+    await client.emit(
+        ClientEvent.REGISTER, {"username": "alice", "password": "secret"}
+    )
+    await recorder.wait(ServerEvent.REGISTER_SUCCESS)
+    recorder.clear()
+
+    for _ in range(5):
+        await client.emit(
+            ClientEvent.LOGIN, {"username": "alice", "password": "wrong"}
+        )
+        message = await recorder.wait(ServerEvent.AUTH_MESSAGE)
+        assert message["status"] == "error"
+        recorder.clear()
+
+    await client.emit(
+        ClientEvent.LOGIN, {"username": "alice", "password": "wrong"}
+    )
+    message = await recorder.wait(ServerEvent.AUTH_MESSAGE)
+    assert "Слишком много попыток" in message["message"]
 
 
 async def test_unauthorized_events_are_ignored(connect):

@@ -28,6 +28,16 @@ async def test_users_get_missing_returns_none(db):
     assert await repo.get_by_id(404) is None
 
 
+async def test_users_get_by_username_is_case_insensitive(db):
+    repo = UsersRepository(db)
+    await repo.create("bob", "hash", "{}")
+
+    user = await repo.get_by_username("BOB")
+
+    assert user is not None
+    assert user["username"] == "bob"
+
+
 async def test_users_update_settings(db):
     repo = UsersRepository(db)
     await repo.create("bob", "hash", "{}")
