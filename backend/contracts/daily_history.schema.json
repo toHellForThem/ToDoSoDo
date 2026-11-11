@@ -1,0 +1,57 @@
+{
+  "description": "Запись ежедневной истории в контракте синхронизации.",
+  "properties": {
+    "daily_progress": {
+      "default": 0.0,
+      "minimum": 0,
+      "title": "Daily Progress",
+      "type": "number"
+    },
+    "date": {
+      "title": "Date",
+      "type": "string"
+    },
+    "habits_detail": {
+      "default": "[]",
+      "title": "Habits Detail",
+      "type": "string"
+    },
+    "mood": {
+      "anyOf": [
+        {
+          "maximum": 5,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mood"
+    },
+    "neg_points": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Neg Points",
+      "type": "integer"
+    },
+    "pos_points": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Pos Points",
+      "type": "integer"
+    },
+    "updatedAt": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Updatedat",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "date"
+  ],
+  "title": "DailyHistory",
+  "type": "object"
+}
