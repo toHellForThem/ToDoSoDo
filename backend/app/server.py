@@ -59,7 +59,7 @@ def create_server(database_path: str | None = None) -> Server:
     async def health():
         """Проверяет, что приложение и база данных живы."""
         try:
-            await db.fetch_one("SELECT 1")
+            await db.fetch_one("SELECT 1 FROM users LIMIT 1")
         except Exception:
             logger.exception("Healthcheck не прошёл")
             return JSONResponse(

@@ -83,7 +83,7 @@ async def emit_ack(
     data: Any = None,
 ) -> None:
     """Отправляет явный ответ на клиентское событие."""
-    logger.info(
+    logger.debug(
         "ack event=%s request_id=%s status=%s", event, request_id, status
     )
     await sio.emit(

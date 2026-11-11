@@ -94,7 +94,7 @@ class AuthService:
         normalized, changed = normalize_user_settings(user["settings"])
         if changed:
             await self._users.update_settings(user["id"], dump_settings(normalized))
-            logger.info(
+            logger.debug(
                 "Настройки пользователя %s приведены к полному контракту", user["id"]
             )
         return normalized

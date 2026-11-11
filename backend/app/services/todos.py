@@ -81,7 +81,11 @@ class TodoService:
             raise ValidationError("Некорректная метка времени обновления")
 
         await self._todos.reset_by_type(user_id, normalized_type, update_time)
-        logger.info("Пользователь %s обновил задачи (type=%s)", user_id, normalized_type)
+        logger.debug(
+            "Пользователь %s обновил задачи (type=%s)",
+            user_id,
+            normalized_type,
+        )
 
     async def bulk_sync(
         self, user_id: int, client_todos: Any

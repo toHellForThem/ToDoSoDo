@@ -22,7 +22,7 @@ async def emit_auth_error(
     request_id: str | None = None,
 ) -> None:
     """Отправляет ошибку аутентификации конкретному клиенту."""
-    logger.info("auth_error request_id=%s", request_id)
+    logger.warning("auth_error sid=%s request_id=%s", sid, request_id)
     payload = {"status": "error", "message": message}
     if request_id is not None:
         payload["request_id"] = request_id

@@ -46,7 +46,7 @@ def authenticated(
                     extract_request_id(args),
                 )
                 return None
-            logger.info("Событие %s: user_id=%s sid=%s", name, user_id, sid)
+            logger.debug("Событие %s: user_id=%s sid=%s", name, user_id, sid)
             return await handler(sid, user_id, *args)
 
         return wrapper
