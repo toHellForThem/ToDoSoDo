@@ -35,13 +35,17 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
         settings.auth_rate_limit_attempts,
         settings.auth_rate_limit_window_seconds,
     )
+    register_sid_limiter = RateLimiter(
+        settings.auth_rate_limit_attempts,
+        settings.auth_rate_limit_window_seconds,
+    )
 
     @sio.on(ClientEvent.REGISTER)
     async def handle_register(sid, data):
         request = parse_request(data)
         payload = request.payload if isinstance(request.payload, dict) else {}
         key = _rate_key(payload)
-        if not register_limiter.allow(key):
+        if not register_limiter.allow(key) or not register_sid_limiter.allow(sid):
             await emit_auth_error(
                 sio,
                 sid,
@@ -89,8 +93,13 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             result = await services.auth.login(
                 payload.get("username"), payload.get("password")
             )
-        except (AuthError, ValidationError) as exc:
-            await emit_auth_error(sio, sid, exc.message, request.request_id)
+        except (AuthError, ValidationError):
+            await emit_auth_error(
+                sio,
+                sid,
+                "Неверный логин или пароль",
+                request.request_id,
+            )
             return
 
         login_limiter.reset(key)

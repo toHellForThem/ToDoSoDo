@@ -34,6 +34,16 @@ async def test_register_duplicate_raises_conflict(services):
         await services.auth.register("alice", "other")
 
 
+async def test_register_stores_lowercase_username(services, db):
+    await services.auth.register("Alice", "secret")
+
+    row = await db.fetch_one(
+        "SELECT username FROM users WHERE username = ?", ("alice",)
+    )
+
+    assert row["username"] == "alice"
+
+
 async def test_register_normalizes_username(services):
     await services.auth.register("  Alice  ", "secret")
 

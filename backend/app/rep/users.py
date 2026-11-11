@@ -9,11 +9,11 @@ class UsersRepository(BaseRepository):
     """Доступ к таблице ``users``."""
 
     async def get_by_username(self, username: str) -> aiosqlite.Row | None:
-        """Ищет пользователя без учёта регистра логина."""
+        """Ищет пользователя по нормализованному (lowercase) логину."""
         if not isinstance(username, str):
             return None
         return await self._db.fetch_one(
-            "SELECT * FROM users WHERE LOWER(username) = ?", (username.lower(),)
+            "SELECT * FROM users WHERE username = ?", (username.lower(),)
         )
 
     async def get_by_id(self, user_id: int) -> aiosqlite.Row | None:

@@ -114,12 +114,12 @@ class AuthService:
 
         user = await self._users.get_by_username(normalized)
         if not user:
-            logger.warning("Попытка входа: пользователь %s не найден", normalized)
-            raise AuthError("Такого пользователя не существует")
+            logger.warning("Неудачная попытка входа: %s", normalized)
+            raise AuthError("Неверный логин или пароль")
 
         if not check_password_hash(user["password_hash"], password):
-            logger.warning("Неверный пароль для пользователя %s", normalized)
-            raise AuthError("Неверный пароль")
+            logger.warning("Неудачная попытка входа: %s", normalized)
+            raise AuthError("Неверный логин или пароль")
 
         logger.info("Пользователь %s вошёл в систему", user["username"])
         return {
