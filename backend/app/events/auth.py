@@ -7,6 +7,7 @@ import socketio
 from app.events.deps import authenticated
 from app.events.errors import emit_auth_error
 from app.events.names import ClientEvent, ServerEvent
+from app.events.protocol import parse_request
 from app.services import AuthError, ConflictError, Services, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -17,11 +18,13 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.REGISTER)
     async def handle_register(sid, data):
-        username = data.get("username")
+        request = parse_request(data)
+        payload = request.payload if isinstance(request.payload, dict) else {}
+        username = payload.get("username")
         try:
-            await services.auth.register(username, data.get("password"))
+            await services.auth.register(username, payload.get("password"))
         except (ValidationError, ConflictError) as exc:
-            await emit_auth_error(sio, sid, exc.message)
+            await emit_auth_error(sio, sid, exc.message, request.request_id)
             return
 
         await sio.emit(
@@ -38,10 +41,14 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on(ClientEvent.LOGIN)
     async def handle_login(sid, data):
+        request = parse_request(data)
+        payload = request.payload if isinstance(request.payload, dict) else {}
         try:
-            result = await services.auth.login(data["username"], data["password"])
+            result = await services.auth.login(
+                payload.get("username"), payload.get("password")
+            )
         except AuthError as exc:
-            await emit_auth_error(sio, sid, exc.message)
+            await emit_auth_error(sio, sid, exc.message, request.request_id)
             return
 
         await sio.save_session(sid, {"user_id": result["user_id"]})
@@ -64,12 +71,19 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
 
     @sio.on("connect")
     async def handle_connect(sid, environ, auth):
+        """Поведение при подключении и переподключении.
+
+        * без токена — локальный режим, сервер молчит;
+        * истёкший или некорректный токен — ``server:auth_expired``;
+        * валидный токен — сессия, комната и ``server:login_success``,
+          после которого клиент повторно синхронизирует состояние.
+        """
         logger.info("Клиент подключается: %s", sid)
         token = auth.get("token") if auth else None
-        user_id, expired = services.auth.decode_token(token)
-
-        if not user_id:
+        if not token:
             return True
+
+        user_id, expired = services.auth.decode_token(token)
 
         if expired:
             logger.warning(
@@ -78,9 +92,15 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             await sio.emit(ServerEvent.AUTH_EXPIRED, room=sid)
             return True
 
+        if not user_id:
+            logger.warning("Некорректный токен при подключении (sid=%s)", sid)
+            await sio.emit(ServerEvent.AUTH_EXPIRED, room=sid)
+            return True
+
         user = await services.auth.get_user(user_id)
         if not user:
             logger.warning("Пользователь с ID %s не найден в базе данных", user_id)
+            await sio.emit(ServerEvent.AUTH_EXPIRED, room=sid)
             return True
 
         await sio.save_session(sid, {"user_id": user["id"]})
