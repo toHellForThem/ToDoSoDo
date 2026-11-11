@@ -2,9 +2,9 @@ name: Python application
 
 on:
   push:
-    branches: ["main", "epic/backend-refactor"]
+    branches: ["main", "epic/backend-contract", "epic/backend-refactor"]
   pull_request:
-    branches: ["main", "epic/backend-refactor"]
+    branches: ["main", "epic/backend-contract", "epic/backend-refactor"]
 
 permissions:
   contents: read
@@ -39,5 +39,39 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
 
+      - name: Check exported contract
+        run: python scripts/export_contract.py --check
+
       - name: Test with pytest
         run: pytest
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t todosodo-backend:ci .
+
+      - name: Run container
+        run: |
+          docker run -d --name todosodo-backend \
+            -e JWT_SECRET_KEY=test-secret-key-for-ci \
+            -p 8000:8000 todosodo-backend:ci
+          for i in $(seq 1 30); do
+            if python -c "import socket; socket.create_connection(('127.0.0.1', 8000), 2)"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs todosodo-backend
+          exit 1
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f todosodo-backend || true
