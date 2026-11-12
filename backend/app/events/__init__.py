@@ -2,7 +2,7 @@
 
 import socketio
 
-from app.events import auth, history, settings, todos
+from app.events import auth, history, settings, state, todos
 from app.services import Services
 
 
@@ -12,6 +12,7 @@ def register_all(sio: socketio.AsyncServer, services: Services) -> None:
     todos.register(sio, services)
     history.register(sio, services)
     settings.register(sio, services)
+    state.register(sio, services)
 
 
 __all__ = ["register_all"]

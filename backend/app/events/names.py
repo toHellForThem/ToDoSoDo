@@ -8,11 +8,13 @@ class ClientEvent:
     LOGIN = "client:login"
     LOGOUT = "client:logout"
 
+    GET_STATE = "client:get_state"
     GET_TODOS = "client:get_todos"
     SYNC_TODO = "client:sync_todo"
     DELETE_TODO = "client:delete_todo"
     CONFIRM_RESET = "client:confirm_reset"
     BULK_SYNC_TODOS = "client:bulk_sync_todos"
+    BULK_DELETE_TODOS = "client:bulk_delete_todos"
 
     GET_MONTH_HISTORY = "client:get_month_history"
     SYNC_DAILY_HISTORY = "client:sync_daily_history"
@@ -29,6 +31,7 @@ class ServerEvent:
     REGISTER_SUCCESS = "server:register_success"
     LOGIN_SUCCESS = "server:login_success"
 
+    STATE = "server:state"
     ALL_TODOS = "server:all_todos"
     TODO_UPDATED = "server:todo_updated"
     TODO_DELETED = "server:todo_deleted"
@@ -38,6 +41,7 @@ class ServerEvent:
 
     SETTINGS_UPDATED = "server:settings_updated"
 
+    ACK = "server:ack"
     ERROR = "server:error"
 
 

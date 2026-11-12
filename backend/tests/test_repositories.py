@@ -28,6 +28,16 @@ async def test_users_get_missing_returns_none(db):
     assert await repo.get_by_id(404) is None
 
 
+async def test_users_get_by_username_is_case_insensitive(db):
+    repo = UsersRepository(db)
+    await repo.create("bob", "hash", "{}")
+
+    user = await repo.get_by_username("BOB")
+
+    assert user is not None
+    assert user["username"] == "bob"
+
+
 async def test_users_update_settings(db):
     repo = UsersRepository(db)
     await repo.create("bob", "hash", "{}")
@@ -115,6 +125,65 @@ async def test_todos_reset_by_type(db, make_user):
     assert str(todos["t2"].progressNow) == "2"
 
 
+async def test_todos_reset_by_type_is_idempotent(db, make_user):
+    user_id = await make_user()
+    repo = TodosRepository(db)
+    await repo.upsert(
+        Todo(
+            id="t1",
+            text="daily",
+            type="daily",
+            completed=True,
+            progressNow=3,
+            updatedAt=10,
+        ),
+        user_id,
+    )
+
+    await repo.reset_by_type(user_id, "daily", 999)
+    await repo.reset_by_type(user_id, "daily", 999)
+
+    todo = (await repo.list_by_user(user_id))[0]
+    assert todo.updatedAt == 999
+    assert str(todo.progressNow) == "0"
+
+
+async def test_todos_reset_by_type_skips_deleted_and_newer(db, make_user):
+    user_id = await make_user()
+    repo = TodosRepository(db)
+    await repo.upsert(
+        Todo(
+            id="deleted",
+            text="daily",
+            type="daily",
+            completed=True,
+            progressNow=3,
+            deleted=True,
+            updatedAt=10,
+        ),
+        user_id,
+    )
+    await repo.upsert(
+        Todo(
+            id="newer",
+            text="daily",
+            type="daily",
+            completed=True,
+            progressNow=4,
+            updatedAt=1000,
+        ),
+        user_id,
+    )
+
+    await repo.reset_by_type(user_id, "daily", 999)
+
+    todos = {todo.id: todo for todo in await repo.list_by_user(user_id)}
+    assert todos["deleted"].completed is True
+    assert str(todos["deleted"].progressNow) == "3"
+    assert todos["newer"].completed is True
+    assert str(todos["newer"].progressNow) == "4"
+
+
 async def test_tombstone_add_and_exists(db, make_user):
     user_id = await make_user()
     repo = DeletedTodosRepository(db)
@@ -135,6 +204,28 @@ async def test_tombstone_scoped_by_user(db, make_user):
     await repo.add("t1", first, 1)
 
     assert await repo.exists(second, "t1") is False
+
+
+async def test_tombstone_delete_older_than(db, make_user):
+    user_id = await make_user()
+    repo = DeletedTodosRepository(db)
+    await repo.add("old", user_id, 100)
+    await repo.add("new", user_id, 200)
+
+    removed = await repo.delete_older_than(150)
+
+    assert removed == 1
+    assert await repo.exists(user_id, "old") is False
+    assert await repo.exists(user_id, "new") is True
+
+
+async def test_tombstone_exists_respects_cutoff(db, make_user):
+    user_id = await make_user()
+    repo = DeletedTodosRepository(db)
+    await repo.add("t1", user_id, 100)
+
+    assert await repo.exists(user_id, "t1", 50) is True
+    assert await repo.exists(user_id, "t1", 150) is False
 
 
 async def test_daily_history_month_filter(db, make_user):
