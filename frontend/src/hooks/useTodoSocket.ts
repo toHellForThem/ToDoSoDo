@@ -1,4 +1,4 @@
-import { useEffect, useRef, startTransition, Dispatch, SetStateAction } from 'react';
+import { useEffect, startTransition } from 'react';
 import Toast from 'react-native-toast-message';
 import { socket } from '../utils/socket';
 import { on } from '../contract/socket';
@@ -26,41 +26,15 @@ import {
   UserSettings,
   Todo,
   RpgHistoryItem,
-  AuthMode
 } from '../utils/storage';
 import { getLogicalDayStartMs } from '../utils/date';
+import { useAppStore } from '../store/appStore';
 
-
-interface UseTodoSocketProps {
-  setTodoList: Dispatch<SetStateAction<Todo[]>>;
-  setAuthMode: (mode: AuthMode) => void;
-  setAuthState: (state: string) => void;
-  setRpgHistory: Dispatch<SetStateAction<RpgHistoryItem[]>>;
-  setSettings: (settings: UserSettings) => void;
-  settings: UserSettings;
-  setMainTab?: (tab: string) => void;
+interface UseTodoSocketOptions {
   onSessionCleared?: () => void;
 }
 
-export const useTodoSocket = ({
-  setTodoList,
-  setAuthMode,
-  setAuthState,
-  setRpgHistory,
-  setSettings,
-  settings,
-  setMainTab,
-  onSessionCleared
-}: UseTodoSocketProps) => {
-  // Настройки читаются обработчиками через ref, чтобы подписки не
-  // пересоздавались при каждом изменении settings.
-  const settingsRef = useRef(settings);
-  const shouldReplaceTodosRef = useRef(false);
-
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-
+export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) => {
   useEffect(() => {
     setSyncErrorListener(message => {
       Toast.show({
@@ -75,24 +49,25 @@ export const useTodoSocket = ({
 
   useEffect(() => {
     const unsubscribers: Array<() => void> = [];
+    let shouldReplaceTodos = false;
 
     socket.on('connect', () => {
-      console.log('Connected to Server!');
       onReconnect();
     });
 
     unsubscribers.push(on(ServerEvent.LOGIN_SUCCESS, (data) => {
       const { username, token, settings: serverSettings } = data;
+      const store = useAppStore.getState();
 
       socket.auth = { username, token };
 
-      shouldReplaceTodosRef.current = true;
+      shouldReplaceTodos = true;
 
       const localTodos = TodoStorage.getAll();
       const localHistory = RpgStorage.getHistory();
 
-      setAuthMode('auth');
-      setAuthState('');
+      store.setAuthMode('auth');
+      store.setAuthState('');
       AuthStorage.setUsername(username);
       AuthStorage.setToken(token);
       setSyncMode('auth');
@@ -133,14 +108,15 @@ export const useTodoSocket = ({
       }
 
       AuthStorage.setSettings(finalSettings);
-      setSettings(finalSettings);
-      if (setMainTab && finalSettings?.main_page) {
-        setMainTab(finalSettings.main_page);
+      store.setSettings(finalSettings);
+      if (finalSettings?.main_page) {
+        store.setMainTab(finalSettings.main_page);
       }
     }));
 
     unsubscribers.push(on(ServerEvent.ALL_TODOS, (serverTodos) => {
-      const currentSettings = settingsRef.current;
+      const store = useAppStore.getState();
+      const currentSettings = store.settings;
       const startOfToday = getLogicalDayStartMs(
         currentSettings?.reset_time,
         currentSettings?.timezone
@@ -160,8 +136,8 @@ export const useTodoSocket = ({
         }
       });
 
-      if (shouldReplaceTodosRef.current) {
-        shouldReplaceTodosRef.current = false;
+      if (shouldReplaceTodos) {
+        shouldReplaceTodos = false;
 
         const processedTodos = serverTodos
           .filter(sItem => !tombstoneIds.has(sItem.id))
@@ -182,7 +158,7 @@ export const useTodoSocket = ({
           });
 
         startTransition(() => {
-          setTodoList(processedTodos);
+          store.setTodoList(processedTodos);
         });
 
         if (resetTypes.size > 0) {
@@ -194,7 +170,7 @@ export const useTodoSocket = ({
       }
 
       startTransition(() => {
-        setTodoList(localTodos => {
+        store.setTodoList(localTodos => {
           const merged = [...localTodos];
           let hasChanges = false;
 
@@ -243,7 +219,7 @@ export const useTodoSocket = ({
 
     unsubscribers.push(on(ServerEvent.TODO_UPDATED, (updatedTodo) => {
       startTransition(() => {
-        setTodoList(prev => {
+        useAppStore.getState().setTodoList(prev => {
           const index = prev.findIndex(t => t.id === updatedTodo.id);
           if (index !== -1) {
             const existing = prev[index];
@@ -262,30 +238,34 @@ export const useTodoSocket = ({
     unsubscribers.push(on(ServerEvent.TODO_DELETED, (deletedId) => {
       TombstoneStorage.remove(deletedId);
       startTransition(() => {
-        setTodoList(prev => prev.filter(todo => todo.id !== deletedId));
+        useAppStore.getState().setTodoList(prev =>
+          prev.filter(todo => todo.id !== deletedId)
+        );
       });
     }));
 
     unsubscribers.push(on(ServerEvent.REGISTER_SUCCESS, () => {
       startTransition(() => {
-        setAuthMode('');
-        setAuthState('login');
+        const store = useAppStore.getState();
+        store.setAuthMode('');
+        store.setAuthState('login');
       });
     }));
 
     unsubscribers.push(on(ServerEvent.AUTH_EXPIRED, () => {
       startTransition(() => {
+        const store = useAppStore.getState();
         // Истёкшая сессия не должна стирать локальные задачи и историю:
         // пользователь продолжает работать в local-режиме.
         AuthStorage.clearSession();
         // Незавершённый синк прошлого пользователя не должен влиять
         // на следующую сессию.
-        shouldReplaceTodosRef.current = false;
+        shouldReplaceTodos = false;
         onSessionCleared?.();
         socket.auth = {};
         setSyncMode('local');
-        setAuthMode('local');
-        setAuthState('login');
+        store.setAuthMode('local');
+        store.setAuthState('login');
         Toast.show({
           type: 'error',
           text1: 'Сессия истекла',
@@ -298,7 +278,7 @@ export const useTodoSocket = ({
     unsubscribers.push(on(ServerEvent.MONTH_HISTORY, (data) => {
       startTransition(() => {
         if (data && data.history) {
-          setRpgHistory(prev => {
+          useAppStore.getState().setRpgHistory(prev => {
             const merged = [...prev];
             data.history.forEach(srvLog => {
               const localIdx = merged.findIndex(h => h.date === srvLog.date);
@@ -316,7 +296,7 @@ export const useTodoSocket = ({
 
     unsubscribers.push(on(ServerEvent.DAILY_HISTORY_UPDATED, (data) => {
       startTransition(() => {
-        setRpgHistory(prev => {
+        useAppStore.getState().setRpgHistory(prev => {
           const index = prev.findIndex(h => h.date === data.date);
           if (index !== -1) {
             const newList = [...prev];
@@ -330,10 +310,11 @@ export const useTodoSocket = ({
 
     unsubscribers.push(on(ServerEvent.SETTINGS_UPDATED, (serverSettings) => {
       startTransition(() => {
+        const store = useAppStore.getState();
         AuthStorage.setSettings(serverSettings);
-        setSettings(serverSettings);
-        if (setMainTab && serverSettings?.main_page) {
-          setMainTab(serverSettings.main_page);
+        store.setSettings(serverSettings);
+        if (serverSettings?.main_page) {
+          store.setMainTab(serverSettings.main_page);
         }
       });
     }));
@@ -353,7 +334,7 @@ export const useTodoSocket = ({
 
       const applyServerTodo = (serverTodo: Todo) => {
         startTransition(() => {
-          setTodoList(prev => {
+          useAppStore.getState().setTodoList(prev => {
             const index = prev.findIndex(t => t.id === serverTodo.id);
             if (index === -1) {
               return [...prev, serverTodo];
@@ -367,21 +348,24 @@ export const useTodoSocket = ({
 
       const removeTodo = (id: string) => {
         startTransition(() => {
-          setTodoList(prev => prev.filter(t => t.id !== id));
+          useAppStore.getState().setTodoList(prev =>
+            prev.filter(t => t.id !== id)
+          );
         });
       };
 
       const applyServerSettings = (serverSettings: UserSettings) => {
+        const store = useAppStore.getState();
         AuthStorage.setSettings(serverSettings);
-        setSettings(serverSettings);
-        if (setMainTab && serverSettings?.main_page) {
-          setMainTab(serverSettings.main_page);
+        store.setSettings(serverSettings);
+        if (serverSettings?.main_page) {
+          store.setMainTab(serverSettings.main_page);
         }
       };
 
       const applyServerHistory = (serverEntry: RpgHistoryItem) => {
         startTransition(() => {
-          setRpgHistory(prev => {
+          useAppStore.getState().setRpgHistory(prev => {
             const index = prev.findIndex(h => h.date === serverEntry.date);
             if (index === -1) {
               return [...prev, serverEntry];
@@ -469,5 +453,5 @@ export const useTodoSocket = ({
       socket.off('connect');
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [setTodoList, setAuthMode, setAuthState, setRpgHistory, setSettings, setMainTab, onSessionCleared]);
+  }, [onSessionCleared]);
 };
