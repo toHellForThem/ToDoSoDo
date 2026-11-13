@@ -2,9 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCommands, useScope } from '../commands';
 import type { Command } from '../commands';
 import { useTranslation } from '../utils/LanguageContext';
-import { parseHabitsDetail, type DailyStats } from '../domain/daily';
+import {
+  computeHabitPoints,
+  parseHabitsDetail,
+  type DailyStats,
+} from '../domain/daily';
 import type { RpgHistoryItem } from '../utils/storage';
 import type { CalendarCell, SelectedDayDetail } from '../components/CalendarModal';
+import { formatMonthKey } from '../sync/history';
+import { useMonthHistory } from './useMonthHistory';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
@@ -46,6 +52,10 @@ export const useRpgCalendar = ({
       setViewDate(today);
     }
   }, [isCalendarVisible, today]);
+
+  const viewMonth = useMemo(() => formatMonthKey(viewDate), [viewDate]);
+  const { status: monthHistoryStatus, retry: retryMonthHistory } =
+    useMonthHistory(viewMonth, isCalendarVisible);
 
   const handlePrevMonth = () => {
     setViewDate(prev => {
@@ -196,12 +206,6 @@ export const useRpgCalendar = ({
   const displayProgress = isTodaySelected
     ? Math.round(stats.dailyProgress * 100)
     : Math.round((selectedDayDetail?.log?.daily_progress || 0) * 100);
-  const displayPosPoints = isTodaySelected
-    ? stats.posPoints
-    : (selectedDayDetail?.log?.pos_points || 0);
-  const displayNegPoints = isTodaySelected
-    ? stats.negPoints
-    : (selectedDayDetail?.log?.neg_points || 0);
 
   const dayHabits = useMemo(() => {
     if (!selectedDayDetail) return [];
@@ -213,18 +217,61 @@ export const useRpgCalendar = ({
     );
   }, [selectedDayDetail, todayStr, stats.habits]);
 
-  const displayNeuPoints = useMemo(() => {
-    if (selectedDayDetail?.dateStr === todayStr) {
-      return stats.neutralPoints;
+  // Очки считаем из `habits_detail` и для сегодня, и для прошлых дней —
+  // так дневная сводка не расходится с архивом.
+  const dayPoints = useMemo(() => {
+    if (!selectedDayDetail) {
+      return { posPoints: 0, negPoints: 0, neutralPoints: 0 };
     }
-    return dayHabits
-      .filter(h => h.contribution === 0)
-      .reduce((sum, h) => sum + h.progressNow, 0);
-  }, [selectedDayDetail, todayStr, stats.neutralPoints, dayHabits]);
+    if (selectedDayDetail.dateStr === todayStr) {
+      return {
+        posPoints: stats.posPoints,
+        negPoints: stats.negPoints,
+        neutralPoints: stats.neutralPoints,
+      };
+    }
+
+    const habits = parseHabitsDetail(selectedDayDetail.log?.habits_detail);
+    if (habits.length > 0) {
+      return computeHabitPoints(habits);
+    }
+
+    // Старые записи без `habits_detail`: используем сохранённые агрегаты.
+    return {
+      posPoints: selectedDayDetail.log?.pos_points || 0,
+      negPoints: selectedDayDetail.log?.neg_points || 0,
+      neutralPoints: 0,
+    };
+  }, [selectedDayDetail, todayStr, stats]);
+
+  const selectedDateStr = selectedDayDetail?.dateStr;
+  useEffect(() => {
+    if (!selectedDateStr) return;
+    const log = rpgHistory.find(h => h.date === selectedDateStr);
+
+    setSelectedDayDetail(prev => {
+      if (!prev || prev.dateStr !== selectedDateStr) return prev;
+      if (!log || prev.log === log) return prev;
+      if (
+        prev.log.updatedAt === log.updatedAt &&
+        prev.log.mood === log.mood &&
+        prev.log.daily_progress === log.daily_progress &&
+        prev.log.pos_points === log.pos_points &&
+        prev.log.neg_points === log.neg_points &&
+        prev.log.habits_detail === log.habits_detail
+      ) {
+        return prev;
+      }
+      return { ...prev, log };
+    });
+  }, [rpgHistory, selectedDateStr, setSelectedDayDetail]);
 
   return {
     today,
     viewDate,
+    viewMonth,
+    monthHistoryStatus,
+    retryMonthHistory,
     selectedDayDetail,
     setSelectedDayDetail,
     isHabitsExpanded,
@@ -237,9 +284,9 @@ export const useRpgCalendar = ({
     currentMonthName,
     selectedDayMonthGenitive,
     displayProgress,
-    displayPosPoints,
-    displayNegPoints,
-    displayNeuPoints,
+    displayPosPoints: dayPoints.posPoints,
+    displayNegPoints: dayPoints.negPoints,
+    displayNeuPoints: dayPoints.neutralPoints,
     dayHabits,
   };
 };

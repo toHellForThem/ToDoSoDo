@@ -8,7 +8,13 @@ import {
   flush,
   handleAck,
   handleError,
+  invalidateMonthHistory,
+  mergeHistoryEntries,
   onReconnect,
+  rejectMonthHistory,
+  resetPendingMonthRequests,
+  resolveMonthHistory,
+  retryPendingMonths,
   setSyncMode,
   setSyncErrorListener,
 } from '../sync';
@@ -59,6 +65,11 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
 
     socket.on('connect', () => {
       onReconnect();
+      retryPendingMonths();
+    });
+
+    socket.on('disconnect', () => {
+      resetPendingMonthRequests();
     });
 
     unsubscribers.push(on(ServerEvent.LOGIN_SUCCESS, (data) => {
@@ -78,6 +89,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
       AuthStorage.setUsername(username);
       AuthStorage.setToken(token);
       setSyncMode('auth');
+      invalidateMonthHistory();
 
       // Сначала досылаем жёсткие удаления, накопленные офлайн.
       TombstoneStorage.getAll().forEach(tombstone => {
@@ -258,6 +270,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
         onSessionCleared?.();
         socket.auth = {};
         setSyncMode('local');
+        invalidateMonthHistory();
         store.setAuthMode('local');
         store.setAuthState('login');
         Toast.show({
@@ -270,21 +283,28 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
     }));
 
     unsubscribers.push(on(ServerEvent.MONTH_HISTORY, (data) => {
-      startTransition(() => {
-        if (data && data.history) {
-          useAppStore.getState().setRpgHistory(prev => {
-            const merged = [...prev];
-            data.history.forEach(srvLog => {
-              const localIdx = merged.findIndex(h => h.date === srvLog.date);
-              if (localIdx === -1) {
-                merged.push(srvLog);
-              } else {
-                merged[localIdx] = srvLog;
-              }
-            });
-            return merged;
-          });
-        }
+      if (!data) return;
+
+      resolveMonthHistory(data.month, data.request_id);
+
+      const serverEntries = (Array.isArray(data.history) ? data.history : [])
+        .filter(entry => entry.date.startsWith(data.month));
+      if (serverEntries.length === 0) return;
+
+      // «Сухой» расчёт от текущего стора — только чтобы собрать записи
+      // для досылки.  Сам апдейтер остаётся чистым.
+      const state = useAppStore.getState();
+      const dryRun = mergeHistoryEntries(state.rpgHistory, serverEntries);
+
+      if (dryRun.changed) {
+        useAppStore.getState().setRpgHistory(prev => {
+          const result = mergeHistoryEntries(prev, serverEntries);
+          return result.changed ? result.next : prev;
+        });
+      }
+
+      dryRun.localNewer.forEach(entry => {
+        send(ClientEvent.SYNC_DAILY_HISTORY, entry);
       });
     }));
 
@@ -428,6 +448,9 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
 
     unsubscribers.push(on(ServerEvent.ERROR, (error: ServerErrorPayload) => {
       handleError(error);
+      if (error.event === ClientEvent.GET_MONTH_HISTORY) {
+        rejectMonthHistory(error.request_id);
+      }
       if (error.code === 'unauthorized') {
         return;
       }
@@ -441,6 +464,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
 
     return () => {
       socket.off('connect');
+      socket.off('disconnect');
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [onSessionCleared]);

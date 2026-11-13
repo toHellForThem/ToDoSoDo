@@ -188,6 +188,17 @@ export const getStyles = (theme: Theme) => {
       fontWeight: 'bold',
       color: theme.colors.text.primary,
     },
+    calendarStatusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.md,
+    },
+    calendarStatusText: {
+      fontSize: 12,
+      color: theme.colors.text.secondary,
+    },
     calendarGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',

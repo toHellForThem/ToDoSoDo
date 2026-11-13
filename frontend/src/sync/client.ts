@@ -74,7 +74,8 @@ export const setSyncMode = (next: SyncMode): void => {
 
 export const getSyncMode = (): SyncMode => mode;
 
-const isOnline = (): boolean => mode === 'auth' && socket.connected;
+/** Есть ли живое соединение с сервером в auth-режиме. */
+export const isOnline = (): boolean => mode === 'auth' && socket.connected;
 
 /**
  * Отправляет операцию.  В auth-режиме при живом соединении — сразу,

@@ -1,9 +1,16 @@
 import { memo, Dispatch, SetStateAction } from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import {
+  ActivityIndicator,
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RpgHistoryItem } from '../utils/storage';
 import { Theme } from '../theme/theme';
 import { TranslationDict } from '../utils/translations';
+import type { MonthHistoryStatus } from '../sync/history';
 import { CalendarGrid } from './calendar/CalendarGrid';
 import { CalendarDayDetail } from './calendar/CalendarDayDetail';
 import {
@@ -20,6 +27,8 @@ interface CalendarModalProps {
   setCalendarVisible: (visible: boolean) => void;
   currentMonthName: string;
   viewDate: Date;
+  monthHistoryStatus: MonthHistoryStatus;
+  onRetryMonthHistory: () => void;
   calendarCells: CalendarCell[];
   selectedDayDetail: SelectedDayDetail | null;
   setSelectedDayDetail: (detail: SelectedDayDetail | null) => void;
@@ -50,6 +59,8 @@ export const CalendarModal = memo(({
   setCalendarVisible,
   currentMonthName,
   viewDate,
+  monthHistoryStatus,
+  onRetryMonthHistory,
   calendarCells,
   selectedDayDetail,
   setSelectedDayDetail,
@@ -164,6 +175,47 @@ export const CalendarModal = memo(({
           </View>
 
           <View style={{ height: 42 }} />
+
+          {monthHistoryStatus === 'loading' && (
+            <View style={styles.calendarStatusRow}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text style={styles.calendarStatusText}>
+                {t('rpg_cal_loading')}
+              </Text>
+            </View>
+          )}
+
+          {(monthHistoryStatus === 'offline' ||
+            monthHistoryStatus === 'error') && (
+            <TouchableOpacity
+              style={styles.calendarStatusRow}
+              onPress={onRetryMonthHistory}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={
+                  monthHistoryStatus === 'offline'
+                    ? 'cloud-offline-outline'
+                    : 'alert-circle-outline'
+                }
+                size={16}
+                color={theme.colors.text.secondary}
+              />
+              <Text style={styles.calendarStatusText}>
+                {monthHistoryStatus === 'offline'
+                  ? t('rpg_cal_offline')
+                  : t('rpg_cal_error')}
+              </Text>
+              <Text
+                style={[
+                  styles.calendarStatusText,
+                  { color: theme.colors.primary, fontWeight: '600' },
+                ]}
+              >
+                {t('rpg_cal_retry')}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <CalendarGrid
             calendarCells={calendarCells}

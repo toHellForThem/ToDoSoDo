@@ -49,6 +49,10 @@ const ruDict = {
     rpg_cal_progress: 'Прогресс',
     rpg_cal_habits: 'Привычки',
     rpg_cal_no_habits: 'Нет записанных привычек за этот день',
+    rpg_cal_loading: 'Загружаем историю...',
+    rpg_cal_offline: 'Офлайн: показана локальная история',
+    rpg_cal_error: 'Не удалось загрузить историю',
+    rpg_cal_retry: 'Повторить',
 
     mood_1: 'Ужасно',
     mood_2: 'Плохо',
@@ -177,6 +181,10 @@ export const translations: Record<string, TranslationDict> = {
         rpg_cal_progress: 'Progress',
         rpg_cal_habits: 'Habits',
         rpg_cal_no_habits: 'No habits recorded for this day',
+        rpg_cal_loading: 'Loading history...',
+        rpg_cal_offline: 'Offline: showing local history',
+        rpg_cal_error: 'Failed to load history',
+        rpg_cal_retry: 'Retry',
 
         mood_1: 'Awful',
         mood_2: 'Bad',

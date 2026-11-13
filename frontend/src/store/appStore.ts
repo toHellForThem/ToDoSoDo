@@ -25,7 +25,7 @@ import {
   getLogicalDateStr,
   getLogicalDayStartMs,
 } from '../utils/date';
-import { computeDailyStats } from '../domain/daily';
+import { buildHistoryEntry, computeDailyStats } from '../domain/daily';
 import { resetStaleTodos } from '../domain/reset';
 import {
   getProgressEnd,
@@ -394,15 +394,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     const stats = computeDailyStats(todoList, todayStr);
 
     const existingIndex = rpgHistory.findIndex(h => h.date === todayStr);
-    const updatedEntry: RpgHistoryItem = {
-      date: todayStr,
-      mood: moodValue,
-      daily_progress: stats.dailyProgress,
-      pos_points: stats.posPoints,
-      neg_points: stats.negPoints,
-      habits_detail: stats.habitsDetail,
-      updatedAt: Date.now(),
-    };
+    const updatedEntry: RpgHistoryItem = buildHistoryEntry(
+      todayStr,
+      stats,
+      moodValue
+    );
 
     const newHistory = [...rpgHistory];
     if (existingIndex !== -1) {
