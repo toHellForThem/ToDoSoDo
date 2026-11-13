@@ -265,6 +265,9 @@ export const useTodoSocket = ({
         // Истёкшая сессия не должна стирать локальные задачи и историю:
         // пользователь продолжает работать в local-режиме.
         AuthStorage.clearSession();
+        // Незавершённый синк прошлого пользователя не должен влиять
+        // на следующую сессию.
+        shouldReplaceTodosRef.current = false;
         onSessionCleared?.();
         socket.auth = {};
         setSyncMode('local');

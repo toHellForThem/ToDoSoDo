@@ -191,17 +191,27 @@ export const handleError = (error: ServerErrorPayload): void => {
   const affectedIds = new Set(affected.map(item => item.requestId));
 
   if (RETRYABLE_ERRORS.has(error.code)) {
+    // Исчерпавшие лимит операции больше не ретраим, иначе получим
+    // бесконечный цикл отправки.
+    const exhausted = affected.filter(item => item.attempts >= 5);
+    exhausted.forEach(item => {
+      console.error('[Sync] Max retry attempts reached for item:', item);
+    });
+    const exhaustedIds = new Set(exhausted.map(item => item.requestId));
+
     Outbox.saveAll(
-      items.map(item =>
-        affectedIds.has(item.requestId)
-          ? {
-              ...item,
-              sent: false,
-              batchId: undefined,
-              attempts: item.attempts + 1,
-            }
-          : item
-      )
+      items
+        .filter(item => !exhaustedIds.has(item.requestId))
+        .map(item =>
+          affectedIds.has(item.requestId)
+            ? {
+                ...item,
+                sent: false,
+                batchId: undefined,
+                attempts: item.attempts + 1,
+              }
+            : item
+        )
     );
   } else {
     Outbox.saveAll(items.filter(item => !affectedIds.has(item.requestId)));
