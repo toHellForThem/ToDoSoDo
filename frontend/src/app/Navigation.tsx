@@ -20,7 +20,8 @@ export const Navigation = ({ isWideScreen }: NavigationProps) => {
     return <SettingsTab />;
   }
 
-  if (activeView === 'recycle') {
+  // На мобильном корзина занимает весь экран, на десктопе — активную колонку.
+  if (activeView === 'recycle' && !isWideScreen) {
     return <RecycleTab context={mainTab} />;
   }
 

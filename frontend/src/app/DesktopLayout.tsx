@@ -5,6 +5,7 @@ import { useAppStore } from '../store/appStore';
 import { TodoTab } from '../tabs/TodoTab';
 import { DailyTab } from '../tabs/DailyTab';
 import { RpgTab } from '../tabs/RpgTab';
+import { RecycleTab } from '../tabs/RecycleTab';
 
 type ColumnTab = 'todo' | 'daily' | 'rpg';
 
@@ -18,6 +19,7 @@ const renderTab = (tab: ColumnTab) => {
 export const DesktopLayout = () => {
   const settings = useAppStore(state => state.settings);
   const mainTab = useAppStore(state => state.mainTab);
+  const activeView = useAppStore(state => state.activeView);
   const handleTabChange = useAppStore(state => state.handleTabChange);
   const styles = useStyles(getStyles);
 
@@ -35,7 +37,11 @@ export const DesktopLayout = () => {
         <Text style={styles.columnTitle}>{title}</Text>
       </View>
       <View style={styles.columnContent}>
-        {renderTab(tab)}
+        {mainTab === tab && activeView === 'recycle' ? (
+          <RecycleTab context={tab} />
+        ) : (
+          renderTab(tab)
+        )}
       </View>
     </View>
   );
