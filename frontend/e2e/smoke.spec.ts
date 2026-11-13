@@ -32,10 +32,10 @@ test('smoke: login, add task, sync, calendar', async ({ page }) => {
   await page.getByTestId('auth-submit').click();
 
   // Успешный вход: карточка профиля показывает выход из облака.
-  await expect(page.getByText('Log Out')).toBeVisible();
+  await expect(page.getByText(/log out|выйти/i)).toBeVisible();
 
   // Добавляем задачу на вкладке To Do.
-  await page.getByText('To Do', { exact: true }).click();
+  await page.getByTestId('tab-todo').click();
   await page.getByTestId('todo-input').fill(taskText);
   await page.getByTestId('todo-input').press('Enter');
   await expect(page.getByText(taskText)).toBeVisible();
@@ -45,7 +45,7 @@ test('smoke: login, add task, sync, calendar', async ({ page }) => {
   await expect(page.getByText(taskText)).toBeVisible();
 
   // Календарь открывается на RPG-дашборде.
-  await page.getByText('RPG', { exact: true }).click();
+  await page.getByTestId('tab-rpg').click();
   await page.getByTestId('open-calendar').click();
   await expect(page.getByTestId('calendar-modal')).toBeVisible();
 });

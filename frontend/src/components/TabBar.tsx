@@ -62,6 +62,7 @@ export const TabBar = memo(function TabBar() {
   return (
     <View style={styles.footer}>
       <TouchableOpacity
+        testID="tab-rpg"
         style={[
           styles.tab,
           isRpgActive && styles.activeTab,
@@ -74,6 +75,7 @@ export const TabBar = memo(function TabBar() {
       </TouchableOpacity>
 
       <TouchableOpacity
+        testID="tab-todo"
         style={[
           styles.tab,
           isTodoActive && styles.activeTab,
@@ -86,6 +88,7 @@ export const TabBar = memo(function TabBar() {
       </TouchableOpacity>
 
       <TouchableOpacity
+        testID="tab-daily"
         style={[
           styles.tab,
           isDailyActive && styles.activeTab,

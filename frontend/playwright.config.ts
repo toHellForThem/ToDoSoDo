@@ -10,6 +10,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const E2E_PORT = 8081;
 const API_PORT = 8001;
+// Локально можно переиспользовать уже запущенный бэкенд:
+// E2E_BACKEND_URL=http://127.0.0.1:8000 npm run e2e
+const EXTERNAL_BACKEND = process.env.E2E_BACKEND_URL;
 
 export default defineConfig({
   testDir: './e2e',
@@ -33,19 +36,23 @@ export default defineConfig({
     },
   ],
   webServer: [
-    {
-      command: 'python -m uvicorn main:app --host 127.0.0.1 --port 8001',
-      cwd: '../backend',
-      url: `http://127.0.0.1:${API_PORT}/health`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 60_000,
-      env: {
-        JWT_SECRET_KEY: 'e2e-secret-key-' + 'x'.repeat(64),
-        DATABASE_PATH: join(tmpdir(), 'todosodo-e2e.db'),
-        LOG_LEVEL: 'WARNING',
-        SIO_CORS_ORIGINS: `http://127.0.0.1:${E2E_PORT},http://localhost:${E2E_PORT}`,
-      },
-    },
+    ...(EXTERNAL_BACKEND
+      ? []
+      : [
+          {
+            command: 'python -m uvicorn main:app --host 127.0.0.1 --port 8001',
+            cwd: '../backend',
+            url: `http://127.0.0.1:${API_PORT}/health`,
+            reuseExistingServer: !process.env.CI,
+            timeout: 60_000,
+            env: {
+              JWT_SECRET_KEY: 'e2e-secret-key-' + 'x'.repeat(64),
+              DATABASE_PATH: join(tmpdir(), 'todosodo-e2e.db'),
+              LOG_LEVEL: 'WARNING',
+              SIO_CORS_ORIGINS: `http://127.0.0.1:${E2E_PORT},http://localhost:${E2E_PORT}`,
+            },
+          },
+        ]),
     {
       command: `node e2e/static-server.mjs dist ${E2E_PORT}`,
       url: `http://127.0.0.1:${E2E_PORT}`,
