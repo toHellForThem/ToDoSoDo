@@ -308,6 +308,8 @@ export const RpgTab = memo(() => {
         setCalendarVisible={setCalendarVisible}
         currentMonthName={calendar.currentMonthName}
         viewDate={calendar.viewDate}
+        monthHistoryStatus={calendar.monthHistoryStatus}
+        onRetryMonthHistory={calendar.retryMonthHistory}
         calendarCells={calendar.calendarCells}
         selectedDayDetail={calendar.selectedDayDetail}
         setSelectedDayDetail={calendar.setSelectedDayDetail}
