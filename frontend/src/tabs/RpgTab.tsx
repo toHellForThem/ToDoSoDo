@@ -33,6 +33,14 @@ import { useShortcuts } from '../hooks/useShortcuts';
 import { Todo, UserSettings, RpgHistoryItem, TodoType } from '../utils/storage';
 
 
+interface MoodConfigItem {
+  icon: string;
+  color: string;
+  glassBg: string;
+  dashboardBg: string;
+  label: string;
+}
+
 interface RpgTabProps {
   rpgHistory: RpgHistoryItem[];
   todoList: Todo[];
@@ -104,7 +112,7 @@ export const RpgTab = memo(({
   const { t } = useTranslation();
   const isDark = settings?.theme === 'dark';
 
-  const activeMoodConfig = useMemo(() => {
+  const activeMoodConfig = useMemo<Record<number, MoodConfigItem>>(() => {
     const isMint = settings?.theme === 'mint';
     const isPink = settings?.theme === 'pink';
     if (isDark) {
@@ -148,7 +156,7 @@ export const RpgTab = memo(({
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  const flatListRef = useRef(null);
+  const flatListRef = useRef<any>(null);
   const currentScrollY = useRef(0);
 
   const todayStr = useMemo(
@@ -375,10 +383,10 @@ export const RpgTab = memo(({
   };
 
   const calendarShortcuts = useMemo(() => {
-    const map = {};
+    const map: Record<string, (e: any) => void> = {};
     if (!isCalendarVisible) return map;
 
-    const navigateDay = (offset) => {
+    const navigateDay = (offset: number) => {
       let targetCell = null;
       if (!selectedDayDetail?.dateStr) {
         targetCell = calendarCells.find(c => c.dateStr === todayStr);
@@ -403,31 +411,31 @@ export const RpgTab = memo(({
       }
     };
 
-    map['arrowleft'] = (e) => {
+    map['arrowleft'] = (e: any) => {
       e.preventDefault();
       navigateDay(-1);
     };
 
-    map['arrowright'] = (e) => {
+    map['arrowright'] = (e: any) => {
       e.preventDefault();
       navigateDay(1);
     };
 
-    map['arrowup'] = (e) => {
+    map['arrowup'] = (e: any) => {
       e.preventDefault();
       navigateDay(-7);
     };
 
-    map['arrowdown'] = (e) => {
+    map['arrowdown'] = (e: any) => {
       e.preventDefault();
       navigateDay(7);
     };
 
-    map['enter'] = (e) => {
+    map['enter'] = (e: any) => {
       e.preventDefault();
       setIsHabitsExpanded(prev => !prev);
     };
-    map['space'] = (e) => {
+    map['space'] = (e: any) => {
       e.preventDefault();
       setIsHabitsExpanded(prev => !prev);
     };
