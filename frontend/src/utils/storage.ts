@@ -4,6 +4,9 @@ import { createMMKV } from 'react-native-mmkv';
 
 export type TodoType = 'todo' | 'daily' | 'habit' | 'piggy_bank' | 'tv_show' | 'movie';
 
+/** Режим авторизации: локальный, авторизованный или промежуточный (пустой). */
+export type AuthMode = 'local' | 'auth' | '';
+
 export interface ShortcutSettings {
   rpg_tab: string;
   todo_tab: string;
@@ -51,6 +54,12 @@ export interface RpgHistoryItem {
   pos_points: number;
   neg_points: number;
   habits_detail: string;
+  updatedAt: number;
+}
+
+/** Локальная метка жёсткого удаления, которую нужно дослать на сервер. */
+export interface TodoTombstone {
+  id: string;
   updatedAt: number;
 }
 
@@ -159,6 +168,44 @@ export const RpgStorage = {
   }
 };
 
+/**
+ * Tombstones жёстких удалений.  Хранятся отдельно от списка задач, чтобы
+ * удаление не терялось, пока сервер недоступен, и досылалось при reconnect.
+ */
+export const TombstoneStorage = {
+  getAll: (): TodoTombstone[] => {
+    const data = core.get('todo_tombstones');
+    if (!data) return [];
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  },
+  add: (id: string): void => {
+    try {
+      const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
+      tombstones.push({ id, updatedAt: Date.now() });
+      core.set('todo_tombstones', JSON.stringify(tombstones));
+    } catch (error) {
+      // Переполнение localStorage/приватный режим не должны ломать удаление.
+      console.warn('Failed to persist todo tombstone:', error);
+    }
+  },
+  remove: (id: string): void => {
+    try {
+      const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
+      core.set('todo_tombstones', JSON.stringify(tombstones));
+    } catch (error) {
+      console.warn('Failed to remove todo tombstone:', error);
+    }
+  },
+  clear: (): void => {
+    core.remove('todo_tombstones');
+  }
+};
+
 export const AuthStorage = {
   setUsername: (username: string): void => core.set('username', username),
   getUsername: (): string | null => core.get('username'),
@@ -188,10 +235,19 @@ export const AuthStorage = {
   setServerUrl: (url: string): void => core.set('server_url', url),
   getServerUrl: (): string | null => core.get('server_url'),
 
+  /** Сбрасывает только сессию, сохраняя локальные данные и настройки. */
+  clearSession: (): void => {
+    core.remove('username');
+    core.remove('user_token');
+    core.remove('server_url');
+  },
+
   logout: (): void => {
     core.remove('username');
     core.remove('user_token');
     core.remove('user_settings');
     core.remove('server_url');
+    // Явный выход: tombstones прошлого пользователя не должны уйти под новым.
+    TombstoneStorage.clear();
   }
 };

@@ -27,7 +27,7 @@ import { useTodoActions } from './src/hooks/useTodoActions';
 import { useTodoSocket } from './src/hooks/useTodoSocket';
 import { useMoodSheet } from './src/hooks/useMoodSheet';
 import { useShortcuts } from './src/hooks/useShortcuts';
-import { AuthStorage, DEFAULT_SHORTCUTS, Todo, UserSettings } from './src/utils/storage';
+import { AuthStorage, AuthMode, DEFAULT_SHORTCUTS, Todo, UserSettings } from './src/utils/storage';
 import { getLogicalDateStr, getLogicalDayIndex } from './src/utils/date';
 import { socket } from './src/utils/socket';
 
@@ -184,7 +184,7 @@ export default function App() {
     return localSettings.main_page || 'todo';
   });
   const [activeView, setActiveView] = useState<'list' | 'recycle' | 'settings'>('list');
-  const [authMode, setAuthMode] = useState<string>('local');
+  const [authMode, setAuthMode] = useState<AuthMode>('local');
   const [authState, setAuthState] = useState<string>('');
   const [focusedGoalId, setFocusedGoalId] = useState<string | null>(null);
   const [flashingGoalId, setFlashingGoalId] = useState<string | null>(null);
@@ -224,7 +224,8 @@ export default function App() {
     setRpgHistory,
     handleMoodChange,
     editTask,
-  } = useTodoActions(mainTab, settings);
+    resetHistorySync,
+  } = useTodoActions(mainTab, settings, authMode);
 
   const handleDeleteTodo = useCallback((id: string) => {
     if (settings.soft_delete) {
@@ -255,7 +256,8 @@ export default function App() {
     setRpgHistory,
     setSettings,
     settings,
-    setMainTab
+    setMainTab,
+    onSessionCleared: resetHistorySync
   });
 
   const [isMoodSheetOpen, setIsMoodSheetOpen] = useState(false);

@@ -3,10 +3,12 @@ import {
   TodoStorage,
   RpgStorage,
   AuthStorage,
+  TombstoneStorage,
   Todo,
   RpgHistoryItem,
   UserSettings,
-  TodoType
+  TodoType,
+  AuthMode
 } from '../utils/storage';
 import { socket } from '../utils/socket';
 import { request } from '../utils/protocol';
@@ -18,7 +20,11 @@ import {
 import { computeDailyStats } from '../utils/dailyStats';
 
 
-export const useTodoActions = (mainTab: string, settings: UserSettings) => {
+export const useTodoActions = (
+  mainTab: string,
+  settings: UserSettings,
+  authMode?: AuthMode
+) => {
   const [todoList, setTodoList] = useState(() => {
     const local = TodoStorage.getAll();
     const list = Array.isArray(local) ? local : [];
@@ -58,6 +64,21 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
   });
   const [rpgHistory, setRpgHistory] = useState(() => RpgStorage.getHistory());
   const isHistoryLoadedRef = useRef(!AuthStorage.getToken());
+  const rpgHistoryRef = useRef(rpgHistory);
+  const lastHistorySyncRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    rpgHistoryRef.current = rpgHistory;
+  }, [rpgHistory]);
+
+  const resetHistorySync = useCallback(() => {
+    lastHistorySyncRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    // Смена аккаунта/разлогин: при следующем входе историю нужно отправить заново.
+    resetHistorySync();
+  }, [authMode, resetHistorySync]);
 
   const setRpgHistoryWrapper = useCallback((value: SetStateAction<RpgHistoryItem[]>) => {
     isHistoryLoadedRef.current = true;
@@ -116,43 +137,41 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
     const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
     const stats = computeDailyStats(todoList, todayStr);
 
-    setRpgHistory(prev => {
-      const existingEntry = prev.find(h => h.date === todayStr);
-      const moodValue = existingEntry ? existingEntry.mood : null;
-
-      const updatedEntry = {
-        date: todayStr,
-        mood: moodValue,
-        daily_progress: stats.dailyProgress,
-        pos_points: stats.posPoints,
-        neg_points: stats.negPoints,
-        habits_detail: stats.habitsDetail,
-        updatedAt: Date.now()
-      };
-
-      if (
-        existingEntry &&
-        existingEntry.daily_progress === stats.dailyProgress &&
-        existingEntry.pos_points === stats.posPoints &&
-        existingEntry.neg_points === stats.negPoints &&
-        existingEntry.habits_detail === stats.habitsDetail
-      ) {
-        return prev;
-      }
-
-      const existingIndex = prev.findIndex(h => h.date === todayStr);
-      let newHistory;
-      if (existingIndex !== -1) {
-        newHistory = [...prev];
-        newHistory[existingIndex] = updatedEntry;
-      } else {
-        newHistory = [...prev, updatedEntry];
-      }
-
-      socket.emit('client:sync_daily_history', request(updatedEntry));
-      return newHistory;
+    // Эмитим только когда реально изменились цифры дня, а не на каждое
+    // изменение списка задач (переименование, порядок и т.п.).
+    const signature = JSON.stringify({
+      date: todayStr,
+      daily_progress: stats.dailyProgress,
+      pos_points: stats.posPoints,
+      neg_points: stats.negPoints,
+      habits_detail: stats.habitsDetail,
     });
-  }, [todoList, settings]);
+    if (lastHistorySyncRef.current === signature) return;
+    lastHistorySyncRef.current = signature;
+
+    const existingEntry = rpgHistoryRef.current.find(h => h.date === todayStr);
+    const updatedEntry = {
+      date: todayStr,
+      mood: existingEntry ? existingEntry.mood : null,
+      daily_progress: stats.dailyProgress,
+      pos_points: stats.posPoints,
+      neg_points: stats.negPoints,
+      habits_detail: stats.habitsDetail,
+      updatedAt: Date.now()
+    };
+
+    setRpgHistory(prev => {
+      const existingIndex = prev.findIndex(h => h.date === todayStr);
+      if (existingIndex !== -1) {
+        const newHistory = [...prev];
+        newHistory[existingIndex] = updatedEntry;
+        return newHistory;
+      }
+      return [...prev, updatedEntry];
+    });
+
+    socket.emit('client:sync_daily_history', request(updatedEntry));
+  }, [todoList, settings?.reset_time, settings?.timezone]);
 
   const addTask = useCallback((
     task: string,
@@ -323,13 +342,11 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
   }, []);
 
   const deleteTodo = useCallback((id: string) => {
-    setTodoList(prev => {
-      const todoToDelete = prev.find(item => item.id === id);
-      if (todoToDelete) {
-        socket.emit('client:delete_todo', request(id));
-      }
-      return prev.filter(item => item.id !== id);
-    });
+    setTodoList(prev => prev.filter(item => item.id !== id));
+    // Жёсткое удаление фиксируем локально, чтобы офлайн-удаление
+    // не потерялось и дослалось на сервер при reconnect.
+    TombstoneStorage.add(id);
+    socket.emit('client:delete_todo', request(id));
   }, []);
 
   const editTask = useCallback((id: string, updatedFields: Partial<Todo>) => {
@@ -396,5 +413,6 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
     rpgHistory,
     setRpgHistory: setRpgHistoryWrapper,
     handleMoodChange,
+    resetHistorySync,
   };
 };

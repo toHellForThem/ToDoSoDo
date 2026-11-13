@@ -6,21 +6,24 @@ import {
   AuthStorage,
   RpgStorage,
   TodoStorage,
+  TombstoneStorage,
   UserSettings,
   Todo,
-  RpgHistoryItem
+  RpgHistoryItem,
+  AuthMode
 } from '../utils/storage';
 import { getLogicalDayStartMs } from '../utils/date';
 
 
 interface UseTodoSocketProps {
   setTodoList: Dispatch<SetStateAction<Todo[]>>;
-  setAuthMode: (mode: string) => void;
+  setAuthMode: (mode: AuthMode) => void;
   setAuthState: (state: string) => void;
   setRpgHistory: Dispatch<SetStateAction<RpgHistoryItem[]>>;
   setSettings: (settings: UserSettings) => void;
   settings: UserSettings;
   setMainTab?: (tab: string) => void;
+  onSessionCleared?: () => void;
 }
 
 export const useTodoSocket = ({
@@ -30,7 +33,8 @@ export const useTodoSocket = ({
   setRpgHistory,
   setSettings,
   settings,
-  setMainTab
+  setMainTab,
+  onSessionCleared
 }: UseTodoSocketProps) => {
   useEffect(() => {
     let shouldReplaceTodos = false;
@@ -50,6 +54,11 @@ export const useTodoSocket = ({
 
       const localTodos = TodoStorage.getAll();
       const localHistory = RpgStorage.getHistory();
+
+      // Сначала досылаем жёсткие удаления, накопленные офлайн.
+      TombstoneStorage.getAll().forEach(tombstone => {
+        socket.emit('client:delete_todo', request(tombstone.id));
+      });
 
       socket.emit('client:bulk_sync_todos', request(localTodos));
       socket.emit('client:bulk_sync_daily_history', request(localHistory));
@@ -99,24 +108,39 @@ export const useTodoSocket = ({
       );
       const resetTypes = new Set();
 
+      // Tombstones: если сервер всё ещё знает задачу — повторяем удаление,
+      // если уже нет — метку можно снять.
+      const tombstones = TombstoneStorage.getAll();
+      const tombstoneIds = new Set(tombstones.map(item => item.id));
+      const serverIds = new Set(serverTodos.map(item => item.id));
+      tombstones.forEach(tombstone => {
+        if (serverIds.has(tombstone.id)) {
+          socket.emit('client:delete_todo', request(tombstone.id));
+        } else {
+          TombstoneStorage.remove(tombstone.id);
+        }
+      });
+
       if (shouldReplaceTodos) {
         shouldReplaceTodos = false;
 
-        const processedTodos = serverTodos.map(sItem => {
-          let processedItem = { ...sItem };
-          if (
-            settings?.reset_enabled !== false &&
-            !processedItem.deleted &&
-            (processedItem.type === 'daily' || processedItem.type === 'habit') &&
-            processedItem.updatedAt < startOfToday
-          ) {
-            processedItem.progressNow = 0;
-            processedItem.completed = false;
-            processedItem.updatedAt = startOfToday;
-            resetTypes.add(processedItem.type);
-          }
-          return processedItem;
-        });
+        const processedTodos = serverTodos
+          .filter(sItem => !tombstoneIds.has(sItem.id))
+          .map(sItem => {
+            let processedItem = { ...sItem };
+            if (
+              settings?.reset_enabled !== false &&
+              !processedItem.deleted &&
+              (processedItem.type === 'daily' || processedItem.type === 'habit') &&
+              processedItem.updatedAt < startOfToday
+            ) {
+              processedItem.progressNow = 0;
+              processedItem.completed = false;
+              processedItem.updatedAt = startOfToday;
+              resetTypes.add(processedItem.type);
+            }
+            return processedItem;
+          });
 
         startTransition(() => {
           setTodoList(processedTodos);
@@ -136,6 +160,8 @@ export const useTodoSocket = ({
           let hasChanges = false;
 
           serverTodos.forEach(sItem => {
+            if (tombstoneIds.has(sItem.id)) return;
+
             let processedItem = { ...sItem };
 
             if (
@@ -195,6 +221,7 @@ export const useTodoSocket = ({
     });
 
     socket.on('server:todo_deleted', (deletedId) => {
+      TombstoneStorage.remove(deletedId);
       startTransition(() => {
         setTodoList(prev => prev.filter(todo => todo.id !== deletedId));
       });
@@ -209,14 +236,13 @@ export const useTodoSocket = ({
 
     socket.on('server:auth_expired', () => {
       startTransition(() => {
-        AuthStorage.logout();
+        // Истёкшая сессия не должна стирать локальные задачи и историю:
+        // пользователь продолжает работать в local-режиме.
+        AuthStorage.clearSession();
+        onSessionCleared?.();
         socket.auth = {};
         setAuthMode('local');
         setAuthState('login');
-        setTodoList([]);
-        setRpgHistory([]);
-        TodoStorage.saveAll([]);
-        RpgStorage.saveHistory([]);
         Toast.show({
           type: 'error',
           text1: 'Сессия истекла',
