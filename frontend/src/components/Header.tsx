@@ -1,4 +1,4 @@
-import { memo, Dispatch, SetStateAction } from 'react';
+import { memo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { getStyles } from './Header.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { getLogicalDateStr } from '../utils/date';
 import { useTranslation } from '../utils/LanguageContext';
-import { AuthMode, RpgHistoryItem, UserSettings } from '../utils/storage';
+import { useAppStore } from '../store/appStore';
 
 
 export type ActiveViewType = 'list' | 'recycle' | 'settings';
@@ -32,31 +32,9 @@ interface HeaderProps {
   tailStyle: StyleProp<ViewStyle>;
   animatedStyle: StyleProp<ViewStyle>;
   contentAnimatedStyle: StyleProp<ViewStyle>;
-  activeView: ActiveViewType;
-  setActiveView: Dispatch<SetStateAction<ActiveViewType>>;
-  setAuthState: (state: string) => void;
-  setAuthMode: (mode: AuthMode) => void;
-  authMode: AuthMode;
-  onMoodChange: (mood: number) => void;
-  rpgHistory: RpgHistoryItem[];
-  settings: UserSettings;
   closeSheet: () => void;
   isMoodSheetOpen: boolean;
   isWideScreen: boolean;
-  dailyDays: string;
-  setDailyDays: Dispatch<SetStateAction<string>>;
-  dailyProgressEnd: number;
-  setDailyProgressEnd: Dispatch<SetStateAction<number>>;
-  showIsMovie: boolean;
-  setShowIsMovie: Dispatch<SetStateAction<boolean>>;
-  showStartEpisode: string;
-  setShowStartEpisode: Dispatch<SetStateAction<string>>;
-  mainTab: string;
-  rpgSubtab: string;
-  focusedGoalId: string | null;
-  piggyInputs: Record<string, string>;
-  setPiggyInputs: Dispatch<SetStateAction<Record<string, string>>>;
-  handleUpdatePiggy: (id: string, value: number, isAdd: boolean) => void;
 }
 
 export const Header = memo(({
@@ -64,33 +42,34 @@ export const Header = memo(({
   moods,
   tailStyle,
   animatedStyle,
-  activeView,
-  setActiveView,
-  setAuthState,
-  setAuthMode,
-  authMode,
-  onMoodChange,
-  rpgHistory,
-  settings,
   closeSheet,
   contentAnimatedStyle,
   isMoodSheetOpen,
   isWideScreen,
-  dailyDays,
-  setDailyDays,
-  dailyProgressEnd,
-  setDailyProgressEnd,
-  showIsMovie,
-  setShowIsMovie,
-  showStartEpisode,
-  setShowStartEpisode,
-  mainTab,
-  rpgSubtab,
-  focusedGoalId,
-  piggyInputs,
-  setPiggyInputs,
-  handleUpdatePiggy
 }: HeaderProps) => {
+  const activeView = useAppStore(state => state.activeView);
+  const setActiveView = useAppStore(state => state.setActiveView);
+  const toggleActiveView = useAppStore(state => state.toggleActiveView);
+  const setAuthState = useAppStore(state => state.setAuthState);
+  const setAuthMode = useAppStore(state => state.setAuthMode);
+  const authMode = useAppStore(state => state.authMode);
+  const onMoodChange = useAppStore(state => state.handleMoodChange);
+  const rpgHistory = useAppStore(state => state.rpgHistory);
+  const settings = useAppStore(state => state.settings);
+  const dailyDays = useAppStore(state => state.dailyDays);
+  const setDailyDays = useAppStore(state => state.setDailyDays);
+  const dailyProgressEnd = useAppStore(state => state.dailyProgressEnd);
+  const setDailyProgressEnd = useAppStore(state => state.setDailyProgressEnd);
+  const showIsMovie = useAppStore(state => state.showIsMovie);
+  const setShowIsMovie = useAppStore(state => state.setShowIsMovie);
+  const showStartEpisode = useAppStore(state => state.showStartEpisode);
+  const setShowStartEpisode = useAppStore(state => state.setShowStartEpisode);
+  const mainTab = useAppStore(state => state.mainTab);
+  const rpgSubtab = useAppStore(state => state.rpgSubtab);
+  const focusedGoalId = useAppStore(state => state.focusedGoalId);
+  const piggyInputs = useAppStore(state => state.piggyInputs);
+  const setPiggyInputs = useAppStore(state => state.setPiggyInputs);
+  const handleUpdatePiggy = useAppStore(state => state.handleUpdatePiggy);
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();
@@ -274,7 +253,7 @@ export const Header = memo(({
             </View>
 
             <TouchableOpacity
-              onPress={() => setActiveView(prev => prev === 'recycle' ? 'list' : 'recycle')}
+              onPress={() => toggleActiveView('recycle')}
               style={[
                 styles.headerButton,
                 activeView === 'recycle' && styles.headerButtonActive,
@@ -293,7 +272,7 @@ export const Header = memo(({
                 if (activeView === 'settings') {
                   setActiveView('list');
                 } else {
-                  setActiveView('settings');
+                  toggleActiveView('settings');
                   setAuthState('');
                   if (!authMode) {
                     setAuthMode('local');
@@ -449,7 +428,7 @@ export const Header = memo(({
           </View>
 
           <TouchableOpacity
-            onPress={() => setActiveView(prev => prev === 'recycle' ? 'list' : 'recycle')}
+            onPress={() => toggleActiveView('recycle')}
             style={[
               styles.headerButton,
               activeView === 'recycle' && styles.headerButtonActive,
@@ -468,7 +447,7 @@ export const Header = memo(({
               if (activeView === 'settings') {
                 setActiveView('list');
               } else {
-                setActiveView('settings');
+                toggleActiveView('settings');
                 setAuthState('');
                 if (!authMode) {
                   setAuthMode('local');

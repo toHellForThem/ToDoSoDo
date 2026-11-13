@@ -3,10 +3,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  memo,
-  ReactNode,
-  Dispatch,
-  SetStateAction
+  memo
 } from 'react';
 import {
   View,
@@ -17,7 +14,8 @@ import {
   Platform,
   TextInput,
   NativeSyntheticEvent,
-  NativeScrollEvent
+  NativeScrollEvent,
+  useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getStyles } from './RpgTab.styles';
@@ -30,7 +28,8 @@ import { HabitsSubtab } from './rpg/HabitsSubtab';
 import { PiggyBankSubtab } from './rpg/PiggyBankSubtab';
 import { TvShowsSubtab } from './rpg/TvShowsSubtab';
 import { useShortcuts } from '../hooks/useShortcuts';
-import { Todo, UserSettings, RpgHistoryItem, TodoType } from '../utils/storage';
+import { useLeftAction } from '../hooks/useLeftAction';
+import { useAppStore } from '../store/appStore';
 
 
 interface MoodConfigItem {
@@ -41,72 +40,33 @@ interface MoodConfigItem {
   label: string;
 }
 
-interface RpgTabProps {
-  rpgHistory: RpgHistoryItem[];
-  todoList: Todo[];
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
-  deleteToRecycle: (id: string) => void;
-  addTask: (
-    task: string,
-    progressEnd?: number,
-    type?: TodoType,
-    progressNow?: number | string,
-    contribution?: number,
-    days?: string
-  ) => void;
-  statusChangeTask: (
-    id: string,
-    amount?: number | 'reset' | 'toggle_complete',
-    field?: string
-  ) => void;
-  subtab: 'dashboard' | 'habits' | 'piggy_bank' | 'tv_shows';
-  setSubtab: (subTab: 'dashboard' | 'habits' | 'piggy_bank' | 'tv_shows') => void;
-  isCalendarVisible: boolean;
-  setCalendarVisible: (visible: boolean) => void;
-  settings: UserSettings;
-  showIsMovie: boolean;
-  setShowIsMovie: Dispatch<SetStateAction<boolean>>;
-  showStartEpisode: string;
-  setShowStartEpisode: Dispatch<SetStateAction<string>>;
-  isWideScreen: boolean;
-  focusedGoalId: string | null;
-  setFocusedGoalId: Dispatch<SetStateAction<string | null>>;
-  flashingGoalId: string | null;
-  piggyInputs: Record<string, string>;
-  setPiggyInputs: Dispatch<SetStateAction<Record<string, string>>>;
-  handleUpdatePiggy: (id: string, value: number, isAdd: boolean) => void;
-  selectedTaskId: string | null;
-  focusInputTrigger: number;
-  isActive: boolean;
-}
-
-export const RpgTab = memo(({
-  rpgHistory,
-  todoList,
-  leftAction,
-  deleteToRecycle,
-  addTask,
-  statusChangeTask,
-  subtab,
-  setSubtab,
-  isCalendarVisible,
-  setCalendarVisible,
-  settings,
-  showIsMovie,
-  setShowIsMovie,
-  showStartEpisode,
-  setShowStartEpisode,
-  isWideScreen,
-  focusedGoalId,
-  setFocusedGoalId,
-  flashingGoalId,
-  piggyInputs,
-  setPiggyInputs,
-  handleUpdatePiggy,
-  selectedTaskId,
-  focusInputTrigger,
-  isActive,
-}: RpgTabProps) => {
+export const RpgTab = memo(() => {
+  const rpgHistory = useAppStore(state => state.rpgHistory);
+  const todoList = useAppStore(state => state.todoList);
+  const deleteToRecycle = useAppStore(state => state.handleDeleteTodo);
+  const addTask = useAppStore(state => state.addTask);
+  const statusChangeTask = useAppStore(state => state.statusChangeTask);
+  const subtab = useAppStore(state => state.rpgSubtab);
+  const setSubtab = useAppStore(state => state.setRpgSubtab);
+  const isCalendarVisible = useAppStore(state => state.isCalendarVisible);
+  const setCalendarVisible = useAppStore(state => state.setCalendarVisible);
+  const settings = useAppStore(state => state.settings);
+  const showIsMovie = useAppStore(state => state.showIsMovie);
+  const setShowIsMovie = useAppStore(state => state.setShowIsMovie);
+  const showStartEpisode = useAppStore(state => state.showStartEpisode);
+  const setShowStartEpisode = useAppStore(state => state.setShowStartEpisode);
+  const focusedGoalId = useAppStore(state => state.focusedGoalId);
+  const setFocusedGoalId = useAppStore(state => state.setFocusedGoalId);
+  const flashingGoalId = useAppStore(state => state.flashingGoalId);
+  const piggyInputs = useAppStore(state => state.piggyInputs);
+  const setPiggyInputs = useAppStore(state => state.setPiggyInputs);
+  const handleUpdatePiggy = useAppStore(state => state.handleUpdatePiggy);
+  const selectedTaskId = useAppStore(state => state.selectedTaskId);
+  const focusInputTrigger = useAppStore(state => state.focusInputTrigger);
+  const isActive = useAppStore(state => state.mainTab === 'rpg');
+  const leftAction = useLeftAction();
+  const { width } = useWindowDimensions();
+  const isWideScreen = width >= 900;
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();
@@ -277,8 +237,8 @@ export const RpgTab = memo(({
                 offset: focusedIndex * 70,
                 animated: true,
               });
-            } catch (innerErr) {
-              console.log('Scroll failed:', innerErr);
+            } catch {
+              // FlatList может не успеть измерить элемент — фолбэк уже применён.
             }
           }
         }, 150);
@@ -292,8 +252,8 @@ export const RpgTab = memo(({
               offset: currentScrollY.current,
               animated: true,
             });
-          } catch (err) {
-            console.log('Restore scroll failed:', err);
+          } catch {
+            // Позиция скролла могла устареть после перестроения списка.
           }
         }, 100);
         return () => clearTimeout(timer);
@@ -505,8 +465,7 @@ export const RpgTab = memo(({
           progressNow: parseInt(h.progressNow, 10) || 0
         }))
         .filter(h => h.progressNow !== 0);
-    } catch (e) {
-      console.log('Error parsing habits_detail:', e);
+    } catch {
       return [];
     }
   }, [selectedDayDetail, allHabits, todayStr]);

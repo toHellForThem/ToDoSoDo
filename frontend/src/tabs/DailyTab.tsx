@@ -21,7 +21,8 @@ import {
   Platform,
   GestureResponderEvent,
   NativeSyntheticEvent,
-  TextInputKeyPressEventData
+  TextInputKeyPressEventData,
+  useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -31,7 +32,9 @@ import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { FillProgress } from '../components/FillProgress';
 import { useTranslation } from '../utils/LanguageContext';
 import { getLogicalDateStr, getLogicalDayIndex } from '../utils/date';
-import { Todo, TodoType, UserSettings } from '../utils/storage'
+import { Todo, TodoType } from '../utils/storage'
+import { useAppStore } from '../store/appStore';
+import { useLeftAction } from '../hooks/useLeftAction';
 
 
 interface DailyItemProps {
@@ -61,34 +64,6 @@ interface DailyInputProps {
   setDailyProgressEnd: Dispatch<SetStateAction<number>>;
   isWideScreen: boolean;
   inputRef: RefObject<TextInput | null>;
-}
-
-interface DailyTabProps {
-  todoList: Todo[];
-  onAdd: (
-    task: string,
-    progressEnd?: number,
-    type?: TodoType,
-    progressNow?: number | string,
-    contribution?: number,
-    days?: string
-  ) => void;
-  statusChangeTask: (
-    id: string,
-    amount?: number | 'reset' | 'toggle_complete',
-    field?: string
-  ) => void;
-  deleteTodo: (id: string) => void;
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
-  dailyDays: string;
-  setDailyDays: Dispatch<SetStateAction<string>>;
-  dailyProgressEnd: number;
-  setDailyProgressEnd: Dispatch<SetStateAction<number>>;
-  isWideScreen: boolean;
-  settings: UserSettings;
-  selectedTaskId: string | null;
-  focusInputTrigger: number;
-  isActive: boolean;
 }
 
 const DailyItem = memo(({
@@ -363,22 +338,22 @@ const DailyInput = memo(({
   );
 });
 
-export const DailyTab = memo(({
-  todoList,
-  onAdd,
-  statusChangeTask,
-  deleteTodo,
-  leftAction,
-  dailyDays,
-  setDailyDays,
-  dailyProgressEnd,
-  setDailyProgressEnd,
-  isWideScreen,
-  settings,
-  selectedTaskId,
-  focusInputTrigger,
-  isActive,
-}: DailyTabProps) => {
+export const DailyTab = memo(() => {
+  const todoList = useAppStore(state => state.todoList);
+  const onAdd = useAppStore(state => state.addTask);
+  const statusChangeTask = useAppStore(state => state.statusChangeTask);
+  const deleteTodo = useAppStore(state => state.handleDeleteTodo);
+  const dailyDays = useAppStore(state => state.dailyDays);
+  const setDailyDays = useAppStore(state => state.setDailyDays);
+  const dailyProgressEnd = useAppStore(state => state.dailyProgressEnd);
+  const setDailyProgressEnd = useAppStore(state => state.setDailyProgressEnd);
+  const settings = useAppStore(state => state.settings);
+  const selectedTaskId = useAppStore(state => state.selectedTaskId);
+  const focusInputTrigger = useAppStore(state => state.focusInputTrigger);
+  const isActive = useAppStore(state => state.mainTab === 'daily');
+  const leftAction = useLeftAction();
+  const { width } = useWindowDimensions();
+  const isWideScreen = width >= 900;
   const styles = useStyles(getStyles);
   const { t } = useTranslation();
   const flatListRef = useRef<FlatList<Todo>>(null);
@@ -433,8 +408,8 @@ export const DailyTab = memo(({
             offset: index * 60,
             animated: true,
           });
-        } catch (innerErr) {
-          console.log('Scroll to selected daily failed:', innerErr);
+        } catch {
+          // FlatList может не успеть измерить элемент — фолбэк уже применён.
         }
       }
     }

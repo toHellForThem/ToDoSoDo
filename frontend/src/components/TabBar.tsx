@@ -3,21 +3,13 @@ import { View, TouchableOpacity, Text, Animated } from 'react-native';
 import { getStyles } from './TabBar.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
+import { useAppStore } from '../store/appStore';
 
-
-interface TabBarProps {
-  currentTab: string;
-  setCurrentTab: (tab: string) => void;
-  rpgSubtab: string;
-  activeView: string;
-}
-
-export const TabBar = memo(({
-  currentTab,
-  setCurrentTab,
-  rpgSubtab,
-  activeView
-}: TabBarProps) => {
+export const TabBar = memo(() => {
+  const currentTab = useAppStore(state => state.mainTab);
+  const setCurrentTab = useAppStore(state => state.handleTabChange);
+  const rpgSubtab = useAppStore(state => state.rpgSubtab);
+  const activeView = useAppStore(state => state.activeView);
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();

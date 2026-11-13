@@ -25,6 +25,8 @@ import { getStyles as getItemStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
 import { Todo } from '../utils/storage';
+import { useAppStore } from '../store/appStore';
+import { useLeftAction } from '../hooks/useLeftAction';
 
 
 interface TodoItemProps {
@@ -42,21 +44,6 @@ interface TodoItemProps {
 interface TodoInputProps {
   onAdd: (task: string, progressEnd?: number) => void;
   inputRef: RefObject<TextInput | null>;
-}
-
-interface TodoTabProps {
-  todoList: Todo[];
-  onAdd: (task: string, progressEnd?: number) => void;
-  deleteTodo: (id: string) => void;
-  statusChangeTask: (
-    id: string,
-    amount?: number | 'reset' | 'toggle_complete',
-    field?: string
-  ) => void;
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
-  selectedTaskId: string | null;
-  focusInputTrigger: number;
-  isActive: boolean;
 }
 
 const TodoItem = memo(({
@@ -202,16 +189,15 @@ const TodoInput = memo(({ onAdd, inputRef }: TodoInputProps) => {
   );
 });
 
-export const TodoTab = memo(({
-  todoList,
-  onAdd,
-  deleteTodo,
-  statusChangeTask,
-  leftAction,
-  selectedTaskId,
-  focusInputTrigger,
-  isActive,
-}: TodoTabProps) => {
+export const TodoTab = memo(() => {
+  const todoList = useAppStore(state => state.todoList);
+  const onAdd = useAppStore(state => state.addTask);
+  const deleteTodo = useAppStore(state => state.handleDeleteTodo);
+  const statusChangeTask = useAppStore(state => state.statusChangeTask);
+  const selectedTaskId = useAppStore(state => state.selectedTaskId);
+  const focusInputTrigger = useAppStore(state => state.focusInputTrigger);
+  const isActive = useAppStore(state => state.mainTab === 'todo');
+  const leftAction = useLeftAction();
   const styles = useStyles(getStyles);
   const flatListRef = useRef<FlatList<Todo>>(null);
   const inputRef = useRef<TextInput>(null);
@@ -263,8 +249,8 @@ export const TodoTab = memo(({
             offset: index * 60,
             animated: true,
           });
-        } catch (innerErr) {
-          console.log('Scroll to selected todo failed:', innerErr);
+        } catch {
+          // FlatList может не успеть измерить элемент — фолбэк уже применён.
         }
       }
     }
