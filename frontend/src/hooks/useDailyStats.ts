@@ -10,6 +10,6 @@ export const useDailyStats = (): DailyStats => {
 
   return useMemo(
     () => computeDailyStats(todoList, todayStr),
-    [todoList, todayStr]
+    [todoList, todayStr],
   );
 };

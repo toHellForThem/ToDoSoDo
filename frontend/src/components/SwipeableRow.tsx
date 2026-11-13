@@ -7,7 +7,7 @@ export type SwipeActionMode = 'toRecycle' | 'hardDelete';
 export type LeftActionRenderer = (
   progress: any,
   drag: any,
-  mode: SwipeActionMode
+  mode: SwipeActionMode,
 ) => ReactNode;
 
 interface SwipeableRowProps {
@@ -33,7 +33,7 @@ export const SwipeableRow = memo(function SwipeableRow({
 }: SwipeableRowProps) {
   const renderLeft = useCallback(
     (progress: any, drag: any) => leftAction(progress, drag, mode),
-    [leftAction, mode]
+    [leftAction, mode],
   );
 
   return (
@@ -43,12 +43,14 @@ export const SwipeableRow = memo(function SwipeableRow({
       overshootLeft={true}
       renderLeftActions={renderLeft}
       onSwipeableLeftOpen={onSwipeLeftOpen}
-      containerStyle={containerStyle ?? {
-        paddingTop: 2,
-        paddingBottom: 8,
-        paddingHorizontal: 20,
-        backgroundColor: 'transparent',
-      }}
+      containerStyle={
+        containerStyle ?? {
+          paddingTop: 2,
+          paddingBottom: 8,
+          paddingHorizontal: 20,
+          backgroundColor: 'transparent',
+        }
+      }
       activeOffsetX={[-15, 15]}
       failOffsetY={[-15, 15]}
     >

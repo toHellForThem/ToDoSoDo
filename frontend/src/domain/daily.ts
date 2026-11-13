@@ -63,7 +63,7 @@ export const buildHistoryEntry = (
   date: string,
   stats: DailyStats,
   mood: number | null,
-  updatedAt: number = Date.now()
+  updatedAt: number = Date.now(),
 ): DailyHistory => ({
   date,
   mood,
@@ -76,7 +76,7 @@ export const buildHistoryEntry = (
 
 /** Разбирает `habits_detail` из истории в типизированный снапшот. */
 export const parseHabitsDetail = (
-  value: string | HabitSnapshot[] | null | undefined
+  value: string | HabitSnapshot[] | null | undefined,
 ): HabitSnapshot[] => {
   if (!value) return [];
   try {
@@ -106,12 +106,12 @@ export const buildHabitSnapshot = (todos: Todo[]): HabitSnapshot[] =>
 
 export const computeDailyStats = (
   todos: Todo[],
-  logicalDateStr: string
+  logicalDateStr: string,
 ): DailyStats => {
   const logicalDayIdx = getLogicalDayIndex(logicalDateStr);
 
   const dailies = todos.filter(item =>
-    isDailyScheduledForDay(item, logicalDayIdx)
+    isDailyScheduledForDay(item, logicalDayIdx),
   );
 
   let dailyProgress = 0.0;
@@ -122,7 +122,7 @@ export const computeDailyStats = (
         acc.nowProgress += getProgressNow(item);
         return acc;
       },
-      { needProgress: 0, nowProgress: 0 }
+      { needProgress: 0, nowProgress: 0 },
     );
     dailyProgress = needProgress > 0 ? nowProgress / needProgress : 1.0;
   }

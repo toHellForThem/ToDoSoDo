@@ -20,7 +20,7 @@ interface CalendarDayDetailProps {
   theme: Theme;
   t: <K extends keyof TranslationDict>(
     key: K,
-    options?: Record<string, string | number>
+    options?: Record<string, string | number>,
   ) => TranslationDict[K];
 }
 
@@ -43,7 +43,10 @@ export const CalendarDayDetail = memo(function CalendarDayDetail({
   return (
     <View style={styles.dayDetailBlock}>
       <Text style={styles.dayDetailTitle}>
-        {t('rpg_cal_summary', { day: selectedDayDetail.day, month: selectedDayMonthGenitive })}
+        {t('rpg_cal_summary', {
+          day: selectedDayDetail.day,
+          month: selectedDayMonthGenitive,
+        })}
       </Text>
 
       <View style={styles.dayDetailGrid}>
@@ -51,9 +54,13 @@ export const CalendarDayDetail = memo(function CalendarDayDetail({
           <Text style={styles.statLabel}>{t('rpg_cal_mood')}</Text>
           {selectedDayDetail.log.mood ? (
             <MaterialCommunityIcons
-              name={activeMoodConfig[selectedDayDetail.log.mood ?? -1]?.icon as any}
+              name={
+                activeMoodConfig[selectedDayDetail.log.mood ?? -1]?.icon as any
+              }
               size={28}
-              color={activeMoodConfig[selectedDayDetail.log.mood ?? -1]?.color as any}
+              color={
+                activeMoodConfig[selectedDayDetail.log.mood ?? -1]?.color as any
+              }
               style={{ marginTop: 4 }}
             />
           ) : (
@@ -63,7 +70,9 @@ export const CalendarDayDetail = memo(function CalendarDayDetail({
 
         <View style={styles.dayDetailItem}>
           <Text style={styles.statLabel}>{t('rpg_cal_progress')}</Text>
-          <Text style={[styles.dayDetailValue, { color: theme.colors.primary }]}>
+          <Text
+            style={[styles.dayDetailValue, { color: theme.colors.primary }]}
+          >
             {displayProgress}%
           </Text>
         </View>
@@ -74,14 +83,31 @@ export const CalendarDayDetail = memo(function CalendarDayDetail({
           activeOpacity={0.7}
         >
           <Text style={styles.statLabel}>{t('rpg_cal_habits')}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-            <Text style={[styles.dayDetailValue, { color: '#34D399', marginTop: 0 }]}>
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
+          >
+            <Text
+              style={[
+                styles.dayDetailValue,
+                { color: '#34D399', marginTop: 0 },
+              ]}
+            >
               +{displayPosPoints}
             </Text>
-            <Text style={[styles.dayDetailValue, { color: '#94A3B8', marginTop: 0, marginHorizontal: 8 }]}>
+            <Text
+              style={[
+                styles.dayDetailValue,
+                { color: '#94A3B8', marginTop: 0, marginHorizontal: 8 },
+              ]}
+            >
               {displayNeuPoints}
             </Text>
-            <Text style={[styles.dayDetailValue, { color: '#EF4444', marginTop: 0 }]}>
+            <Text
+              style={[
+                styles.dayDetailValue,
+                { color: '#EF4444', marginTop: 0 },
+              ]}
+            >
               -{displayNegPoints}
             </Text>
           </View>
@@ -95,14 +121,16 @@ export const CalendarDayDetail = memo(function CalendarDayDetail({
       </View>
 
       {isHabitsExpanded && (
-        <View style={{
-          marginTop: 6,
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.border.light,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.colors.border.light,
-          maxHeight: 206,
-        }}>
+        <View
+          style={{
+            marginTop: 6,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border.light,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border.light,
+            maxHeight: 206,
+          }}
+        >
           {dayHabits.length > 0 ? (
             <FlatList
               data={dayHabits}
@@ -111,23 +139,26 @@ export const CalendarDayDetail = memo(function CalendarDayDetail({
               keyExtractor={(habit, idx) => habit.id || idx.toString()}
               contentContainerStyle={{ gap: 6, paddingVertical: 6 }}
               renderItem={({ item: habit }) => {
-                const iconBg = habit.contribution === 1
-                  ? 'rgba(52, 211, 153, 0.12)'
-                  : habit.contribution === -1
-                    ? 'rgba(239, 68, 68, 0.12)'
-                    : 'rgba(148, 163, 184, 0.12)';
+                const iconBg =
+                  habit.contribution === 1
+                    ? 'rgba(52, 211, 153, 0.12)'
+                    : habit.contribution === -1
+                      ? 'rgba(239, 68, 68, 0.12)'
+                      : 'rgba(148, 163, 184, 0.12)';
 
-                const iconColor = habit.contribution === 1
-                  ? '#34D399'
-                  : habit.contribution === -1
-                    ? '#EF4444'
-                    : '#94A3B8';
+                const iconColor =
+                  habit.contribution === 1
+                    ? '#34D399'
+                    : habit.contribution === -1
+                      ? '#EF4444'
+                      : '#94A3B8';
 
-                const iconName = habit.contribution === 1
-                  ? 'plus'
-                  : habit.contribution === -1
-                    ? 'minus'
-                    : 'help';
+                const iconName =
+                  habit.contribution === 1
+                    ? 'plus'
+                    : habit.contribution === -1
+                      ? 'minus'
+                      : 'help';
 
                 return (
                   <View
@@ -142,30 +173,40 @@ export const CalendarDayDetail = memo(function CalendarDayDetail({
                       borderColor: theme.colors.border.light,
                     }}
                   >
-                    <View style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 6,
-                      backgroundColor: iconBg,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 10,
-                    }}>
-                      <MaterialCommunityIcons name={iconName} size={15} color={iconColor} />
+                    <View
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 6,
+                        backgroundColor: iconBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 10,
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={iconName}
+                        size={15}
+                        color={iconColor}
+                      />
                     </View>
-                    <Text style={{
-                      flex: 1,
-                      fontSize: 14,
-                      color: theme.colors.text.primary,
-                      fontWeight: '500'
-                    }}>
+                    <Text
+                      style={{
+                        flex: 1,
+                        fontSize: 14,
+                        color: theme.colors.text.primary,
+                        fontWeight: '500',
+                      }}
+                    >
                       {habit.text}
                     </Text>
-                    <Text style={{
-                      fontSize: 14,
-                      fontWeight: 'bold',
-                      color: theme.colors.text.secondary
-                    }}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 'bold',
+                        color: theme.colors.text.secondary,
+                      }}
+                    >
                       {habit.progressNow || 0}
                     </Text>
                   </View>
@@ -173,13 +214,15 @@ export const CalendarDayDetail = memo(function CalendarDayDetail({
               }}
             />
           ) : (
-            <Text style={{
-              fontSize: 13,
-              color: '#94A3B8',
-              textAlign: 'center',
-              fontStyle: 'italic',
-              marginTop: 4
-            }}>
+            <Text
+              style={{
+                fontSize: 13,
+                color: '#94A3B8',
+                textAlign: 'center',
+                fontStyle: 'italic',
+                marginTop: 4,
+              }}
+            >
               {t('rpg_cal_no_habits')}
             </Text>
           )}

@@ -21,7 +21,7 @@ export const selectTodayDayIndex = (state: AppState): number =>
  */
 export const selectVisibleItems = (
   state: AppState,
-  view: Partial<TodoView> = {}
+  view: Partial<TodoView> = {},
 ): Todo[] => {
   const { activeView, mainTab, rpgSubtab, todoList } = state;
   // В настройках списка нет — стрелки не должны менять выделение.

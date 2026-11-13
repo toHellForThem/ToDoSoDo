@@ -34,11 +34,12 @@ const keyOf = (event: string, payload: unknown): string | null => {
 
 export const getAll = (): OutboxRecord[] => OutboxStorage.getAll();
 
-export const saveAll = (items: OutboxRecord[]): void => OutboxStorage.saveAll(items);
+export const saveAll = (items: OutboxRecord[]): void =>
+  OutboxStorage.saveAll(items);
 
 export const enqueue = (
   event: ClientEventName,
-  payload: unknown
+  payload: unknown,
 ): OutboxRecord => {
   const key = keyOf(event, payload);
   const existing = OutboxStorage.getAll();
@@ -80,7 +81,7 @@ export const enqueue = (
 
 export const remove = (requestId: string): void => {
   OutboxStorage.saveAll(
-    OutboxStorage.getAll().filter(item => item.requestId !== requestId)
+    OutboxStorage.getAll().filter(item => item.requestId !== requestId),
   );
 };
 
@@ -88,8 +89,8 @@ export const remove = (requestId: string): void => {
 export const removeBatch = (batchId: string): void => {
   OutboxStorage.saveAll(
     OutboxStorage.getAll().filter(
-      item => item.requestId !== batchId && item.batchId !== batchId
-    )
+      item => item.requestId !== batchId && item.batchId !== batchId,
+    ),
   );
 };
 
@@ -97,8 +98,8 @@ export const markSent = (requestIds: string[], batchId: string): void => {
   const ids = new Set(requestIds);
   OutboxStorage.saveAll(
     OutboxStorage.getAll().map(item =>
-      ids.has(item.requestId) ? { ...item, sent: true, batchId } : item
-    )
+      ids.has(item.requestId) ? { ...item, sent: true, batchId } : item,
+    ),
   );
 };
 
@@ -109,7 +110,7 @@ export const resetSent = (): void => {
       ...item,
       sent: false,
       batchId: undefined,
-    }))
+    })),
   );
 };
 

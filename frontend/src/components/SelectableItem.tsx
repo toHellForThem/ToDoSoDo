@@ -13,7 +13,11 @@ interface SelectableItemProps {
  * Контейнер строки списка с подсветкой выбранного элемента.
  * Используется всеми списками (todo, daily, recycle, rpg).
  */
-export const SelectableItem = memo(function SelectableItem({ isSelected, children, style }: SelectableItemProps) {
+export const SelectableItem = memo(function SelectableItem({
+  isSelected,
+  children,
+  style,
+}: SelectableItemProps) {
   const itemStyles = useStyles(getStyles);
   const { theme } = useAppTheme();
 

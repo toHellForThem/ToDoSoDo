@@ -17,7 +17,10 @@ export const TabBar = memo(function TabBar() {
   const isTodoActive = currentTab === 'todo';
   const isDailyActive = currentTab === 'daily';
 
-  const shouldBlink = (isRpgActive && rpgSubtab !== 'dashboard') || activeView === 'recycle' || activeView === 'settings';
+  const shouldBlink =
+    (isRpgActive && rpgSubtab !== 'dashboard') ||
+    activeView === 'recycle' ||
+    activeView === 'settings';
 
   const blinkAnim = useRef(new Animated.Value(1)).current;
 
@@ -35,7 +38,7 @@ export const TabBar = memo(function TabBar() {
             duration: 450,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     } else {
       blinkAnim.setValue(1);
@@ -66,12 +69,23 @@ export const TabBar = memo(function TabBar() {
         style={[
           styles.tab,
           isRpgActive && styles.activeTab,
-          isRpgActive && { borderTopWidth: 0 }
+          isRpgActive && { borderTopWidth: 0 },
         ]}
         onPress={() => setCurrentTab('rpg')}
       >
         {renderActiveIndicator(isRpgActive)}
-        <Text style={[styles.tabText, { color: isRpgActive ? theme.colors.primary : theme.colors.text.secondary }]}>{t('tab_rpg')}</Text>
+        <Text
+          style={[
+            styles.tabText,
+            {
+              color: isRpgActive
+                ? theme.colors.primary
+                : theme.colors.text.secondary,
+            },
+          ]}
+        >
+          {t('tab_rpg')}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -79,12 +93,23 @@ export const TabBar = memo(function TabBar() {
         style={[
           styles.tab,
           isTodoActive && styles.activeTab,
-          isTodoActive && { borderTopWidth: 0 }
+          isTodoActive && { borderTopWidth: 0 },
         ]}
         onPress={() => setCurrentTab('todo')}
       >
         {renderActiveIndicator(isTodoActive)}
-        <Text style={[styles.tabText, { color: isTodoActive ? theme.colors.primary : theme.colors.text.secondary }]}>{t('tab_todo')}</Text>
+        <Text
+          style={[
+            styles.tabText,
+            {
+              color: isTodoActive
+                ? theme.colors.primary
+                : theme.colors.text.secondary,
+            },
+          ]}
+        >
+          {t('tab_todo')}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -92,12 +117,23 @@ export const TabBar = memo(function TabBar() {
         style={[
           styles.tab,
           isDailyActive && styles.activeTab,
-          isDailyActive && { borderTopWidth: 0 }
+          isDailyActive && { borderTopWidth: 0 },
         ]}
         onPress={() => setCurrentTab('daily')}
       >
         {renderActiveIndicator(isDailyActive)}
-        <Text style={[styles.tabText, { color: isDailyActive ? theme.colors.primary : theme.colors.text.secondary }]}>{t('tab_daily')}</Text>
+        <Text
+          style={[
+            styles.tabText,
+            {
+              color: isDailyActive
+                ? theme.colors.primary
+                : theme.colors.text.secondary,
+            },
+          ]}
+        >
+          {t('tab_daily')}
+        </Text>
       </TouchableOpacity>
     </View>
   );

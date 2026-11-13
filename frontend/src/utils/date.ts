@@ -81,9 +81,11 @@ const getZonedParts = (date: Date, timeZone: string): ZonedParts => {
 };
 
 export const parseResetTime = (
-  value?: string | null
+  value?: string | null,
 ): { hours: number; minutes: number } => {
-  const match = /^(\d{1,2}):(\d{1,2})$/.exec((value || DEFAULT_RESET_TIME).trim());
+  const match = /^(\d{1,2}):(\d{1,2})$/.exec(
+    (value || DEFAULT_RESET_TIME).trim(),
+  );
   if (!match) {
     return { hours: 0, minutes: 0 };
   }
@@ -101,7 +103,9 @@ const formatParts = (parts: ZonedParts): string =>
   `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
 
 const addDays = (parts: ZonedParts, delta: number): ZonedParts => {
-  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + delta));
+  const date = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day + delta),
+  );
   return {
     year: date.getUTCFullYear(),
     month: date.getUTCMonth() + 1,
@@ -121,7 +125,7 @@ const getOffsetMs = (timestamp: number, timeZone: string): number => {
     parts.day,
     parts.hour,
     parts.minute,
-    parts.second
+    parts.second,
   );
   return asUtc - whole;
 };
@@ -133,7 +137,7 @@ const zonedTimeToEpoch = (
   day: number,
   hours: number,
   minutes: number,
-  timeZone: string
+  timeZone: string,
 ): number => {
   if (!getFormatter(timeZone)) {
     return new Date(year, month - 1, day, hours, minutes).getTime();
@@ -153,7 +157,7 @@ const zonedTimeToEpoch = (
 export const getLogicalDateStr = (
   resetTimeStr?: string | null,
   timezone?: string | null,
-  customDate?: string | number | Date | null
+  customDate?: string | number | Date | null,
 ): string => {
   const { hours, minutes } = parseResetTime(resetTimeStr);
   const instant = new Date(customDate ?? Date.now());
@@ -174,7 +178,7 @@ export const getLogicalDayIndex = (dateStr: string): number => {
 export const getNextResetMs = (
   resetTimeStr?: string | null,
   timezone?: string | null,
-  from: number = Date.now()
+  from: number = Date.now(),
 ): number => {
   const zone = timezone || DEFAULT_TIMEZONE;
   const { hours, minutes } = parseResetTime(resetTimeStr);
@@ -186,7 +190,7 @@ export const getNextResetMs = (
     parts.day,
     hours,
     minutes,
-    zone
+    zone,
   );
   if (candidate <= from) {
     const nextDay = addDays(parts, 1);
@@ -196,7 +200,7 @@ export const getNextResetMs = (
       nextDay.day,
       hours,
       minutes,
-      zone
+      zone,
     );
   }
   return candidate;
@@ -206,7 +210,7 @@ export const getNextResetMs = (
 export const getLogicalDayStartMs = (
   resetTimeStr?: string | null,
   timezone?: string | null,
-  from: number = Date.now()
+  from: number = Date.now(),
 ): number => {
   const zone = timezone || DEFAULT_TIMEZONE;
   const { hours, minutes } = parseResetTime(resetTimeStr);
@@ -219,6 +223,6 @@ export const getLogicalDayStartMs = (
     parts.day,
     hours,
     minutes,
-    zone
+    zone,
   );
 };

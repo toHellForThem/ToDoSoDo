@@ -40,7 +40,8 @@ export const keyFromEvent = (event: KeyboardEvent): string | null => {
   if (code) {
     if (code.startsWith('Key')) return code.slice(3).toLowerCase();
     if (code.startsWith('Digit')) return code.slice(5);
-    if (code.startsWith('Numpad') && /^Numpad\d$/.test(code)) return code.slice(6);
+    if (code.startsWith('Numpad') && /^Numpad\d$/.test(code))
+      return code.slice(6);
     if (CODE_ALIASES[code]) return CODE_ALIASES[code];
   }
 
@@ -62,7 +63,13 @@ export const normalizeCombination = (combination: string): string => {
   const modifiers = new Set(parts);
   const ordered: string[] = [];
 
-  if (modifiers.has('mod') || modifiers.has('ctrl') || modifiers.has('meta') || modifiers.has('cmd') || modifiers.has('command')) {
+  if (
+    modifiers.has('mod') ||
+    modifiers.has('ctrl') ||
+    modifiers.has('meta') ||
+    modifiers.has('cmd') ||
+    modifiers.has('command')
+  ) {
     ordered.push('mod');
   }
   if (modifiers.has('alt') || modifiers.has('option')) ordered.push('alt');
@@ -86,7 +93,10 @@ export const eventToCombination = (event: KeyboardEvent): string | null => {
   return parts.join('+');
 };
 
-export const formatKeyPart = (part: string, isMac = isMacPlatform()): string => {
+export const formatKeyPart = (
+  part: string,
+  isMac = isMacPlatform(),
+): string => {
   switch (part) {
     case 'mod':
       return isMac ? '⌘' : 'Ctrl';
@@ -111,7 +121,10 @@ export const formatKeyPart = (part: string, isMac = isMacPlatform()): string => 
   }
 };
 
-export const formatShortcut = (combination: string | undefined, isMac = isMacPlatform()): string => {
+export const formatShortcut = (
+  combination: string | undefined,
+  isMac = isMacPlatform(),
+): string => {
   if (!combination) return '';
   return normalizeCombination(combination)
     .split('+')
@@ -138,7 +151,7 @@ export const isEditableTarget = (target: EventTarget | null): boolean => {
 export const findShortcutConflict = (
   shortcuts: object,
   combination: string,
-  excludeKey?: string
+  excludeKey?: string,
 ): string | null => {
   const normalized = normalizeCombination(combination);
   for (const [key, value] of Object.entries(shortcuts)) {

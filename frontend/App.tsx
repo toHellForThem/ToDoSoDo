@@ -3,7 +3,10 @@ import { ShortcutProvider } from './src/commands';
 import { Providers } from './src/app/Providers';
 import { AppShell } from './src/app/AppShell';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 

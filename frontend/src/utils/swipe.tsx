@@ -9,7 +9,8 @@ export const renderLeftAction = (
   mode: string,
   theme: Theme,
   lang: string = 'ru',
-  softDeleteEnabled: boolean = true) => {
+  softDeleteEnabled: boolean = true,
+) => {
   const styles = getStyles(theme);
   const isHardDelete = mode === 'hardDelete' || !softDeleteEnabled;
   const dict = translations[lang] || translations.ru;
@@ -23,30 +24,38 @@ export const renderLeftAction = (
 
   const translateX = drag.interpolate({
     inputRange: [0, 65, 77 - (isHardDelete ? 2 : -6)],
-    outputRange: [-59 + (isHardDelete ? 2 : -6), 7 + (isHardDelete ? 2 : -6), 20],
+    outputRange: [
+      -59 + (isHardDelete ? 2 : -6),
+      7 + (isHardDelete ? 2 : -6),
+      20,
+    ],
     extrapolate: 'clamp',
   });
 
   return (
-    <View style={{
-      height: '100%',
-      justifyContent: 'center',
-      paddingTop: 8,
-      paddingBottom: 2,
-      width: 90
-    }}>
-      <Animated.View style={[
-        styles.deleteBack,
-        {
-          opacity: opacity,
-          marginRight: -510,
-          transform: [{ translateX: translateX }],
-          backgroundColor: isHardDelete ? theme.colors.danger : theme.colors.primary,
-        }
-      ]}>
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>
-          {label}
-        </Text>
+    <View
+      style={{
+        height: '100%',
+        justifyContent: 'center',
+        paddingTop: 8,
+        paddingBottom: 2,
+        width: 90,
+      }}
+    >
+      <Animated.View
+        style={[
+          styles.deleteBack,
+          {
+            opacity: opacity,
+            marginRight: -510,
+            transform: [{ translateX: translateX }],
+            backgroundColor: isHardDelete
+              ? theme.colors.danger
+              : theme.colors.primary,
+          },
+        ]}
+      >
+        <Text style={{ color: 'white', fontWeight: 'bold' }}>{label}</Text>
       </Animated.View>
     </View>
   );

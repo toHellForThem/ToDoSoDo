@@ -1,10 +1,4 @@
-import {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  memo
-} from 'react';
+import { useState, useEffect, useMemo, useRef, memo } from 'react';
 import {
   View,
   Keyboard,
@@ -13,7 +7,7 @@ import {
   TextInput,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  useWindowDimensions
+  useWindowDimensions,
 } from 'react-native';
 import { getStyles } from './RpgTab.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
@@ -31,7 +25,13 @@ import { RpgDashboard } from './rpg/RpgDashboard';
 import { useLeftAction } from '../hooks/useLeftAction';
 import { useAppStore } from '../store/appStore';
 
-const MOOD_LABEL_KEYS = ['mood_1', 'mood_2', 'mood_3', 'mood_4', 'mood_5'] as const;
+const MOOD_LABEL_KEYS = [
+  'mood_1',
+  'mood_2',
+  'mood_3',
+  'mood_4',
+  'mood_5',
+] as const;
 
 export const RpgTab = memo(function RpgTab() {
   const rpgHistory = useAppStore(state => state.rpgHistory);
@@ -67,7 +67,10 @@ export const RpgTab = memo(function RpgTab() {
     const config = getMoodConfig(settings?.theme);
     const result: Record<number, MoodConfigItem & { label: string }> = {};
     Object.values(config).forEach(item => {
-      result[item.value] = { ...item, label: t(MOOD_LABEL_KEYS[item.value - 1]) };
+      result[item.value] = {
+        ...item,
+        label: t(MOOD_LABEL_KEYS[item.value - 1]),
+      };
     });
     return result;
   }, [settings?.theme, t]);
@@ -83,12 +86,13 @@ export const RpgTab = memo(function RpgTab() {
   const stats = useDailyStats();
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', e => {
       setKeyboardHeight(e.endCoordinates.height);
       setKeyboardVisible(true);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     });
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const hideSubscription = Keyboard.addListener(hideEvent, () => {
       setKeyboardVisible(false);
       setKeyboardHeight(0);
@@ -107,14 +111,18 @@ export const RpgTab = memo(function RpgTab() {
     };
   }, [setFocusedGoalId]);
 
-  const activeShows = useMemo(() =>
-    todoList.filter(item => (item.type === 'tv_show' || item.type === 'movie') && !item.deleted),
-    [todoList]
+  const activeShows = useMemo(
+    () =>
+      todoList.filter(
+        item =>
+          (item.type === 'tv_show' || item.type === 'movie') && !item.deleted,
+      ),
+    [todoList],
   );
 
-  const piggyGoalItems = useMemo(() =>
-    todoList.filter(item => item.type === 'piggy_bank' && !item.deleted),
-    [todoList]
+  const piggyGoalItems = useMemo(
+    () => todoList.filter(item => item.type === 'piggy_bank' && !item.deleted),
+    [todoList],
   );
 
   const focusedIndex = useMemo(() => {
@@ -168,12 +176,15 @@ export const RpgTab = memo(function RpgTab() {
     }
   };
 
-  const dailyStats = useMemo(() => ({
-    dailiesProgress: Math.round(stats.dailyProgress * 100),
-    positiveCount: stats.posPoints,
-    negativeCount: stats.negPoints,
-    neutralCount: stats.neutralPoints,
-  }), [stats]);
+  const dailyStats = useMemo(
+    () => ({
+      dailiesProgress: Math.round(stats.dailyProgress * 100),
+      positiveCount: stats.posPoints,
+      negativeCount: stats.negPoints,
+      neutralCount: stats.neutralPoints,
+    }),
+    [stats],
+  );
 
   const todayMood = useMemo(() => {
     const todayLog = rpgHistory.find(h => h.date === todayStr);
@@ -188,13 +199,16 @@ export const RpgTab = memo(function RpgTab() {
     t,
   });
 
-  const handleAddHabit = (name: string, type: 'positive' | 'negative' | 'neutral') => {
+  const handleAddHabit = (
+    name: string,
+    type: 'positive' | 'negative' | 'neutral',
+  ) => {
     addTask(
       name.trim(),
       1,
       'habit',
       0,
-      type === 'positive' ? 1 : type === 'negative' ? -1 : 0
+      type === 'positive' ? 1 : type === 'negative' ? -1 : 0,
     );
     Keyboard.dismiss();
   };
@@ -206,7 +220,12 @@ export const RpgTab = memo(function RpgTab() {
 
   const handleAddShow = (title: string, isMovie: boolean, startEp: string) => {
     const epNum = parseInt(startEp, 10) || 1;
-    addTask(title.trim(), 1, isMovie ? 'movie' : 'tv_show', isMovie ? "0" : `1-${epNum}`);
+    addTask(
+      title.trim(),
+      1,
+      isMovie ? 'movie' : 'tv_show',
+      isMovie ? '0' : `1-${epNum}`,
+    );
     Keyboard.dismiss();
   };
 
@@ -214,14 +233,15 @@ export const RpgTab = memo(function RpgTab() {
     return leftAction(progress, drag, 'toRecycle');
   };
 
-  const allHabits = useMemo(() =>
-    selectVisibleTodos(todoList, {
-      mainTab: 'rpg',
-      rpgSubtab: 'habits',
-      recycle: false,
-      dayIndex: todayDayIdx,
-    }),
-    [todoList, todayDayIdx]
+  const allHabits = useMemo(
+    () =>
+      selectVisibleTodos(todoList, {
+        mainTab: 'rpg',
+        rpgSubtab: 'habits',
+        recycle: false,
+        dayIndex: todayDayIdx,
+      }),
+    [todoList, todayDayIdx],
   );
 
   if (subtab === 'habits') {

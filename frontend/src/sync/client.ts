@@ -47,7 +47,7 @@ let errorListener: SyncErrorListener | null = null;
 
 /** UI подписывается на ошибки синхронизации, чтобы показать тост. */
 export const setSyncErrorListener = (
-  listener: SyncErrorListener | null
+  listener: SyncErrorListener | null,
 ): void => {
   errorListener = listener;
 };
@@ -83,7 +83,7 @@ export const isOnline = (): boolean => mode === 'auth' && socket.connected;
  */
 export const send = <E extends keyof ClientPayloads>(
   event: E,
-  payload: ClientPayloads[E]
+  payload: ClientPayloads[E],
 ): void => {
   const expectsAck = ACK_EVENTS.has(event);
   const record = Outbox.enqueue(event, payload);
@@ -114,25 +114,25 @@ export const flush = (): void => {
   const deletedIds = new Set(
     allItems
       .filter(item => item.event === ClientEvent.DELETE_TODO)
-      .map(item => item.payload as string)
+      .map(item => item.payload as string),
   );
   const staleCreateIds = new Set(
     allItems
       .filter(
         item =>
           item.event === ClientEvent.SYNC_TODO &&
-          deletedIds.has((item.payload as Todo)?.id)
+          deletedIds.has((item.payload as Todo)?.id),
       )
-      .map(item => item.requestId)
+      .map(item => item.requestId),
   );
   if (staleCreateIds.size > 0) {
     Outbox.saveAll(
-      allItems.filter(item => !staleCreateIds.has(item.requestId))
+      allItems.filter(item => !staleCreateIds.has(item.requestId)),
     );
   }
 
   const items = allItems.filter(
-    item => !item.sent && !staleCreateIds.has(item.requestId)
+    item => !item.sent && !staleCreateIds.has(item.requestId),
   );
   if (items.length === 0) return;
 
@@ -176,7 +176,11 @@ export const flush = (): void => {
 
   if (todos.size > 0) {
     const batchId = newRequestId();
-    emitWithRequestId(ClientEvent.BULK_SYNC_TODOS, [...todos.values()], batchId);
+    emitWithRequestId(
+      ClientEvent.BULK_SYNC_TODOS,
+      [...todos.values()],
+      batchId,
+    );
     Outbox.markSent(idsFor(ClientEvent.SYNC_TODO), batchId);
   }
 
@@ -191,7 +195,7 @@ export const flush = (): void => {
     emitWithRequestId(
       ClientEvent.BULK_SYNC_DAILY_HISTORY,
       [...history.values()],
-      batchId
+      batchId,
     );
     Outbox.markSent(idsFor(ClientEvent.SYNC_DAILY_HISTORY), batchId);
   }
@@ -213,7 +217,7 @@ export const flush = (): void => {
     emitWithRequestId(
       item.event as keyof ClientPayloads,
       item.payload as never,
-      item.requestId
+      item.requestId,
     );
     // BULK_* подтверждаются ACK и должны дождаться его.  Остальные
     // события из этой ветки — «отправил и забыл».
@@ -245,7 +249,7 @@ export const handleError = (error: ServerErrorPayload): void => {
   const items = Outbox.getAll();
   const affected = items.filter(
     item =>
-      item.requestId === error.request_id || item.batchId === error.request_id
+      item.requestId === error.request_id || item.batchId === error.request_id,
   );
   if (affected.length === 0) return;
 
@@ -257,7 +261,7 @@ export const handleError = (error: ServerErrorPayload): void => {
     const exhausted = affected.filter(item => item.attempts >= 5);
     if (exhausted.length > 0) {
       notifySyncError(
-        'Не удалось сохранить часть изменений после нескольких попыток'
+        'Не удалось сохранить часть изменений после нескольких попыток',
       );
     }
     exhausted.forEach(item => {
@@ -276,14 +280,14 @@ export const handleError = (error: ServerErrorPayload): void => {
                 batchId: undefined,
                 attempts: item.attempts + 1,
               }
-            : item
-        )
+            : item,
+        ),
     );
   } else {
     notifySyncError(
       error.code === 'conflict'
         ? 'Не удалось сохранить изменения из-за конфликта данных'
-        : `Не удалось сохранить изменения: ${error.message}`
+        : `Не удалось сохранить изменения: ${error.message}`,
     );
     Outbox.saveAll(items.filter(item => !affectedIds.has(item.requestId)));
   }

@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { Platform } from 'react-native';
 import { CommandRegistry } from './registry';
 import type { Command, CommandScope } from './types';
@@ -12,7 +18,11 @@ const CommandRegistryContext = createContext<CommandRegistry | null>(null);
  * инпутов работают, но физическая клавиатура потребует отдельного нативного
  * моста. На web листенер ставится здесь и больше нигде.
  */
-export const ShortcutProvider = ({ children }: { children: React.ReactNode }) => {
+export const ShortcutProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const registry = useMemo(() => new CommandRegistry(), []);
 
   useEffect(() => {
@@ -72,7 +82,7 @@ export const useScope = (scope: CommandScope, active = true): void => {
 export const useInputFocus = (
   scope: CommandScope,
   focus: () => void,
-  active = true
+  active = true,
 ): void => {
   const registry = useCommandRegistry();
   const focusRef = useRef(focus);
@@ -87,7 +97,7 @@ export const useInputFocus = (
 /** Перехватывает нажатия для записи шортката в настройках. */
 export const useShortcutRecorder = (
   active: boolean,
-  onCapture: (event: KeyboardEvent) => boolean
+  onCapture: (event: KeyboardEvent) => boolean,
 ): void => {
   const registry = useCommandRegistry();
   const captureRef = useRef(onCapture);

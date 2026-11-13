@@ -19,21 +19,27 @@ export const LanguageSection = ({
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderWithIcon}>
-        <Ionicons name="language-outline" size={20} color={theme.colors.primary} />
+        <Ionicons
+          name="language-outline"
+          size={20}
+          color={theme.colors.primary}
+        />
         <Text style={styles.cardTitle}>{t('set_language')}</Text>
       </View>
       <View style={styles.segmentedControl}>
         <TouchableOpacity
           style={[
             styles.segmentButton,
-            (!settings?.language || settings?.language === 'ru') && styles.segmentButtonActive
+            (!settings?.language || settings?.language === 'ru') &&
+              styles.segmentButtonActive,
           ]}
           onPress={() => handleLanguageChange('ru')}
         >
           <Text
             style={[
               styles.segmentText,
-              (!settings?.language || settings?.language === 'ru') && styles.segmentTextActive
+              (!settings?.language || settings?.language === 'ru') &&
+                styles.segmentTextActive,
             ]}
           >
             {t('set_lang_ru')}
@@ -42,14 +48,14 @@ export const LanguageSection = ({
         <TouchableOpacity
           style={[
             styles.segmentButton,
-            settings?.language === 'en' && styles.segmentButtonActive
+            settings?.language === 'en' && styles.segmentButtonActive,
           ]}
           onPress={() => handleLanguageChange('en')}
         >
           <Text
             style={[
               styles.segmentText,
-              settings?.language === 'en' && styles.segmentTextActive
+              settings?.language === 'en' && styles.segmentTextActive,
             ]}
           >
             {t('set_lang_en')}
@@ -65,7 +71,11 @@ interface ThemeSectionProps extends SectionStyleProps {
   handleThemeChange: (theme: ThemeName) => void;
 }
 
-const THEMES: { value: ThemeName; labelKey: 'set_theme_blue' | 'set_theme_mint' | 'set_theme_pink' | 'set_theme_dark' }[] = [
+const THEMES: {
+  value: ThemeName;
+  labelKey:
+    'set_theme_blue' | 'set_theme_mint' | 'set_theme_pink' | 'set_theme_dark';
+}[] = [
   { value: 'default', labelKey: 'set_theme_blue' },
   { value: 'mint', labelKey: 'set_theme_mint' },
   { value: 'pink', labelKey: 'set_theme_pink' },
@@ -83,21 +93,34 @@ export const ThemeSection = ({
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderWithIcon}>
-        <MaterialCommunityIcons name="palette-outline" size={20} color={theme.colors.primary} />
+        <MaterialCommunityIcons
+          name="palette-outline"
+          size={20}
+          color={theme.colors.primary}
+        />
         <Text style={styles.cardTitle}>{t('set_theme')}</Text>
       </View>
       <View style={styles.segmentedControl}>
         {THEMES.map(({ value, labelKey }) => {
-          const isActive = value === 'default'
-            ? (!settings?.theme || settings?.theme === 'default')
-            : settings?.theme === value;
+          const isActive =
+            value === 'default'
+              ? !settings?.theme || settings?.theme === 'default'
+              : settings?.theme === value;
           return (
             <TouchableOpacity
               key={value}
-              style={[styles.segmentButton, isActive && styles.segmentButtonActive]}
+              style={[
+                styles.segmentButton,
+                isActive && styles.segmentButtonActive,
+              ]}
               onPress={() => handleThemeChange(value)}
             >
-              <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
+              <Text
+                style={[
+                  styles.segmentText,
+                  isActive && styles.segmentTextActive,
+                ]}
+              >
                 {t(labelKey)}
               </Text>
             </TouchableOpacity>

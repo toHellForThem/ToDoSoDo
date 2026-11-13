@@ -11,9 +11,11 @@ import type { Todo } from '../contract/types';
 export const toProgress = (value: number | string | null | undefined): number =>
   parseInt(String(value ?? 0), 10) || 0;
 
-export const getProgressNow = (todo: Todo): number => toProgress(todo.progressNow);
+export const getProgressNow = (todo: Todo): number =>
+  toProgress(todo.progressNow);
 
-export const getProgressEnd = (todo: Todo): number => toProgress(todo.progressEnd);
+export const getProgressEnd = (todo: Todo): number =>
+  toProgress(todo.progressEnd);
 
 /**
  * Единое правило завершённости.
@@ -39,7 +41,7 @@ export const isTodoComplete = (todo: Todo): boolean => {
 /** Запланирована ли ежедневная задача на указанный день недели. */
 export const isDailyScheduledForDay = (
   todo: Todo,
-  dayIndex: number
+  dayIndex: number,
 ): boolean => {
   if (todo.type !== 'daily' || todo.deleted) return false;
   const days = todo.days || '1111111';

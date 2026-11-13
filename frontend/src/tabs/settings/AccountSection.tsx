@@ -29,21 +29,31 @@ export const AccountSection = ({
         <View style={styles.profileRow}>
           <View style={styles.profileInfo}>
             <Text style={styles.profileTitle}>{t('set_account_title')}</Text>
-            <Text style={styles.profileUsername}>{AuthStorage.getUsername() || t('set_default_user')}</Text>
+            <Text style={styles.profileUsername}>
+              {AuthStorage.getUsername() || t('set_default_user')}
+            </Text>
             <View style={styles.syncBadge}>
               <View style={styles.pulseDot} />
               <Text style={styles.syncText}>{t('set_cloud_active')}</Text>
             </View>
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <MaterialCommunityIcons name="logout" size={18} color={theme.colors.icon.primary} />
+            <MaterialCommunityIcons
+              name="logout"
+              size={18}
+              color={theme.colors.icon.primary}
+            />
             <Text style={styles.logoutButtonText}>{t('set_logout')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.localProfileContainer}>
           <View style={styles.localProfileHeader}>
-            <MaterialCommunityIcons name="cloud-off-outline" size={24} color={theme.colors.text.secondary} />
+            <MaterialCommunityIcons
+              name="cloud-off-outline"
+              size={24}
+              color={theme.colors.text.secondary}
+            />
             <Text style={styles.cardTitle}>{t('set_profile_local')}</Text>
           </View>
           <View style={styles.authButtonsRow}>
@@ -67,7 +77,9 @@ export const AccountSection = ({
                 setPassword('');
               }}
             >
-              <Text style={styles.secondaryAuthButtonText}>{t('set_register')}</Text>
+              <Text style={styles.secondaryAuthButtonText}>
+                {t('set_register')}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -112,7 +124,11 @@ export const AuthFormSection = ({
         style={styles.cornerBackButton}
         activeOpacity={0.6}
       >
-        <Ionicons name="arrow-back" size={26} color={theme.colors.icon.primary} />
+        <Ionicons
+          name="arrow-back"
+          size={26}
+          color={theme.colors.icon.primary}
+        />
       </TouchableOpacity>
       <Text style={styles.authTitle}>
         {authState === 'login' ? t('set_login_title') : t('set_register')}
@@ -133,7 +149,9 @@ export const AuthFormSection = ({
               primary: theme.colors.icon.primary,
             },
           }}
-          left={<PaperInput.Icon icon="account" color={theme.colors.icon.primary} />}
+          left={
+            <PaperInput.Icon icon="account" color={theme.colors.icon.primary} />
+          }
           placeholderTextColor={theme.colors.text.muted}
         />
         <PaperInput
@@ -177,7 +195,9 @@ export const AuthFormSection = ({
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => setAuthState(authState === 'login' ? 'register' : 'login')}
+          onPress={() =>
+            setAuthState(authState === 'login' ? 'register' : 'login')
+          }
           style={styles.toggleAuthLink}
         >
           <Text style={styles.toggleAuthText}>

@@ -5,8 +5,15 @@ import { useSettingsController } from './settings/useSettingsController';
 import { AccountSection, AuthFormSection } from './settings/AccountSection';
 import { ServerSection } from './settings/ServerSection';
 import { LanguageSection, ThemeSection } from './settings/AppearanceSection';
-import { StartPageSection, TrashSection, ResetSection } from './settings/BehaviorSection';
-import { ResetTimeSection, DailyConfigSection } from './settings/DailyConfigSection';
+import {
+  StartPageSection,
+  TrashSection,
+  ResetSection,
+} from './settings/BehaviorSection';
+import {
+  ResetTimeSection,
+  DailyConfigSection,
+} from './settings/DailyConfigSection';
 import { ShortcutsSection } from './settings/ShortcutsSection';
 import { AboutSection } from './settings/AboutSection';
 import { DailiesEditor } from './settings/DailiesEditor';
@@ -16,7 +23,9 @@ export const SettingsTab = () => {
   const showMain = c.authState === '';
 
   if (c.subView === 'dailies') {
-    const dailies = (c.todoList || []).filter(item => item.type === 'daily' && !item.deleted);
+    const dailies = (c.todoList || []).filter(
+      item => item.type === 'daily' && !item.deleted,
+    );
 
     return (
       <PaperProvider>
@@ -39,7 +48,14 @@ export const SettingsTab = () => {
     <PaperProvider>
       <View style={{ flex: 1, backgroundColor: c.theme.colors.background }}>
         <ScrollView
-          contentContainerStyle={c.authState !== '' ? [c.styles.scrollContainer, { flexGrow: 1, justifyContent: 'center' }] : c.styles.scrollContainer}
+          contentContainerStyle={
+            c.authState !== ''
+              ? [
+                  c.styles.scrollContainer,
+                  { flexGrow: 1, justifyContent: 'center' },
+                ]
+              : c.styles.scrollContainer
+          }
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

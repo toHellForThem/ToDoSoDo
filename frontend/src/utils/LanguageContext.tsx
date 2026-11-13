@@ -5,7 +5,7 @@ interface LanguageContextType {
   language: string;
   t: <K extends keyof TranslationDict>(
     key: K,
-    replacements?: Record<string, string | number>
+    replacements?: Record<string, string | number>,
   ) => TranslationDict[K];
 }
 
@@ -14,15 +14,18 @@ interface LanguageProviderProps {
   children: ReactNode;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | undefined>(
+  undefined,
+);
 
-export const LanguageProvider = (
-  { language = 'ru', children }: LanguageProviderProps
-) => {
+export const LanguageProvider = ({
+  language = 'ru',
+  children,
+}: LanguageProviderProps) => {
   const t: LanguageContextType['t'] = useMemo(() => {
     return (key, replacements = {}) => {
       const dict = translations[language] || translations.ru;
-      let text: string | string[] = dict[key] || translations.ru[key] || key
+      let text: string | string[] = dict[key] || translations.ru[key] || key;
 
       if (typeof text === 'string') {
         let str = text;
@@ -38,7 +41,7 @@ export const LanguageProvider = (
   const value = useMemo(() => ({ language, t }), [language, t]);
 
   return (
-    <LanguageContext.Provider value={value} >
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
@@ -50,4 +53,4 @@ export const useTranslation = () => {
     throw new Error('useTranslation must be used within a LanguageProvider');
   }
   return ctx;
-}
+};

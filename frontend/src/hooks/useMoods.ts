@@ -13,10 +13,12 @@ export const useMoods = (): MoodItem[] => {
   const themeName = useAppStore(state => state.settings?.theme);
 
   return useMemo(() => {
-    return Object.values(getMoodConfig(themeName)).map(({ value, icon, color }) => ({
-      value,
-      icon,
-      color,
-    }));
+    return Object.values(getMoodConfig(themeName)).map(
+      ({ value, icon, color }) => ({
+        value,
+        icon,
+        color,
+      }),
+    );
   }, [themeName]);
 };

@@ -49,7 +49,7 @@ export const AppShell = () => {
 
   const isMoodSheetActive = useCallback(
     () => Boolean(moodSheet.isActive && moodSheet.isActive.value === 1),
-    [moodSheet.isActive]
+    [moodSheet.isActive],
   );
 
   const handleBackAction = useBackAction({
@@ -60,7 +60,7 @@ export const AppShell = () => {
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
       'hardwareBackPress',
-      handleBackAction
+      handleBackAction,
     );
 
     return () => backHandler.remove();
@@ -70,7 +70,7 @@ export const AppShell = () => {
 
   const focusActiveInput = useCallback(
     () => registry.focusActiveInput(),
-    [registry]
+    [registry],
   );
 
   const commands = useAppCommands({
@@ -94,7 +94,10 @@ export const AppShell = () => {
         isMoodSheetOpen={isMoodSheetOpen}
         isWideScreen={isWideScreen}
       />
-      <View style={styles.main} pointerEvents={isMoodSheetOpen ? 'none' : 'auto'}>
+      <View
+        style={styles.main}
+        pointerEvents={isMoodSheetOpen ? 'none' : 'auto'}
+      >
         <Navigation isWideScreen={isWideScreen} />
       </View>
       <TabBar />

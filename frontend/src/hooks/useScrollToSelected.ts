@@ -8,7 +8,7 @@ import { FlatList } from 'react-native';
 export const useScrollToSelected = <T extends { id: string }>(
   listRef: RefObject<FlatList<T> | null>,
   items: T[],
-  selectedId: string | null
+  selectedId: string | null,
 ) => {
   useEffect(() => {
     if (!selectedId || !listRef.current) return;

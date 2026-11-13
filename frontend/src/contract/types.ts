@@ -7,7 +7,8 @@
  * событий и поля с экспортированным контрактом.
  */
 
-export type TodoType = 'todo' | 'daily' | 'habit' | 'piggy_bank' | 'tv_show' | 'movie';
+export type TodoType =
+  'todo' | 'daily' | 'habit' | 'piggy_bank' | 'tv_show' | 'movie';
 
 export interface Todo {
   id: string;
@@ -71,11 +72,7 @@ export type RpgHistoryItem = DailyHistory;
 export type AuthMode = 'local' | 'auth' | '';
 
 export type AckStatus =
-  | 'applied'
-  | 'conflict'
-  | 'deleted'
-  | 'rejected'
-  | 'processed';
+  'applied' | 'conflict' | 'deleted' | 'rejected' | 'processed';
 
 export type ErrorCode =
   | 'validation_error'

@@ -1,11 +1,18 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import { UserSettings, ShortcutSettings, DEFAULT_SHORTCUTS } from '../../utils/storage';
+import {
+  UserSettings,
+  ShortcutSettings,
+  DEFAULT_SHORTCUTS,
+} from '../../utils/storage';
 import { formatKeyPart, normalizeCombination } from '../../commands';
 import { SectionStyleProps } from './types';
 
-type UpdateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => void;
+type UpdateSetting = <K extends keyof UserSettings>(
+  key: K,
+  value: UserSettings[K],
+) => void;
 
 interface ShortcutsSectionProps extends SectionStyleProps {
   settings: UserSettings | undefined;
@@ -24,7 +31,10 @@ export const ShortcutsSection = ({
   theme,
   t,
 }: ShortcutsSectionProps) => {
-  const renderKeycaps = (shortcutStr: string | undefined, isRecording: boolean) => {
+  const renderKeycaps = (
+    shortcutStr: string | undefined,
+    isRecording: boolean,
+  ) => {
     if (isRecording) {
       return (
         <View style={[styles.keycap, styles.keycapActive]}>
@@ -41,9 +51,19 @@ export const ShortcutsSection = ({
         {parts.map((part, index) => {
           const text = formatKeyPart(part);
           return (
-            <View key={index} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View
+              key={index}
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+            >
               {index > 0 && (
-                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.text.secondary, marginHorizontal: 4 }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '800',
+                    color: theme.colors.text.secondary,
+                    marginHorizontal: 4,
+                  }}
+                >
                   +
                 </Text>
               )}
@@ -60,40 +80,57 @@ export const ShortcutsSection = ({
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderWithIcon}>
-        <MaterialCommunityIcons name="keyboard-outline" size={20} color={theme.colors.primary} />
+        <MaterialCommunityIcons
+          name="keyboard-outline"
+          size={20}
+          color={theme.colors.primary}
+        />
         <Text style={styles.cardTitle}>{t('set_shortcuts_title')}</Text>
       </View>
-      <Text style={{ fontSize: 11, color: theme.colors.text.muted, marginTop: 4, marginBottom: 12 }}>
+      <Text
+        style={{
+          fontSize: 11,
+          color: theme.colors.text.muted,
+          marginTop: 4,
+          marginBottom: 12,
+        }}
+      >
         {t('set_shortcuts_desc')}
       </Text>
-      {(Object.keys(DEFAULT_SHORTCUTS) as (keyof ShortcutSettings)[]).map((key) => (
-        <View key={key} style={styles.shortcutRow}>
-          <View style={styles.shortcutInfo}>
-            <Text style={styles.shortcutTitle}>
-              {t(`set_shortcut_action_${key}`)}
-            </Text>
+      {(Object.keys(DEFAULT_SHORTCUTS) as (keyof ShortcutSettings)[]).map(
+        key => (
+          <View key={key} style={styles.shortcutRow}>
+            <View style={styles.shortcutInfo}>
+              <Text style={styles.shortcutTitle}>
+                {t(`set_shortcut_action_${key}`)}
+              </Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setRecordingKey(recordingKey === key ? null : key)}
+            >
+              {renderKeycaps(settings?.shortcuts?.[key], recordingKey === key)}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setRecordingKey(recordingKey === key ? null : key)}
-          >
-            {renderKeycaps(settings?.shortcuts?.[key], recordingKey === key)}
-          </TouchableOpacity>
-        </View>
-      ))}
+        ),
+      )}
       <TouchableOpacity
         onPress={() => {
           updateSetting('shortcuts', DEFAULT_SHORTCUTS);
           Toast.show({
             type: 'success',
             text1: t('set_shortcuts_reset_toast'),
-            visibilityTime: 2000
+            visibilityTime: 2000,
           });
         }}
         style={styles.shortcutResetButton}
         activeOpacity={0.8}
       >
-        <MaterialCommunityIcons name="restore" size={18} color={theme.colors.text.secondary} />
+        <MaterialCommunityIcons
+          name="restore"
+          size={18}
+          color={theme.colors.text.secondary}
+        />
         <Text style={styles.shortcutResetButtonText}>
           {t('set_shortcuts_reset')}
         </Text>

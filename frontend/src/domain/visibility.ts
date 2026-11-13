@@ -9,10 +9,7 @@ import type { Todo } from '../contract/types';
 
 export type VisibleMainTab = 'todo' | 'daily' | 'rpg';
 export type VisibleRpgSubtab =
-  | 'dashboard'
-  | 'habits'
-  | 'piggy_bank'
-  | 'tv_shows';
+  'dashboard' | 'habits' | 'piggy_bank' | 'tv_shows';
 
 export interface TodoView {
   mainTab: VisibleMainTab;
@@ -63,7 +60,5 @@ export const isTodoVisible = (todo: Todo, view: TodoView): boolean => {
 };
 
 /** Видимый список задач для указанного представления. */
-export const selectVisibleTodos = (
-  todos: Todo[],
-  view: TodoView
-): Todo[] => todos.filter(todo => isTodoVisible(todo, view)).sort(sortByCompletion);
+export const selectVisibleTodos = (todos: Todo[], view: TodoView): Todo[] =>
+  todos.filter(todo => isTodoVisible(todo, view)).sort(sortByCompletion);

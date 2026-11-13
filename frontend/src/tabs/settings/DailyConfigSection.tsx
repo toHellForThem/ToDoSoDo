@@ -22,7 +22,11 @@ export const ResetTimeSection = ({
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderWithIcon}>
-        <MaterialCommunityIcons name="clock-outline" size={20} color={theme.colors.primary} />
+        <MaterialCommunityIcons
+          name="clock-outline"
+          size={20}
+          color={theme.colors.primary}
+        />
         <Text style={styles.cardTitle}>{t('set_reset_time_title')}</Text>
       </View>
       <View style={styles.clockCenterContainer}>
@@ -33,7 +37,11 @@ export const ResetTimeSection = ({
               style={[styles.clockControlBtn, styles.clockControlBtnLeft]}
               activeOpacity={0.6}
             >
-              <Ionicons name="remove" size={22} color={theme.colors.icon.primary} />
+              <Ionicons
+                name="remove"
+                size={22}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
             <View style={styles.clockValueBg}>
               <Text style={styles.clockValueLabel}>{t('set_hours')}</Text>
@@ -46,7 +54,11 @@ export const ResetTimeSection = ({
               style={[styles.clockControlBtn, styles.clockControlBtnRight]}
               activeOpacity={0.6}
             >
-              <Ionicons name="add" size={22} color={theme.colors.icon.primary} />
+              <Ionicons
+                name="add"
+                size={22}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
           </View>
           <Text style={styles.compactSeparator}>:</Text>
@@ -56,7 +68,11 @@ export const ResetTimeSection = ({
               style={[styles.clockControlBtn, styles.clockControlBtnLeft]}
               activeOpacity={0.6}
             >
-              <Ionicons name="remove" size={22} color={theme.colors.icon.primary} />
+              <Ionicons
+                name="remove"
+                size={22}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
             <View style={styles.clockValueBg}>
               <Text style={styles.clockValueLabel}>{t('set_minutes')}</Text>
@@ -69,7 +85,11 @@ export const ResetTimeSection = ({
               style={[styles.clockControlBtn, styles.clockControlBtnRight]}
               activeOpacity={0.6}
             >
-              <Ionicons name="add" size={22} color={theme.colors.icon.primary} />
+              <Ionicons
+                name="add"
+                size={22}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -92,10 +112,22 @@ export const DailyConfigSection = ({
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderWithIcon}>
-        <MaterialCommunityIcons name="calendar-check" size={20} color={theme.colors.primary} />
+        <MaterialCommunityIcons
+          name="calendar-check"
+          size={20}
+          color={theme.colors.primary}
+        />
         <Text style={styles.cardTitle}>{t('set_daily_config_title')}</Text>
       </View>
-      <Text style={{ fontSize: 11, color: theme.colors.text.muted, marginLeft: theme.spacing.sm, marginTop: 4, marginBottom: 12 }}>
+      <Text
+        style={{
+          fontSize: 11,
+          color: theme.colors.text.muted,
+          marginLeft: theme.spacing.sm,
+          marginTop: 4,
+          marginBottom: 12,
+        }}
+      >
         {t('set_daily_config_desc')}
       </Text>
       <TouchableOpacity
@@ -103,7 +135,12 @@ export const DailyConfigSection = ({
         style={[styles.logoutButton, { marginTop: 4, paddingVertical: 10 }]}
         activeOpacity={0.8}
       >
-        <MaterialCommunityIcons name="calendar-edit" size={18} color={theme.colors.icon.primary} style={{ marginRight: 6 }} />
+        <MaterialCommunityIcons
+          name="calendar-edit"
+          size={18}
+          color={theme.colors.icon.primary}
+          style={{ marginRight: 6 }}
+        />
         <Text style={styles.logoutButtonText}>{t('set_daily_edit')}</Text>
       </TouchableOpacity>
     </View>

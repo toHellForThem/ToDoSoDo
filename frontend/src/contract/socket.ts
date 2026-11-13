@@ -66,7 +66,7 @@ export interface ServerPayloads {
 export const emitWithRequestId = <E extends keyof ClientPayloads>(
   event: E,
   payload: ClientPayloads[E],
-  requestId: string
+  requestId: string,
 ): void => {
   socket.emit(event, { request_id: requestId, payload });
 };
@@ -77,7 +77,7 @@ export const emitWithRequestId = <E extends keyof ClientPayloads>(
  */
 export const emit = <E extends keyof ClientPayloads>(
   event: E,
-  payload: ClientPayloads[E]
+  payload: ClientPayloads[E],
 ): string => {
   const requestId = newRequestId();
   emitWithRequestId(event, payload, requestId);
@@ -87,7 +87,7 @@ export const emit = <E extends keyof ClientPayloads>(
 /** Отправляет событие без конверта (login/register/logout). */
 export const emitRaw = <E extends keyof ClientPayloads>(
   event: E,
-  payload: ClientPayloads[E]
+  payload: ClientPayloads[E],
 ): void => {
   socket.emit(event, payload);
 };
@@ -95,7 +95,7 @@ export const emitRaw = <E extends keyof ClientPayloads>(
 /** Подписывается на серверное событие и возвращает функцию отписки. */
 export const on = <E extends keyof ServerPayloads>(
   event: E,
-  handler: (payload: ServerPayloads[E]) => void
+  handler: (payload: ServerPayloads[E]) => void,
 ): (() => void) => {
   const listener = handler as (...args: unknown[]) => void;
   (socket as any).on(event, listener);
