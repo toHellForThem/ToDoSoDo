@@ -16,7 +16,7 @@
     "test:ci": "vitest run",
     "test:watch": "vitest",
     "export:web": "expo export --platform web",
-    "e2e:build": "cross-env EXPO_PUBLIC_SOCKET_URL=http://127.0.0.1:8001 expo export --platform web",
+    "e2e:build": "node e2e/build.mjs",
     "e2e": "playwright test",
     "contract:check": "node scripts/check-contract.mjs"
   },
@@ -44,7 +44,6 @@
   "devDependencies": {
     "@playwright/test": "^1.65.0",
     "@types/react": "~19.1.10",
-    "cross-env": "^10.1.0",
     "eslint": "^9.39.5",
     "eslint-config-expo": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",

@@ -267,7 +267,7 @@ export const Header = memo(function Header({
             </TouchableOpacity>
 
             <TouchableOpacity
-              testID="header-settings"
+              testID="header-settings-narrow"
               onPress={() => {
                 if (activeView === 'settings') {
                   setActiveView('list');
@@ -443,7 +443,7 @@ export const Header = memo(function Header({
           </TouchableOpacity>
 
           <TouchableOpacity
-            testID="header-settings"
+            testID="header-settings-wide"
             onPress={() => {
               if (activeView === 'settings') {
                 setActiveView('list');

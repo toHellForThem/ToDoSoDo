@@ -47,7 +47,12 @@ export default defineConfig({
             timeout: 60_000,
             env: {
               JWT_SECRET_KEY: 'e2e-secret-key-' + 'x'.repeat(64),
-              DATABASE_PATH: join(tmpdir(), 'todosodo-e2e.db'),
+              // Уникальная БД на прогон: без неё пользователи прошлых
+              // запусков копятся и мешают повторяемости.
+              DATABASE_PATH: join(
+                tmpdir(),
+                `todosodo-e2e-${process.pid}-${Date.now()}.db`,
+              ),
               LOG_LEVEL: 'WARNING',
               SIO_CORS_ORIGINS: `http://127.0.0.1:${E2E_PORT},http://localhost:${E2E_PORT}`,
             },

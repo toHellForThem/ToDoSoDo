@@ -19,7 +19,8 @@ test('smoke: login, add task, sync, calendar', async ({ page }) => {
   await page.goto('/');
 
   // Открываем настройки и регистрируемся.
-  await page.getByTestId('header-settings').click();
+  // Тест идёт в мобильном viewport — там рендерится узкая шапка.
+  await page.getByTestId('header-settings-narrow').click();
   await page.getByTestId('auth-register').click();
   await page.getByTestId('auth-username').fill(username);
   await page.getByTestId('auth-password').fill(password);

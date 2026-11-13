@@ -36,13 +36,16 @@ export const AppShell = () => {
 
   const moodSheet = useMoodSheet(setIsMoodSheetOpen);
 
+  // useMoodSheet возвращает новый объект на каждый рендер; ссылки на
+  // SharedValue и useCallback-функции внутри него стабильны.
   const handleMoodSheet = useCallback(() => {
     if (moodSheet.isActive && moodSheet.isActive.value === 1) {
       moodSheet.closeSheet();
     } else {
       moodSheet.openSheet();
     }
-  }, [moodSheet]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moodSheet.isActive, moodSheet.closeSheet, moodSheet.openSheet]);
 
   const isMoodSheetActive = useCallback(
     () => Boolean(moodSheet.isActive && moodSheet.isActive.value === 1),
