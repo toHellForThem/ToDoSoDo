@@ -1,0 +1,40 @@
+{
+  "ack_statuses": [
+    "applied",
+    "conflict",
+    "deleted",
+    "rejected",
+    "processed"
+  ],
+  "client_events": {
+    "BULK_DELETE_TODOS": "client:bulk_delete_todos",
+    "BULK_SYNC_DAILY_HISTORY": "client:bulk_sync_daily_history",
+    "BULK_SYNC_TODOS": "client:bulk_sync_todos",
+    "CONFIRM_RESET": "client:confirm_reset",
+    "DELETE_TODO": "client:delete_todo",
+    "GET_MONTH_HISTORY": "client:get_month_history",
+    "GET_STATE": "client:get_state",
+    "GET_TODOS": "client:get_todos",
+    "LOGIN": "client:login",
+    "LOGOUT": "client:logout",
+    "REGISTER": "client:register",
+    "SYNC_DAILY_HISTORY": "client:sync_daily_history",
+    "SYNC_TODO": "client:sync_todo",
+    "UPDATE_SETTINGS": "client:update_settings"
+  },
+  "server_events": {
+    "ACK": "server:ack",
+    "ALL_TODOS": "server:all_todos",
+    "AUTH_EXPIRED": "server:auth_expired",
+    "AUTH_MESSAGE": "server:auth_message",
+    "DAILY_HISTORY_UPDATED": "server:daily_history_updated",
+    "ERROR": "server:error",
+    "LOGIN_SUCCESS": "server:login_success",
+    "MONTH_HISTORY": "server:month_history",
+    "REGISTER_SUCCESS": "server:register_success",
+    "SETTINGS_UPDATED": "server:settings_updated",
+    "STATE": "server:state",
+    "TODO_DELETED": "server:todo_deleted",
+    "TODO_UPDATED": "server:todo_updated"
+  }
+}

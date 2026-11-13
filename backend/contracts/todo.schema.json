@@ -1,0 +1,93 @@
+{
+  "$defs": {
+    "TodoType": {
+      "description": "Типы задач, которые поддерживает клиент.",
+      "enum": [
+        "todo",
+        "daily",
+        "habit",
+        "piggy_bank",
+        "tv_show",
+        "movie"
+      ],
+      "title": "TodoType",
+      "type": "string"
+    }
+  },
+  "description": "Задача в контракте синхронизации.",
+  "properties": {
+    "completed": {
+      "default": false,
+      "title": "Completed",
+      "type": "boolean"
+    },
+    "contribution": {
+      "default": 0,
+      "minimum": -1,
+      "title": "Contribution",
+      "type": "integer"
+    },
+    "days": {
+      "default": "1111111",
+      "pattern": "^[01]{7}$",
+      "title": "Days",
+      "type": "string"
+    },
+    "deleted": {
+      "default": false,
+      "title": "Deleted",
+      "type": "boolean"
+    },
+    "id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "progressEnd": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "default": 1,
+      "title": "Progressend"
+    },
+    "progressNow": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "default": 0,
+      "title": "Progressnow"
+    },
+    "text": {
+      "default": "",
+      "maxLength": 2000,
+      "title": "Text",
+      "type": "string"
+    },
+    "type": {
+      "$ref": "#/$defs/TodoType",
+      "default": "todo"
+    },
+    "updatedAt": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Updatedat",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "title": "Todo",
+  "type": "object"
+}

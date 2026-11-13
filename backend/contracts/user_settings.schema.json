@@ -1,0 +1,156 @@
+{
+  "$defs": {
+    "ShortcutSettings": {
+      "description": "Горячие клавиши рабочего стола как часть контракта настроек.",
+      "properties": {
+        "calendar_view": {
+          "default": "mod+c",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Calendar View",
+          "type": "string"
+        },
+        "daily_tab": {
+          "default": "mod+3",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Daily Tab",
+          "type": "string"
+        },
+        "habits_subtab": {
+          "default": "mod+q",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Habits Subtab",
+          "type": "string"
+        },
+        "mood_view": {
+          "default": "mod+x",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Mood View",
+          "type": "string"
+        },
+        "piggy_subtab": {
+          "default": "mod+w",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Piggy Subtab",
+          "type": "string"
+        },
+        "recycle_view": {
+          "default": "mod+r",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Recycle View",
+          "type": "string"
+        },
+        "rpg_tab": {
+          "default": "mod+1",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Rpg Tab",
+          "type": "string"
+        },
+        "settings_view": {
+          "default": "mod+s",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Settings View",
+          "type": "string"
+        },
+        "todo_tab": {
+          "default": "mod+2",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Todo Tab",
+          "type": "string"
+        },
+        "tv_subtab": {
+          "default": "mod+e",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Tv Subtab",
+          "type": "string"
+        }
+      },
+      "title": "ShortcutSettings",
+      "type": "object"
+    }
+  },
+  "description": "Полный набор пользовательских настроек с дефолтами.",
+  "properties": {
+    "language": {
+      "default": "ru",
+      "enum": [
+        "ru",
+        "en"
+      ],
+      "title": "Language",
+      "type": "string"
+    },
+    "main_page": {
+      "default": "todo",
+      "enum": [
+        "todo",
+        "rpg",
+        "daily"
+      ],
+      "title": "Main Page",
+      "type": "string"
+    },
+    "reset_enabled": {
+      "default": true,
+      "title": "Reset Enabled",
+      "type": "boolean"
+    },
+    "reset_time": {
+      "default": "00:00",
+      "title": "Reset Time",
+      "type": "string"
+    },
+    "rpg_subtab": {
+      "default": "dashboard",
+      "enum": [
+        "dashboard",
+        "habits",
+        "piggy_bank",
+        "tv_shows"
+      ],
+      "title": "Rpg Subtab",
+      "type": "string"
+    },
+    "shortcuts": {
+      "$ref": "#/$defs/ShortcutSettings"
+    },
+    "soft_delete": {
+      "default": true,
+      "title": "Soft Delete",
+      "type": "boolean"
+    },
+    "theme": {
+      "default": "default",
+      "enum": [
+        "default",
+        "dark",
+        "mint",
+        "pink"
+      ],
+      "title": "Theme",
+      "type": "string"
+    },
+    "timezone": {
+      "default": "UTC",
+      "title": "Timezone",
+      "type": "string"
+    },
+    "updatedAt": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Updatedat",
+      "type": "integer"
+    }
+  },
+  "title": "UserSettings",
+  "type": "object"
+}

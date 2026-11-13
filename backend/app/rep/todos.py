@@ -22,6 +22,14 @@ class TodosRepository(BaseRepository):
         )
         return row["updated_at"] if row else None
 
+    async def get_by_id(self, todo_id: str, user_id: int) -> Todo | None:
+        """Возвращает задачу пользователя или ``None``."""
+        row = await self._db.fetch_one(
+            "SELECT * FROM todos WHERE id = ? AND user_id = ?",
+            (todo_id, user_id),
+        )
+        return self._to_model(row) if row else None
+
     async def upsert(self, todo: Todo, user_id: int) -> None:
         await self._db.execute(
             """
@@ -50,22 +58,29 @@ class TodosRepository(BaseRepository):
             "DELETE FROM todos WHERE id = ? AND user_id = ?", (todo_id, user_id)
         )
 
-    async def reset_by_type(
-        self, user_id: int, todo_type: str, updated_at: int
-    ) -> None:
+    async def reset_by_type(self, user_id: int, todo_type: str, updated_at: int) -> None:
+        """Идемпотентно сбрасывает прогресс задач типа ``todo_type``.
+
+        Сбрасываются только неудалённые задачи, которые не обновлялись
+        после ``updated_at``.  Повторный вызов с той же меткой ничего не
+        меняет, поэтому несколько устройств могут безопасно подтверждать
+        один и тот же сброс.
+        """
         await self._db.execute(
             """
             UPDATE todos
             SET progress_now = 0, completed = ?, updated_at = ?
-            WHERE user_id = ? AND type = ?
+            WHERE user_id = ? AND type = ? AND deleted = 0 AND updated_at < ?
             """,
-            (False, updated_at, user_id, todo_type),
+            (False, updated_at, user_id, todo_type, updated_at),
         )
 
     @staticmethod
     def _to_model(row: aiosqlite.Row) -> Todo:
         keys = row.keys()
-        return Todo(
+        # ``model_construct`` не валидирует уже сохранённые строки: старые
+        # записи с устаревшими полями не должны ломать чтение списка задач.
+        return Todo.model_construct(
             id=row["id"],
             text=row["text"],
             completed=bool(row["completed"]),
