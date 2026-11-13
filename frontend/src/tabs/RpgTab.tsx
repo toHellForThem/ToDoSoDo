@@ -29,7 +29,8 @@ import { CalendarModal, SelectedDayDetail, CalendarCell } from '../components/Ca
 import { HabitsSubtab } from './rpg/HabitsSubtab';
 import { PiggyBankSubtab } from './rpg/PiggyBankSubtab';
 import { TvShowsSubtab } from './rpg/TvShowsSubtab';
-import { useShortcuts } from '../hooks/useShortcuts';
+import { useCommands, useScope } from '../commands';
+import type { Command } from '../commands';
 import { useLeftAction } from '../hooks/useLeftAction';
 import { useAppStore } from '../store/appStore';
 
@@ -64,7 +65,6 @@ export const RpgTab = memo(() => {
   const setPiggyInputs = useAppStore(state => state.setPiggyInputs);
   const handleUpdatePiggy = useAppStore(state => state.handleUpdatePiggy);
   const selectedTaskId = useAppStore(state => state.selectedTaskId);
-  const focusInputTrigger = useAppStore(state => state.focusInputTrigger);
   const isActive = useAppStore(state => state.mainTab === 'rpg');
   const leftAction = useLeftAction();
   const { width } = useWindowDimensions();
@@ -321,10 +321,7 @@ export const RpgTab = memo(() => {
     setIsHabitsExpanded(false);
   };
 
-  const calendarShortcuts = useMemo(() => {
-    const map: Record<string, (e: any) => void> = {};
-    if (!isCalendarVisible) return map;
-
+  const calendarCommands = useMemo<Command[]>(() => {
     const navigateDay = (offset: number) => {
       let targetCell = null;
       if (!selectedDayDetail?.dateStr) {
@@ -350,39 +347,54 @@ export const RpgTab = memo(() => {
       }
     };
 
-    map['arrowleft'] = (e: any) => {
-      e.preventDefault();
-      navigateDay(-1);
-    };
+    return [
+      {
+        id: 'calendar.prevDay',
+        title: 'Previous day',
+        shortcut: 'arrowleft',
+        scope: 'rpg.calendar',
+        run: () => navigateDay(-1),
+      },
+      {
+        id: 'calendar.nextDay',
+        title: 'Next day',
+        shortcut: 'arrowright',
+        scope: 'rpg.calendar',
+        run: () => navigateDay(1),
+      },
+      {
+        id: 'calendar.prevWeek',
+        title: 'Previous week',
+        shortcut: 'arrowup',
+        scope: 'rpg.calendar',
+        run: () => navigateDay(-7),
+      },
+      {
+        id: 'calendar.nextWeek',
+        title: 'Next week',
+        shortcut: 'arrowdown',
+        scope: 'rpg.calendar',
+        run: () => navigateDay(7),
+      },
+      {
+        id: 'calendar.toggleHabits',
+        title: 'Toggle habits',
+        shortcut: 'enter',
+        scope: 'rpg.calendar',
+        run: () => setIsHabitsExpanded(prev => !prev),
+      },
+      {
+        id: 'calendar.toggleHabits.space',
+        title: 'Toggle habits',
+        shortcut: 'space',
+        scope: 'rpg.calendar',
+        run: () => setIsHabitsExpanded(prev => !prev),
+      },
+    ];
+  }, [calendarCells, selectedDayDetail, handleDayPress, setIsHabitsExpanded, todayStr]);
 
-    map['arrowright'] = (e: any) => {
-      e.preventDefault();
-      navigateDay(1);
-    };
-
-    map['arrowup'] = (e: any) => {
-      e.preventDefault();
-      navigateDay(-7);
-    };
-
-    map['arrowdown'] = (e: any) => {
-      e.preventDefault();
-      navigateDay(7);
-    };
-
-    map['enter'] = (e: any) => {
-      e.preventDefault();
-      setIsHabitsExpanded(prev => !prev);
-    };
-    map['space'] = (e: any) => {
-      e.preventDefault();
-      setIsHabitsExpanded(prev => !prev);
-    };
-
-    return map;
-  }, [isCalendarVisible, calendarCells, selectedDayDetail, handleDayPress, setIsHabitsExpanded, todayStr]);
-
-  useShortcuts(calendarShortcuts);
+  useCommands(calendarCommands);
+  useScope('rpg.calendar', isCalendarVisible);
 
   const handleAddHabit = (name: string, type: 'positive' | 'negative' | 'neutral') => {
     addTask(
@@ -451,7 +463,6 @@ export const RpgTab = memo(() => {
         styles={styles}
         theme={theme}
         selectedTaskId={selectedTaskId}
-        focusInputTrigger={focusInputTrigger}
         isActive={isActive && subtab === 'habits'}
       />
     );
@@ -477,7 +488,6 @@ export const RpgTab = memo(() => {
         piggyInputs={piggyInputs}
         setPiggyInputs={setPiggyInputs}
         selectedTaskId={selectedTaskId}
-        focusInputTrigger={focusInputTrigger}
         isActive={isActive && subtab === 'piggy_bank'}
       />
     );
@@ -501,7 +511,6 @@ export const RpgTab = memo(() => {
         setShowStartEpisode={setShowStartEpisode}
         isWideScreen={isWideScreen}
         selectedTaskId={selectedTaskId}
-        focusInputTrigger={focusInputTrigger}
         isActive={isActive && subtab === 'tv_shows'}
       />
     );
