@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCommands, useScope } from '../commands';
 import type { Command } from '../commands';
 import { useTranslation } from '../utils/LanguageContext';
@@ -98,7 +98,7 @@ export const useRpgCalendar = ({
     return cells;
   }, [viewDate]);
 
-  const handleDayPress = (cell: CalendarCell) => {
+  const handleDayPress = useCallback((cell: CalendarCell) => {
     if (!cell.dateStr) return;
     const log = rpgHistory.find(h => h.date === cell.dateStr);
     setSelectedDayDetail({
@@ -115,7 +115,7 @@ export const useRpgCalendar = ({
       }
     });
     setIsHabitsExpanded(false);
-  };
+  }, [rpgHistory]);
 
   const calendarCommands = useMemo<Command[]>(() => {
     const navigateDay = (offset: number) => {
@@ -187,7 +187,7 @@ export const useRpgCalendar = ({
         run: () => setIsHabitsExpanded(prev => !prev),
       },
     ];
-  }, [calendarCells, selectedDayDetail, todayStr]);
+  }, [calendarCells, selectedDayDetail, handleDayPress, todayStr]);
 
   useCommands(calendarCommands);
   useScope('rpg.calendar', isCalendarVisible);
