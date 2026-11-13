@@ -5,7 +5,7 @@
  * стора — все экраны показывают одинаковые цифры для одной логической даты.
  */
 
-import type { Todo } from '../contract/types';
+import type { DailyHistory, Todo } from '../contract/types';
 import { getLogicalDayIndex } from '../utils/date';
 import {
   getProgressEnd,
@@ -29,6 +29,50 @@ export interface DailyStats {
   habits: HabitSnapshot[];
   habitsDetail: string;
 }
+
+export interface HabitPoints {
+  posPoints: number;
+  negPoints: number;
+  neutralPoints: number;
+}
+
+/**
+ * Единый расчёт очков привычек.  Используется и для «живой» статистики
+ * сегодняшнего дня, и для истории, чтобы прошлые дни считались так же.
+ */
+export const computeHabitPoints = (habits: HabitSnapshot[]): HabitPoints => {
+  let posPoints = 0;
+  let negPoints = 0;
+  let neutralPoints = 0;
+
+  habits.forEach(item => {
+    if (item.contribution === 1) {
+      posPoints += item.progressNow;
+    } else if (item.contribution === -1) {
+      negPoints += item.progressNow;
+    } else if (item.contribution === 0) {
+      neutralPoints += item.progressNow;
+    }
+  });
+
+  return { posPoints, negPoints, neutralPoints };
+};
+
+/** Строит запись истории из той же статистики, что видят экраны. */
+export const buildHistoryEntry = (
+  date: string,
+  stats: DailyStats,
+  mood: number | null,
+  updatedAt: number = Date.now()
+): DailyHistory => ({
+  date,
+  mood,
+  daily_progress: stats.dailyProgress,
+  pos_points: stats.posPoints,
+  neg_points: stats.negPoints,
+  habits_detail: stats.habitsDetail,
+  updatedAt,
+});
 
 /** Разбирает `habits_detail` из истории в типизированный снапшот. */
 export const parseHabitsDetail = (
@@ -84,16 +128,7 @@ export const computeDailyStats = (
   }
 
   const habits = buildHabitSnapshot(todos);
-
-  const posPoints = habits
-    .filter(item => item.contribution === 1)
-    .reduce((sum, item) => sum + item.progressNow, 0);
-  const negPoints = habits
-    .filter(item => item.contribution === -1)
-    .reduce((sum, item) => sum + item.progressNow, 0);
-  const neutralPoints = habits
-    .filter(item => item.contribution === 0)
-    .reduce((sum, item) => sum + item.progressNow, 0);
+  const { posPoints, negPoints, neutralPoints } = computeHabitPoints(habits);
 
   return {
     dailyProgress,

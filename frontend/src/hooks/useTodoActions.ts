@@ -15,7 +15,7 @@ import {
   getLogicalDateStr,
   getNextResetMs,
 } from '../utils/date';
-import { computeDailyStats } from '../domain/daily';
+import { buildHistoryEntry, computeDailyStats } from '../domain/daily';
 import { resetTodosForNewDay } from '../domain/reset';
 import { useAppStore } from '../store/appStore';
 
@@ -110,15 +110,11 @@ export const useTodoActions = () => {
     lastHistorySyncRef.current = signature;
 
     const existingEntry = rpgHistoryRef.current.find(h => h.date === todayStr);
-    const updatedEntry = {
-      date: todayStr,
-      mood: existingEntry ? existingEntry.mood : null,
-      daily_progress: stats.dailyProgress,
-      pos_points: stats.posPoints,
-      neg_points: stats.negPoints,
-      habits_detail: stats.habitsDetail,
-      updatedAt: Date.now(),
-    };
+    const updatedEntry = buildHistoryEntry(
+      todayStr,
+      stats,
+      existingEntry ? existingEntry.mood : null
+    );
 
     useAppStore.getState().setRpgHistory(prev => {
       const existingIndex = prev.findIndex(h => h.date === todayStr);
