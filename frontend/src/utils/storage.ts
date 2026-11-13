@@ -181,13 +181,22 @@ export const TombstoneStorage = {
     }
   },
   add: (id: string): void => {
-    const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
-    tombstones.push({ id, updatedAt: Date.now() });
-    core.set('todo_tombstones', JSON.stringify(tombstones));
+    try {
+      const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
+      tombstones.push({ id, updatedAt: Date.now() });
+      core.set('todo_tombstones', JSON.stringify(tombstones));
+    } catch (error) {
+      // Переполнение localStorage/приватный режим не должны ломать удаление.
+      console.warn('Failed to persist todo tombstone:', error);
+    }
   },
   remove: (id: string): void => {
-    const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
-    core.set('todo_tombstones', JSON.stringify(tombstones));
+    try {
+      const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
+      core.set('todo_tombstones', JSON.stringify(tombstones));
+    } catch (error) {
+      console.warn('Failed to remove todo tombstone:', error);
+    }
   },
   clear: (): void => {
     core.remove('todo_tombstones');
