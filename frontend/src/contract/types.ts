@@ -51,7 +51,7 @@ export interface UserSettings {
   reset_enabled: boolean;
   language: Language;
   shortcuts: ShortcutSettings;
-  updatedAt?: number;
+  updatedAt: number;
 }
 
 export interface DailyHistory {

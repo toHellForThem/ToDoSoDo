@@ -90,7 +90,8 @@ export const getDefaultSettings = (): UserSettings => {
     rpg_subtab: 'dashboard',
     reset_enabled: true,
     language: getSystemLanguage(),
-    shortcuts: DEFAULT_SHORTCUTS
+    shortcuts: DEFAULT_SHORTCUTS,
+    updatedAt: 0
   }
   return settings
 }
