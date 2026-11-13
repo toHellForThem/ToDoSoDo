@@ -29,7 +29,8 @@ import { useMoodSheet } from './src/hooks/useMoodSheet';
 import { useShortcuts } from './src/hooks/useShortcuts';
 import { AuthStorage, AuthMode, DEFAULT_SHORTCUTS, Todo, UserSettings } from './src/utils/storage';
 import { getLogicalDateStr, getLogicalDayIndex } from './src/utils/date';
-import { socket } from './src/utils/socket';
+import { emit } from './src/contract/socket';
+import { ClientEvent } from './src/contract/events';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -435,7 +436,7 @@ export default function App() {
   const shortcuts = settings?.shortcuts || DEFAULT_SHORTCUTS;
 
   const shortcutsMap = useMemo(() => {
-    const map = {};
+    const map: Record<string, (e?: any) => void> = {};
     if (shortcuts.rpg_tab) map[shortcuts.rpg_tab] = () => handleTabChange('rpg');
     if (shortcuts.todo_tab) map[shortcuts.todo_tab] = () => handleTabChange('todo');
     if (shortcuts.daily_tab) map[shortcuts.daily_tab] = () => handleTabChange('daily');
@@ -459,7 +460,7 @@ export default function App() {
       map['5'] = () => { handleMoodChange(5); moodSheet.closeSheet(); };
     }
 
-    map['arrowdown'] = (e) => {
+    map['arrowdown'] = (e: any) => {
       if (isCalendarVisible) return;
       e.preventDefault();
       const items = getActiveItems();
@@ -474,7 +475,7 @@ export default function App() {
       }
     };
 
-    map['arrowup'] = (e) => {
+    map['arrowup'] = (e: any) => {
       if (isCalendarVisible) return;
       e.preventDefault();
       const items = getActiveItems();
@@ -489,7 +490,7 @@ export default function App() {
       }
     };
 
-    const handleToggleSelected = (e) => {
+    const handleToggleSelected = (e: any) => {
       if (isCalendarVisible) return;
       if (!selectedTaskId) return;
       const items = getActiveItems();
@@ -518,7 +519,7 @@ export default function App() {
           });
         });
         if (updated) {
-          socket.emit('client:sync_todo', updated);
+          emit(ClientEvent.SYNC_TODO, updated);
         }
         setSelectedTaskId(nextSelectedId);
         return;
@@ -541,7 +542,7 @@ export default function App() {
     map['enter'] = handleToggleSelected;
     map['space'] = handleToggleSelected;
 
-    map['arrowright'] = (e) => {
+    map['arrowright'] = (e: any) => {
       if (isCalendarVisible) return;
       if (!selectedTaskId) return;
       const items = getActiveItems();
@@ -565,7 +566,7 @@ export default function App() {
       }
     };
 
-    map['backspace'] = (e) => {
+    map['backspace'] = (e: any) => {
       if (isCalendarVisible) return;
       if (!selectedTaskId) return;
       const items = getActiveItems();
@@ -583,7 +584,7 @@ export default function App() {
       }
     };
 
-    map['i'] = (e) => {
+    map['i'] = (e: any) => {
       if (isCalendarVisible) return;
       e.preventDefault();
       setFocusInputTrigger(prev => prev + 1);
@@ -680,7 +681,7 @@ export default function App() {
                 handleUpdatePiggy={handleUpdatePiggy}
               />
               <View style={styles.main} pointerEvents={isMoodSheetOpen ? 'none' : 'auto'}>
-                {GLOBAL_VIEWS[activeView] && !(activeView === 'recycle' && isWideScreen) ? (
+                {activeView !== 'list' && GLOBAL_VIEWS[activeView] && !(activeView === 'recycle' && isWideScreen) ? (
                   GLOBAL_VIEWS[activeView]({
                     mainTab,
                     rpgSubtab,
@@ -779,8 +780,8 @@ export default function App() {
                       </View>
                     </View>
                   ) : (
-                    TAB_VIEWS[mainTab]?.list ? (
-                      TAB_VIEWS[mainTab].list(tabProps)
+                    TAB_VIEWS[mainTab as keyof typeof TAB_VIEWS] ? (
+                      TAB_VIEWS[mainTab as keyof typeof TAB_VIEWS].list(tabProps)
                     ) : null
                   )
                 )}

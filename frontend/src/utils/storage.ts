@@ -1,61 +1,30 @@
 import { Platform, NativeModules } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
+import type {
+  AuthMode,
+  Language,
+  MainPage,
+  RpgHistoryItem,
+  RpgSubtab,
+  ShortcutSettings,
+  ThemeName,
+  Todo,
+  TodoType,
+  UserSettings,
+} from '../contract/types';
 
-
-export type TodoType = 'todo' | 'daily' | 'habit' | 'piggy_bank' | 'tv_show' | 'movie';
-
-/** Режим авторизации: локальный, авторизованный или промежуточный (пустой). */
-export type AuthMode = 'local' | 'auth' | '';
-
-export interface ShortcutSettings {
-  rpg_tab: string;
-  todo_tab: string;
-  daily_tab: string;
-  habits_subtab: string;
-  piggy_subtab: string;
-  tv_subtab: string;
-  recycle_view: string;
-  settings_view: string;
-  calendar_view: string;
-  mood_view: string;
-}
-
-export interface UserSettings {
-  main_page: string;
-  theme: string;
-  soft_delete: boolean;
-  reset_time: string;
-  /** IANA-пояс пользователя: общий для всех устройств аккаунта. */
-  timezone: string;
-  rpg_subtab: string;
-  reset_enabled: boolean;
-  language: string;
-  shortcuts: ShortcutSettings;
-  updatedAt?: number;
-}
-
-export interface Todo {
-  id: string;
-  text: string;
-  completed: boolean;
-  deleted: boolean;
-  updatedAt: number;
-  type: TodoType;
-  progressNow: number | string;
-  progressEnd: number | string;
-  contribution: number;
-  days: string;
-}
-
-export interface RpgHistoryItem {
-  date: string;
-  mood: number | null;
-  daily_progress: number;
-  pos_points: number;
-  neg_points: number;
-  habits_detail: string;
-  updatedAt: number;
-}
+export type {
+  AuthMode,
+  Language,
+  MainPage,
+  RpgHistoryItem,
+  RpgSubtab,
+  ShortcutSettings,
+  ThemeName,
+  Todo,
+  TodoType,
+  UserSettings,
+} from '../contract/types';
 
 /** Локальная метка жёсткого удаления, которую нужно дослать на сервер. */
 export interface TodoTombstone {
@@ -121,7 +90,8 @@ export const getDefaultSettings = (): UserSettings => {
     rpg_subtab: 'dashboard',
     reset_enabled: true,
     language: getSystemLanguage(),
-    shortcuts: DEFAULT_SHORTCUTS
+    shortcuts: DEFAULT_SHORTCUTS,
+    updatedAt: 0
   }
   return settings
 }

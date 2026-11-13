@@ -33,7 +33,7 @@ interface HeaderProps {
   animatedStyle: StyleProp<ViewStyle>;
   contentAnimatedStyle: StyleProp<ViewStyle>;
   activeView: ActiveViewType;
-  setActiveView: Dispatch<SetStateAction<string>>;
+  setActiveView: Dispatch<SetStateAction<ActiveViewType>>;
   setAuthState: (state: string) => void;
   setAuthMode: (mode: AuthMode) => void;
   authMode: AuthMode;

@@ -18,7 +18,7 @@ const getCardStyle = (theme: Theme) => ({
   elevation: 2,
 });
 
-export const getStyles = (theme) => {
+export const getStyles = (theme: Theme) => {
   const CARD_STYLE = getCardStyle(theme);
   return StyleSheet.create({
     container: {

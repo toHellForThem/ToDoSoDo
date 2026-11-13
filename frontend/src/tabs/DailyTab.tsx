@@ -60,7 +60,7 @@ interface DailyInputProps {
   dailyProgressEnd: number;
   setDailyProgressEnd: Dispatch<SetStateAction<number>>;
   isWideScreen: boolean;
-  inputRef: RefObject<TextInput>;
+  inputRef: RefObject<TextInput | null>;
 }
 
 interface DailyTabProps {
@@ -126,7 +126,7 @@ const DailyItem = memo(({
     deleteTodo(item.id);
   }, [item.id, deleteTodo]);
 
-  const renderLeft = useCallback((prog, drag) => {
+  const renderLeft = useCallback((prog: any, drag: any) => {
     return leftAction(prog, drag, 'toRecycle');
   }, [leftAction]);
 

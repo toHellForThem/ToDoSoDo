@@ -27,11 +27,14 @@ import {
   RpgHistoryItem,
   Todo,
   AuthMode,
+  Language,
+  ThemeName,
   DEFAULT_SHORTCUTS,
   getDefaultSettings
 } from '../utils/storage';
 import { socket, updateSocketUrlAndReconnect } from '../utils/socket';
-import { request } from '../utils/protocol';
+import { emit, emitRaw, on } from '../contract/socket';
+import { ClientEvent, ServerEvent } from '../contract/events';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
 
@@ -300,10 +303,7 @@ export const SettingsTab = ({
       });
     };
 
-    socket.on('server:auth_message', handleAuthMessage);
-    return () => {
-      socket.off('server:auth_message', handleAuthMessage);
-    };
+    return on(ServerEvent.AUTH_MESSAGE, handleAuthMessage);
   }, [authMode, setAuthMode]);
 
   useEffect(() => {
@@ -315,19 +315,19 @@ export const SettingsTab = ({
   const handleLogin = () => {
     if (username && password) {
       Keyboard.dismiss();
-      socket.emit('client:login', { username, password });
+      emitRaw(ClientEvent.LOGIN, { username, password });
     }
   };
 
   const handleRegister = () => {
     if (username && password) {
       Keyboard.dismiss();
-      socket.emit('client:register', { username, password });
+      emitRaw(ClientEvent.REGISTER, { username, password });
     }
   };
 
   const handleLogout = () => {
-    socket.emit('client:logout');
+    emitRaw(ClientEvent.LOGOUT, undefined);
     socket.auth = {};
     socket.disconnect();
 
@@ -358,14 +358,14 @@ export const SettingsTab = ({
     setSettings(updated);
     AuthStorage.setSettings(updated);
     if (authMode === 'auth') {
-      socket.emit('client:update_settings', request(updated));
+      emit(ClientEvent.UPDATE_SETTINGS, updated);
     }
     if (key === 'main_page' && setMainTab) {
       setMainTab(value as string);
     }
   };
 
-  const handleThemeChange = (newTheme: string) => {
+  const handleThemeChange = (newTheme: ThemeName) => {
     updateSetting('theme', newTheme);
     Toast.show({
       type: 'success',
@@ -374,7 +374,7 @@ export const SettingsTab = ({
     });
   };
 
-  const handleLanguageChange = (newLang: string) => {
+  const handleLanguageChange = (newLang: Language) => {
     updateSetting('language', newLang);
     setTimeout(() => {
       Toast.show({

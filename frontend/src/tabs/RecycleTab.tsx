@@ -13,8 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { getStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
-import { socket } from '../utils/socket';
-import { request } from '../utils/protocol';
+import { emit } from '../contract/socket';
+import { ClientEvent } from '../contract/events';
 import { Todo } from '../utils/storage'
 
 
@@ -66,9 +66,9 @@ const RecycleItem = memo(({
       });
     });
     if (updated) {
-      socket.emit('client:sync_todo', request(updated));
+      emit(ClientEvent.SYNC_TODO, updated);
     }
-  }, [socket, item.id, setTodoList]);
+  }, [item.id, setTodoList]);
 
   return (
     <Swipeable

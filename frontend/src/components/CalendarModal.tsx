@@ -185,7 +185,8 @@ export const CalendarModal = memo(({
           <View style={styles.calendarGrid}>
             {calendarCells.map((cell, index) => {
               const dayLog = cell.dateStr ? rpgHistory.find(h => h.date === cell.dateStr) : null;
-              const hasCellMood = dayLog && activeMoodConfig[dayLog.mood];
+              const cellMood = dayLog?.mood ?? null;
+              const hasCellMood = cellMood != null && activeMoodConfig[cellMood];
               const isToday = cell.dateStr === todayStr;
               const isSelected = selectedDayDetail && selectedDayDetail.dateStr === cell.dateStr;
 
@@ -195,10 +196,10 @@ export const CalendarModal = memo(({
               let cellBorderWidth = 0;
 
               if (cell.day) {
-                if (hasCellMood) {
-                  cellBg = activeMoodConfig[dayLog.mood].glassBg;
-                  cellBorderColor = activeMoodConfig[dayLog.mood].color;
-                  cellTextColor = activeMoodConfig[dayLog.mood].color;
+                if (hasCellMood && cellMood != null) {
+                  cellBg = activeMoodConfig[cellMood].glassBg;
+                  cellBorderColor = activeMoodConfig[cellMood].color;
+                  cellTextColor = activeMoodConfig[cellMood].color;
                   cellBorderWidth = isSelected ? 3 : 1.5;
                 } else {
                   cellBg = theme.colors.border.light;
@@ -256,9 +257,9 @@ export const CalendarModal = memo(({
                   <Text style={styles.statLabel}>{t('rpg_cal_mood')}</Text>
                   {selectedDayDetail.log.mood ? (
                     <MaterialCommunityIcons
-                      name={activeMoodConfig[selectedDayDetail.log.mood]?.icon as any}
+                      name={activeMoodConfig[selectedDayDetail.log.mood ?? -1]?.icon as any}
                       size={28}
-                      color={activeMoodConfig[selectedDayDetail.log.mood]?.color as any}
+                      color={activeMoodConfig[selectedDayDetail.log.mood ?? -1]?.color as any}
                       style={{ marginTop: 4 }}
                     />
                   ) : (

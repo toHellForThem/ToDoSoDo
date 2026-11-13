@@ -41,7 +41,7 @@ interface TodoItemProps {
 
 interface TodoInputProps {
   onAdd: (task: string, progressEnd?: number) => void;
-  inputRef: RefObject<TextInput>;
+  inputRef: RefObject<TextInput | null>;
 }
 
 interface TodoTabProps {
@@ -93,7 +93,7 @@ const TodoItem = memo(({
     deleteTodo(item.id);
   }, [item.id, deleteTodo]);
 
-  const renderLeft = useCallback((prog, drag) => {
+  const renderLeft = useCallback((prog: any, drag: any) => {
     return leftAction(prog, drag, 'toRecycle');
   }, [leftAction]);
 
@@ -162,7 +162,7 @@ const TodoInput = memo(({ onAdd, inputRef }: TodoInputProps) => {
   const { t } = useTranslation();
   const [task, setTask] = useState('');
 
-  const handleKeyPress = useCallback((e) => {
+  const handleKeyPress = useCallback((e: any) => {
     if (e.nativeEvent?.key === 'Escape') {
       e.stopPropagation();
       Keyboard.dismiss();
