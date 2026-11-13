@@ -1,0 +1,513 @@
+/**
+ * Единый стор приложения.
+ *
+ * Держит доменные данные (`todos`, `history`, `settings`, `auth`) и
+ * UI-состояние (`navigation`, `selection`, модалки).  Компоненты читают
+ * нужные срезы через селекторы, а не получают десятки пропсов из `App`.
+ */
+
+import { Keyboard } from 'react-native';
+import { create } from 'zustand';
+import {
+  AuthStorage,
+  RpgStorage,
+  TodoStorage,
+  TombstoneStorage,
+  type AuthMode,
+  type RpgHistoryItem,
+  type Todo,
+  type TodoType,
+  type UserSettings,
+} from '../utils/storage';
+import { send } from '../sync';
+import { ClientEvent } from '../contract/events';
+import {
+  getLogicalDateStr,
+  getLogicalDayStartMs,
+} from '../utils/date';
+import { computeDailyStats } from '../utils/dailyStats';
+
+export type MainTab = 'todo' | 'daily' | 'rpg';
+export type RpgSubtab = 'dashboard' | 'habits' | 'piggy_bank' | 'tv_shows';
+export type ActiveView = 'list' | 'recycle' | 'settings';
+
+type Updater<T> = T | ((prev: T) => T);
+
+const resolveUpdater = <T,>(value: Updater<T>, prev: T): T =>
+  typeof value === 'function' ? (value as (prev: T) => T)(prev) : value;
+
+const isRpgSubtab = (value: string | undefined): value is RpgSubtab =>
+  value === 'dashboard' ||
+  value === 'habits' ||
+  value === 'piggy_bank' ||
+  value === 'tv_shows';
+
+const loadInitialTodos = (): Todo[] => {
+  const local = TodoStorage.getAll();
+  const list = Array.isArray(local) ? local : [];
+  const localSettings = AuthStorage.getSettings();
+
+  if (localSettings?.reset_enabled === false) {
+    return list;
+  }
+
+  const startOfToday = getLogicalDayStartMs(
+    localSettings?.reset_time,
+    localSettings?.timezone
+  );
+
+  let hasChanges = false;
+  const updatedList = list.map(item => {
+    if (
+      (item.type === 'daily' || item.type === 'habit') &&
+      !item.deleted &&
+      item.updatedAt < startOfToday
+    ) {
+      hasChanges = true;
+      return {
+        ...item,
+        progressNow: 0,
+        completed: false,
+        updatedAt: startOfToday,
+      };
+    }
+    return item;
+  });
+
+  if (hasChanges) {
+    TodoStorage.saveAll(updatedList);
+    return updatedList;
+  }
+
+  return list;
+};
+
+const initialSettings = AuthStorage.getSettings();
+
+let flashTimer: ReturnType<typeof setTimeout> | null = null;
+
+export interface AppState {
+  // Доменные данные
+  settings: UserSettings;
+  authMode: AuthMode;
+  authState: string;
+  todoList: Todo[];
+  rpgHistory: RpgHistoryItem[];
+
+  // Навигация
+  mainTab: MainTab;
+  rpgSubtab: RpgSubtab;
+  activeView: ActiveView;
+  isCalendarVisible: boolean;
+
+  // Выделение и фокус
+  selectedTaskId: string | null;
+  focusInputTrigger: number;
+
+  // UI-состояние
+  focusedGoalId: string | null;
+  flashingGoalId: string | null;
+  piggyInputs: Record<string, string>;
+  showIsMovie: boolean;
+  showStartEpisode: string;
+  dailyDays: string;
+  dailyProgressEnd: number;
+  isMoodSheetOpen: boolean;
+
+  // Доменные действия
+  setSettings: (settings: UserSettings) => void;
+  setAuthMode: (mode: AuthMode) => void;
+  setAuthState: (state: string) => void;
+  setTodoList: (value: Updater<Todo[]>) => void;
+  setRpgHistory: (value: Updater<RpgHistoryItem[]>) => void;
+  addTask: (
+    task: string,
+    progressEnd?: number,
+    type?: TodoType,
+    progressNow?: number | string,
+    contribution?: number,
+    days?: string
+  ) => void;
+  deleteToRecycle: (id: string) => void;
+  handleDeleteTodo: (id: string) => void;
+  statusChangeTask: (
+    id: string,
+    amount?: number | 'reset' | 'toggle_complete',
+    field?: string
+  ) => void;
+  deleteTodo: (id: string) => void;
+  editTask: (id: string, updatedFields: Partial<Todo>) => void;
+  handleMoodChange: (moodValue: number) => void;
+
+  // Навигация
+  setMainTab: (tab: MainTab) => void;
+  setRpgSubtab: (subtab: RpgSubtab) => void;
+  setActiveView: (view: ActiveView) => void;
+  toggleActiveView: (view: ActiveView) => void;
+  handleTabChange: (tab: MainTab) => void;
+  handleSubtabChange: (subtab: RpgSubtab) => void;
+  setCalendarVisible: (visible: boolean) => void;
+  toggleCalendar: () => void;
+
+  // Выделение и фокус
+  setSelectedTaskId: (id: string | null) => void;
+  triggerFocusInput: () => void;
+
+  // UI-состояние
+  setFocusedGoalId: (value: Updater<string | null>) => void;
+  setFlashingGoalId: (id: string | null) => void;
+  setPiggyInputs: (value: Updater<Record<string, string>>) => void;
+  setShowIsMovie: (value: Updater<boolean>) => void;
+  setShowStartEpisode: (value: Updater<string>) => void;
+  setDailyDays: (value: Updater<string>) => void;
+  setDailyProgressEnd: (value: Updater<number>) => void;
+  setIsMoodSheetOpen: (open: boolean) => void;
+  handleUpdatePiggy: (goalId: string, inputVal: number, isAdd: boolean) => void;
+}
+
+export const useAppStore = create<AppState>((set, get) => ({
+  settings: initialSettings,
+  authMode: 'local',
+  authState: '',
+  todoList: loadInitialTodos(),
+  rpgHistory: RpgStorage.getHistory(),
+
+  mainTab: (initialSettings.main_page as MainTab) || 'todo',
+  rpgSubtab: isRpgSubtab(initialSettings.rpg_subtab)
+    ? initialSettings.rpg_subtab
+    : 'dashboard',
+  activeView: 'list',
+  isCalendarVisible: false,
+
+  selectedTaskId: null,
+  focusInputTrigger: 0,
+
+  focusedGoalId: null,
+  flashingGoalId: null,
+  piggyInputs: {},
+  showIsMovie: false,
+  showStartEpisode: '1',
+  dailyDays: '1111111',
+  dailyProgressEnd: 1,
+  isMoodSheetOpen: false,
+
+  setSettings: settings => set({ settings }),
+  setAuthMode: authMode => set({ authMode }),
+  setAuthState: authState => set({ authState }),
+  setTodoList: value =>
+    set(state => ({ todoList: resolveUpdater(value, state.todoList) })),
+  setRpgHistory: value =>
+    set(state => ({ rpgHistory: resolveUpdater(value, state.rpgHistory) })),
+
+  addTask: (
+    task,
+    progressEnd = 1,
+    type,
+    progressNow = 0,
+    contribution = 0,
+    days = '1111111'
+  ) => {
+    if (!task.trim()) return;
+
+    const { mainTab } = get();
+    const todoType = type ?? (mainTab as TodoType);
+    let defaultContrib = contribution;
+    if (defaultContrib === 0 && (todoType === 'todo' || todoType === mainTab)) {
+      defaultContrib = 1;
+    }
+
+    const newTodo: Todo = {
+      id: Date.now().toString(),
+      text: task.trim(),
+      completed: false,
+      deleted: false,
+      updatedAt: Date.now(),
+      type: todoType,
+      progressNow,
+      progressEnd,
+      contribution: defaultContrib,
+      days,
+    };
+
+    set(state => ({ todoList: [newTodo, ...state.todoList] }));
+    send(ClientEvent.SYNC_TODO, newTodo);
+  },
+
+  deleteToRecycle: id => {
+    let updated: Todo | null = null;
+    set(state => ({
+      todoList: state.todoList.map(todo => {
+        if (todo.id !== id) return todo;
+        updated = { ...todo, deleted: true, updatedAt: Date.now() };
+        return updated;
+      }),
+    }));
+    if (updated) {
+      send(ClientEvent.SYNC_TODO, updated);
+    }
+  },
+
+  handleDeleteTodo: id => {
+    const { settings, deleteToRecycle, deleteTodo } = get();
+    if (settings.soft_delete) {
+      deleteToRecycle(id);
+    } else {
+      deleteTodo(id);
+    }
+  },
+
+  statusChangeTask: (id, amount = 1, field = 'episode') => {
+    let updated: Todo | null = null;
+    set(state => ({
+      todoList: state.todoList.map(todo => {
+        if (todo.id !== id) return todo;
+        const type = todo.type;
+
+        if (type === 'habit') {
+          if (amount === 'reset') {
+            updated = { ...todo, progressNow: 0, updatedAt: Date.now() };
+            return updated;
+          }
+          const change = Math.abs(amount as number);
+          const newProgress = Math.max(
+            0,
+            (parseInt(String(todo.progressNow), 10) || 0) + change
+          );
+          updated = {
+            ...todo,
+            progressNow: newProgress,
+            updatedAt: Date.now(),
+          };
+          return updated;
+        }
+
+        if (type === 'piggy_bank') {
+          const change = amount as number;
+          const newProgress = Math.max(
+            0,
+            (parseInt(String(todo.progressNow), 10) || 0) + change
+          );
+          updated = {
+            ...todo,
+            progressNow: newProgress,
+            completed:
+              newProgress >= (parseInt(String(todo.progressEnd), 10) || 0),
+            updatedAt: Date.now(),
+          };
+          return updated;
+        }
+
+        if (type === 'tv_show') {
+          if (amount === 'toggle_complete') {
+            updated = {
+              ...todo,
+              completed: !todo.completed,
+              updatedAt: Date.now(),
+            };
+            return updated;
+          }
+          let [season, episode] = (todo.progressNow || '1-1')
+            .toString()
+            .split('-')
+            .map(Number);
+          if (isNaN(season)) season = 1;
+          if (isNaN(episode)) episode = 1;
+
+          const change = amount as number;
+          if (field === 'season') {
+            season = Math.max(1, season + change);
+          } else {
+            episode = Math.max(1, episode + change);
+          }
+
+          updated = {
+            ...todo,
+            progressNow: `${season}-${episode}`,
+            updatedAt: Date.now(),
+          };
+          return updated;
+        }
+
+        if (type === 'movie') {
+          const wasCompleted = todo.completed;
+          updated = {
+            ...todo,
+            completed: !wasCompleted,
+            progressNow: !wasCompleted ? '1' : '0',
+            updatedAt: Date.now(),
+          };
+          return updated;
+        }
+
+        if (todo.completed) {
+          updated = {
+            ...todo,
+            progressNow: 0,
+            completed: false,
+            contribution: 0,
+            updatedAt: Date.now(),
+          };
+          return updated;
+        }
+
+        if (Number(todo.progressEnd) > 1) {
+          const nextProgress = Number(todo.progressNow) + 1;
+          updated = {
+            ...todo,
+            progressNow: nextProgress,
+            completed: nextProgress === Number(todo.progressEnd),
+            contribution:
+              todo.type === 'daily' ? nextProgress : todo.contribution,
+            updatedAt: Date.now(),
+          };
+          return updated;
+        }
+
+        updated = {
+          ...todo,
+          progressNow: 1,
+          completed: true,
+          contribution: todo.type === 'daily' ? 1 : todo.contribution,
+          updatedAt: Date.now(),
+        };
+        return updated;
+      }),
+    }));
+    if (updated) {
+      send(ClientEvent.SYNC_TODO, updated);
+    }
+  },
+
+  deleteTodo: id => {
+    set(state => ({
+      todoList: state.todoList.filter(item => item.id !== id),
+    }));
+    // Жёсткое удаление фиксируем локально, чтобы офлайн-удаление
+    // не потерялось и дослалось на сервер при reconnect.
+    TombstoneStorage.add(id);
+    send(ClientEvent.DELETE_TODO, id);
+  },
+
+  editTask: (id, updatedFields) => {
+    let updated: Todo | null = null;
+    set(state => ({
+      todoList: state.todoList.map(todo => {
+        if (todo.id !== id) return todo;
+        const merged = { ...todo, ...updatedFields, updatedAt: Date.now() };
+        if ('progressEnd' in updatedFields || 'progressNow' in updatedFields) {
+          const nextProgressEnd = parseInt(String(merged.progressEnd), 10) || 1;
+          const nextProgressNow = parseInt(String(merged.progressNow), 10) || 0;
+          merged.completed = nextProgressNow >= nextProgressEnd;
+        }
+        updated = merged;
+        return updated;
+      }),
+    }));
+    if (updated) {
+      send(ClientEvent.SYNC_TODO, updated);
+    }
+  },
+
+  handleMoodChange: moodValue => {
+    const { settings, todoList } = get();
+    const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
+    const stats = computeDailyStats(todoList, todayStr);
+
+    set(state => {
+      const existingIndex = state.rpgHistory.findIndex(
+        h => h.date === todayStr
+      );
+      const updatedEntry: RpgHistoryItem = {
+        date: todayStr,
+        mood: moodValue,
+        daily_progress: stats.dailyProgress,
+        pos_points: stats.posPoints,
+        neg_points: stats.negPoints,
+        habits_detail: stats.habitsDetail,
+        updatedAt: Date.now(),
+      };
+
+      const newHistory = [...state.rpgHistory];
+      if (existingIndex !== -1) {
+        newHistory[existingIndex] = updatedEntry;
+      } else {
+        newHistory.push(updatedEntry);
+      }
+
+      send(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
+      return { rpgHistory: newHistory };
+    });
+  },
+
+  setMainTab: mainTab => set({ mainTab }),
+  setRpgSubtab: rpgSubtab => set({ rpgSubtab, focusedGoalId: null }),
+  setActiveView: activeView => set({ activeView }),
+  toggleActiveView: view =>
+    set(state => ({
+      activeView: state.activeView === view ? 'list' : view,
+      selectedTaskId: null,
+    })),
+  handleTabChange: tab =>
+    set({
+      mainTab: tab,
+      rpgSubtab: tab === 'rpg' ? 'dashboard' : get().rpgSubtab,
+      activeView: 'list',
+      focusedGoalId: null,
+      selectedTaskId: null,
+    }),
+  handleSubtabChange: subtab =>
+    set({
+      mainTab: 'rpg',
+      rpgSubtab: subtab,
+      activeView: 'list',
+      selectedTaskId: null,
+    }),
+  setCalendarVisible: isCalendarVisible => set({ isCalendarVisible }),
+  toggleCalendar: () =>
+    set(state => ({
+      isCalendarVisible: !state.isCalendarVisible,
+      mainTab: 'rpg',
+      rpgSubtab: 'dashboard',
+      activeView: 'list',
+      selectedTaskId: null,
+    })),
+
+  setSelectedTaskId: selectedTaskId => set({ selectedTaskId }),
+  triggerFocusInput: () =>
+    set(state => ({ focusInputTrigger: state.focusInputTrigger + 1 })),
+
+  setFocusedGoalId: value =>
+    set(state => ({
+      focusedGoalId: resolveUpdater(value, state.focusedGoalId),
+    })),
+  setFlashingGoalId: flashingGoalId => set({ flashingGoalId }),
+  setPiggyInputs: value =>
+    set(state => ({ piggyInputs: resolveUpdater(value, state.piggyInputs) })),
+  setShowIsMovie: value =>
+    set(state => ({ showIsMovie: resolveUpdater(value, state.showIsMovie) })),
+  setShowStartEpisode: value =>
+    set(state => ({
+      showStartEpisode: resolveUpdater(value, state.showStartEpisode),
+    })),
+  setDailyDays: value =>
+    set(state => ({ dailyDays: resolveUpdater(value, state.dailyDays) })),
+  setDailyProgressEnd: value =>
+    set(state => ({
+      dailyProgressEnd: resolveUpdater(value, state.dailyProgressEnd),
+    })),
+  setIsMoodSheetOpen: isMoodSheetOpen => set({ isMoodSheetOpen }),
+
+  handleUpdatePiggy: (goalId, inputVal, isAdd) => {
+    get().statusChangeTask(goalId, isAdd ? inputVal : -inputVal);
+    Keyboard.dismiss();
+
+    if (flashTimer) {
+      clearTimeout(flashTimer);
+    }
+    set({ flashingGoalId: goalId });
+    flashTimer = setTimeout(() => {
+      set({ flashingGoalId: null });
+      flashTimer = null;
+    }, 650);
+  },
+}));
