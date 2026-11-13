@@ -1,6 +1,12 @@
 import { AuthStorage } from '../utils/storage';
 
 
+export interface MoodColors {
+  color: string;
+  glassBg: string;
+  dashboardBg: string;
+}
+
 export interface ThemeColors {
   primary: string,
   primaryLight: string,
@@ -28,6 +34,7 @@ export interface ThemeColors {
 
 export interface Theme {
   colors: ThemeColors;
+  moods: MoodColors[];
   spacing: typeof spacing;
   radius: typeof radius;
   sizes: typeof sizes;
@@ -60,6 +67,38 @@ export const defaultColors: ThemeColors = {
     bgActive: '#3B82F6',
   },
 };
+
+export const defaultMoodColors: MoodColors[] = [
+  { color: '#64748B', glassBg: '#EDF2F7', dashboardBg: '#CBD9EF' },
+  { color: '#F43F5E', glassBg: '#FFE4E6', dashboardBg: '#DCD2E9' },
+  { color: '#D98A2F', glassBg: '#FEF3C7', dashboardBg: '#D9DCE4' },
+  { color: '#10B981', glassBg: '#D1FAE5', dashboardBg: '#C1E1EE' },
+  { color: '#8B5CF6', glassBg: '#EDE9FE', dashboardBg: '#CFD6FC' },
+];
+
+export const darkMoodColors: MoodColors[] = [
+  { color: '#94A3B8', glassBg: '#334155', dashboardBg: '#1E293B' },
+  { color: '#FB7185', glassBg: '#4c0519', dashboardBg: '#881337' },
+  { color: '#F59E0B', glassBg: '#451a03', dashboardBg: '#78350f' },
+  { color: '#34D399', glassBg: '#064e3b', dashboardBg: '#065f46' },
+  { color: '#C084FC', glassBg: '#2e1065', dashboardBg: '#4c1d95' },
+];
+
+export const mintMoodColors: MoodColors[] = [
+  { color: '#64748B', glassBg: '#EDF2F7', dashboardBg: '#E2E8F0' },
+  { color: '#F43F5E', glassBg: '#FFE4E6', dashboardBg: '#FECDD3' },
+  { color: '#D98A2F', glassBg: '#FEF3C7', dashboardBg: '#FDE68A' },
+  { color: '#10B981', glassBg: '#D1FAE5', dashboardBg: '#A7F3D0' },
+  { color: '#8B5CF6', glassBg: '#EDE9FE', dashboardBg: '#DDD6FE' },
+];
+
+export const pinkMoodColors: MoodColors[] = [
+  { color: '#64748B', glassBg: '#EDF2F7', dashboardBg: '#E2E8F0' },
+  { color: '#F43F5E', glassBg: '#FFE4E6', dashboardBg: '#FFD2E2' },
+  { color: '#D98A2F', glassBg: '#FEF3C7', dashboardBg: '#FFEBC4' },
+  { color: '#10B981', glassBg: '#D1FAE5', dashboardBg: '#E6F4EA' },
+  { color: '#D946EF', glassBg: '#FDF4FF', dashboardBg: '#FAE8FF' },
+];
 
 export const darkColors = {
   primary: '#8B5CF6',
@@ -169,41 +208,35 @@ const sizes = {
 
 export const getTheme = (themeName: string): Theme => {
   let colors = defaultColors;
+  let moods = defaultMoodColors;
   if (themeName === 'dark') {
     colors = darkColors;
+    moods = darkMoodColors;
   } else if (themeName === 'mint') {
     colors = mintColors;
+    moods = mintMoodColors;
   } else if (themeName === 'pink') {
     colors = pinkColors;
+    moods = pinkMoodColors;
   }
   return {
     colors,
+    moods,
     spacing,
     radius,
     sizes,
   };
 };
 
-const getActiveColors = (): ThemeColors => {
+const getActiveThemeName = (): string => {
   try {
     const saved = AuthStorage.getSettings();
-    if (saved?.theme === 'dark') {
-      return darkColors;
-    }
-    if (saved?.theme === 'mint') {
-      return mintColors;
-    }
-    if (saved?.theme === 'pink') {
-      return pinkColors;
+    if (saved?.theme) {
+      return saved.theme;
     }
   } catch (e) {
   }
-  return defaultColors;
+  return 'default';
 };
 
-export const theme: Theme = {
-  colors: getActiveColors(),
-  spacing,
-  radius,
-  sizes
-};
+export const theme: Theme = getTheme(getActiveThemeName());

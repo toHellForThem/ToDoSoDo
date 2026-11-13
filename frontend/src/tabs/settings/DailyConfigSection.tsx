@@ -1,9 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { UserSettings } from '../../utils/storage';
 import { SectionStyleProps } from './types';
-
-type UpdateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => void;
 
 interface ResetTimeSectionProps extends SectionStyleProps {
   hours: number;
@@ -82,14 +79,11 @@ export const ResetTimeSection = ({
 };
 
 interface DailyConfigSectionProps extends SectionStyleProps {
-  settings: UserSettings | undefined;
-  updateSetting: UpdateSetting;
   onEditDailies: () => void;
 }
 
 /** Переход к редактированию daily-задач. */
 export const DailyConfigSection = ({
-  settings,
   onEditDailies,
   styles,
   theme,
@@ -99,12 +93,10 @@ export const DailyConfigSection = ({
     <View style={styles.card}>
       <View style={styles.cardHeaderWithIcon}>
         <MaterialCommunityIcons name="calendar-check" size={20} color={theme.colors.primary} />
-        <Text style={styles.cardTitle}>
-          {settings?.language === 'ru' ? 'Настройка Daily' : 'Daily Tasks Config'}
-        </Text>
+        <Text style={styles.cardTitle}>{t('set_daily_config_title')}</Text>
       </View>
       <Text style={{ fontSize: 11, color: theme.colors.text.muted, marginLeft: theme.spacing.sm, marginTop: 4, marginBottom: 12 }}>
-        {settings?.language === 'ru' ? 'Настройте дни недели и прогресс для ваших ежедневных задач' : 'Configure active weekdays and progress goals for your daily tasks'}
+        {t('set_daily_config_desc')}
       </Text>
       <TouchableOpacity
         onPress={onEditDailies}
@@ -112,9 +104,7 @@ export const DailyConfigSection = ({
         activeOpacity={0.8}
       >
         <MaterialCommunityIcons name="calendar-edit" size={18} color={theme.colors.icon.primary} style={{ marginRight: 6 }} />
-        <Text style={styles.logoutButtonText}>
-          {settings?.language === 'ru' ? 'Редактировать Daily' : 'Edit Daily Tasks'}
-        </Text>
+        <Text style={styles.logoutButtonText}>{t('set_daily_edit')}</Text>
       </TouchableOpacity>
     </View>
   );

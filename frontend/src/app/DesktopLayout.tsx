@@ -2,6 +2,7 @@ import { View, Text } from 'react-native';
 import { getStyles } from '../../App.styles';
 import { useStyles } from '../theme/ThemeContext';
 import { useAppStore } from '../store/appStore';
+import { useTranslation } from '../utils/LanguageContext';
 import { TodoTab } from '../tabs/TodoTab';
 import { DailyTab } from '../tabs/DailyTab';
 import { RpgTab } from '../tabs/RpgTab';
@@ -17,13 +18,11 @@ const renderTab = (tab: ColumnTab) => {
 
 /** Wide-layout: три колонки, активная определяется mainTab. */
 export const DesktopLayout = () => {
-  const settings = useAppStore(state => state.settings);
   const mainTab = useAppStore(state => state.mainTab);
   const activeView = useAppStore(state => state.activeView);
   const handleTabChange = useAppStore(state => state.handleTabChange);
   const styles = useStyles(getStyles);
-
-  const isRu = settings?.language === 'ru';
+  const { t } = useTranslation();
 
   const renderColumn = (tab: ColumnTab, title: string) => (
     <View
@@ -48,9 +47,9 @@ export const DesktopLayout = () => {
 
   return (
     <View style={styles.dashboardContainer}>
-      {renderColumn('rpg', isRu ? '⚔️ РПГ-режим' : '⚔️ RPG Mode')}
-      {renderColumn('todo', isRu ? '📝 Список дел' : '📝 To-Do List')}
-      {renderColumn('daily', isRu ? '⚡ Ежедневные' : '⚡ Daily Tasks')}
+      {renderColumn('rpg', t('desktop_rpg_title'))}
+      {renderColumn('todo', t('desktop_todo_title'))}
+      {renderColumn('daily', t('desktop_daily_title'))}
     </View>
   );
 };

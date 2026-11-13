@@ -7,7 +7,6 @@ import { SectionStyleProps } from './types';
 
 interface DailiesEditorProps extends SectionStyleProps {
   dailies: Todo[];
-  isRu: boolean;
   onBack: () => void;
   handleToggleDay: (item: Todo, idx: number) => void;
   handleChangeProgressEnd: (item: Todo, delta: number) => void;
@@ -18,7 +17,6 @@ interface DailiesEditorProps extends SectionStyleProps {
 /** Подэкран редактирования дней недели и цели daily-задач. */
 export const DailiesEditor = ({
   dailies,
-  isRu,
   onBack,
   handleToggleDay,
   handleChangeProgressEnd,
@@ -67,7 +65,7 @@ export const DailiesEditor = ({
               <Ionicons name="arrow-back" size={24} color={theme.colors.icon.primary} />
             </TouchableOpacity>
             <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.text.primary, marginLeft: 16 }}>
-              {isRu ? 'Редактировать Daily' : 'Edit Daily Tasks'}
+              {t('set_daily_edit')}
             </Text>
           </View>
         </View>
@@ -76,7 +74,7 @@ export const DailiesEditor = ({
             <View style={[styles.card, { alignItems: 'center', paddingVertical: 30, marginBottom: 0 }]}>
               <MaterialCommunityIcons name="calendar-blank" size={48} color={theme.colors.text.muted} />
               <Text style={{ fontSize: 14, color: theme.colors.text.secondary, marginTop: 12 }}>
-                {isRu ? 'Нет активных ежедневных задач' : 'No active daily tasks'}
+                {t('set_daily_empty')}
               </Text>
             </View>
           </View>
