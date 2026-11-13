@@ -65,13 +65,18 @@ export const AppShell = () => {
 
   const shortcuts = settings?.shortcuts || DEFAULT_SHORTCUTS;
 
+  const focusActiveInput = useCallback(
+    () => registry.focusActiveInput(),
+    [registry]
+  );
+
   const commands = useAppCommands({
     shortcuts,
     isMoodSheetOpen,
     closeMoodSheet: moodSheet.closeSheet,
     handleMoodSheet,
     handleBackAction,
-    focusActiveInput: registry.focusActiveInput,
+    focusActiveInput,
   });
 
   useCommands(commands);
