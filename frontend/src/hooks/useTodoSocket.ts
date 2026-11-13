@@ -8,7 +8,12 @@ import {
   flush,
   handleAck,
   handleError,
+  invalidateMonthHistory,
   onReconnect,
+  rejectMonthHistory,
+  resetPendingMonthRequests,
+  resolveMonthHistory,
+  retryPendingMonths,
   setSyncMode,
   setSyncErrorListener,
 } from '../sync';
@@ -59,6 +64,11 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
 
     socket.on('connect', () => {
       onReconnect();
+      retryPendingMonths();
+    });
+
+    socket.on('disconnect', () => {
+      resetPendingMonthRequests();
     });
 
     unsubscribers.push(on(ServerEvent.LOGIN_SUCCESS, (data) => {
@@ -78,6 +88,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
       AuthStorage.setUsername(username);
       AuthStorage.setToken(token);
       setSyncMode('auth');
+      invalidateMonthHistory();
 
       // Сначала досылаем жёсткие удаления, накопленные офлайн.
       TombstoneStorage.getAll().forEach(tombstone => {
@@ -258,6 +269,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
         onSessionCleared?.();
         socket.auth = {};
         setSyncMode('local');
+        invalidateMonthHistory();
         store.setAuthMode('local');
         store.setAuthState('login');
         Toast.show({
@@ -270,21 +282,55 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
     }));
 
     unsubscribers.push(on(ServerEvent.MONTH_HISTORY, (data) => {
-      startTransition(() => {
-        if (data && data.history) {
-          useAppStore.getState().setRpgHistory(prev => {
-            const merged = [...prev];
-            data.history.forEach(srvLog => {
-              const localIdx = merged.findIndex(h => h.date === srvLog.date);
-              if (localIdx === -1) {
-                merged.push(srvLog);
-              } else {
-                merged[localIdx] = srvLog;
-              }
-            });
-            return merged;
-          });
+      if (!data) return;
+
+      resolveMonthHistory(data.month, data.request_id);
+
+      const serverEntries = (Array.isArray(data.history) ? data.history : [])
+        .filter(entry => entry.date.startsWith(data.month));
+      if (serverEntries.length === 0) return;
+
+      // Мержим по `updatedAt`: серверная версия новее — берём её,
+      // локальная новее — оставляем и досылаем на сервер.
+      const store = useAppStore.getState();
+      const merged = [...store.rpgHistory];
+      const localNewer: RpgHistoryItem[] = [];
+      let hasChanges = false;
+
+      serverEntries.forEach(srvLog => {
+        const localIdx = merged.findIndex(h => h.date === srvLog.date);
+        if (localIdx === -1) {
+          merged.push(srvLog);
+          hasChanges = true;
+          return;
         }
+
+        const localLog = merged[localIdx];
+        if ((srvLog.updatedAt || 0) >= (localLog.updatedAt || 0)) {
+          if (
+            srvLog.updatedAt !== localLog.updatedAt ||
+            srvLog.mood !== localLog.mood ||
+            srvLog.daily_progress !== localLog.daily_progress ||
+            srvLog.pos_points !== localLog.pos_points ||
+            srvLog.neg_points !== localLog.neg_points ||
+            srvLog.habits_detail !== localLog.habits_detail
+          ) {
+            merged[localIdx] = srvLog;
+            hasChanges = true;
+          }
+        } else {
+          localNewer.push(localLog);
+        }
+      });
+
+      if (hasChanges) {
+        startTransition(() => {
+          useAppStore.getState().setRpgHistory(merged);
+        });
+      }
+
+      localNewer.forEach(entry => {
+        send(ClientEvent.SYNC_DAILY_HISTORY, entry);
       });
     }));
 
@@ -428,6 +474,9 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
 
     unsubscribers.push(on(ServerEvent.ERROR, (error: ServerErrorPayload) => {
       handleError(error);
+      if (error.event === ClientEvent.GET_MONTH_HISTORY) {
+        rejectMonthHistory(error.request_id);
+      }
       if (error.code === 'unauthorized') {
         return;
       }
@@ -441,6 +490,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
 
     return () => {
       socket.off('connect');
+      socket.off('disconnect');
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [onSessionCleared]);

@@ -51,7 +51,11 @@ export interface ServerPayloads {
   [ServerEvent.ALL_TODOS]: Todo[];
   [ServerEvent.TODO_UPDATED]: Todo;
   [ServerEvent.TODO_DELETED]: string;
-  [ServerEvent.MONTH_HISTORY]: { month: string; history: DailyHistory[] };
+  [ServerEvent.MONTH_HISTORY]: {
+    month: string;
+    history: DailyHistory[];
+    request_id?: string | null;
+  };
   [ServerEvent.DAILY_HISTORY_UPDATED]: DailyHistory;
   [ServerEvent.SETTINGS_UPDATED]: UserSettings;
   [ServerEvent.ACK]: AckPayload;
