@@ -151,19 +151,30 @@ export const RpgTab = memo(({
   const flatListRef = useRef(null);
   const currentScrollY = useRef(0);
 
-  const today = useMemo(() => new Date(), []);
   const todayStr = useMemo(
     () => getLogicalDateStr(settings?.reset_time, settings?.timezone),
     [settings?.reset_time, settings?.timezone]
   );
 
-  const [viewDate, setViewDate] = useState(() => new Date());
+  // Календарь и заголовок даты живут в том же логическом дне, что и задачи.
+  const today = useMemo(() => {
+    const [year, month, day] = todayStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }, [todayStr]);
+
+  const [viewDate, setViewDate] = useState(() => {
+    const [year, month, day] = getLogicalDateStr(
+      settings?.reset_time,
+      settings?.timezone
+    ).split('-').map(Number);
+    return new Date(year, month - 1, day);
+  });
 
   useEffect(() => {
     if (isCalendarVisible) {
-      setViewDate(new Date());
+      setViewDate(today);
     }
-  }, [isCalendarVisible]);
+  }, [isCalendarVisible, today]);
 
   const handlePrevMonth = () => {
     setViewDate(prev => {
