@@ -5,7 +5,7 @@
 
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 
 const root = resolve(process.argv[2] || 'dist');
 const port = Number(process.argv[3] || 8081);
@@ -28,8 +28,9 @@ createServer((req, res) => {
   const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
   const candidate = normalize(join(root, urlPath));
 
-  // Не выходим за пределы каталога сборки.
-  if (!candidate.startsWith(root)) {
+  // Не выходим за пределы каталога сборки: `startsWith(root)` пропустил бы
+  // соседний каталог вроде `dist-evil`, поэтому сравниваем с разделителем.
+  if (candidate !== root && !candidate.startsWith(root + sep)) {
     res.writeHead(403).end('Forbidden');
     return;
   }
