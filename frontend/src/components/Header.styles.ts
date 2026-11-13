@@ -1,23 +1,18 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, ViewStyle } from 'react-native';
 import { selectPlatform } from '../platform';
 import { Theme } from '../theme/theme';
 
-const invisibleShadePosition = selectPlatform({
-  web: {
-    position: 'fixed' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  default: {
-    position: 'absolute' as const,
-    top: -120,
-    left: -100,
-    right: -110,
-    bottom: -1000,
-  },
-});
+const invisibleShadePosition: ViewStyle = {
+  // RN Web поддерживает `fixed`, но в типах React Native его нет.
+  position: selectPlatform({
+    web: 'fixed' as unknown as ViewStyle['position'],
+    default: 'absolute' as const,
+  }),
+  top: selectPlatform({ web: 0, default: -120 }),
+  left: selectPlatform({ web: 0, default: -100 }),
+  right: selectPlatform({ web: 0, default: -110 }),
+  bottom: selectPlatform({ web: 0, default: -1000 }),
+};
 
 export const getStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -92,7 +87,7 @@ export const getStyles = (theme: Theme) =>
       ...invisibleShadePosition,
       zIndex: 49,
       backgroundColor: 'rgba(0,0,0,0.1)',
-    } as any,
+    },
     moodMeter: {
       top: 0,
       alignItems: 'center',

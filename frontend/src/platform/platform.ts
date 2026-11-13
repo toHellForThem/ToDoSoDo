@@ -7,8 +7,12 @@ export const isNative = !isWeb;
 export const isAndroid = Platform.OS === 'android';
 export const isIOS = Platform.OS === 'ios';
 
-/** Tauri использует web-сборку, но с нативным мостом внутри webview. */
-export const isTauri = isWeb && detectTauri();
+/**
+ * Tauri использует web-сборку, но с нативным мостом внутри webview.
+ * Проверка ленивая: мост инжектится в `window` не синхронно с импортом
+ * модулей, поэтому фиксировать флаг на уровне модуля нельзя.
+ */
+export const getIsTauri = (): boolean => isWeb && detectTauri();
 
 interface PlatformValues<T> {
   web?: T;

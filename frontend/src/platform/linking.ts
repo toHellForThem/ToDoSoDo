@@ -1,5 +1,5 @@
 import { Linking } from 'react-native';
-import { isTauri, isWeb } from './platform';
+import { getIsTauri, isWeb } from './platform';
 
 /**
  * Открывает внешнюю ссылку: на native — системный браузер, в web/Tauri —
@@ -20,7 +20,7 @@ export const openExternalUrl = async (url: string): Promise<void> => {
 
   // Popup заблокирован: в браузере уводим текущую вкладку, но в Tauri это
   // сломало бы приложение — отдаём ошибку наверх.
-  if (isTauri) {
+  if (getIsTauri()) {
     throw new Error(`Unable to open external URL: ${url}`);
   }
   window.location.assign(url);

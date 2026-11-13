@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { getTheme } from '../theme/theme';
@@ -6,6 +6,9 @@ import { ThemeContext } from '../theme/ThemeContext';
 import { LanguageProvider } from '../utils/LanguageContext';
 import { useAppStore } from '../store/appStore';
 import { injectWebGlobalStyles } from '../platform';
+
+// Инжектим web-стили до первого рендера, чтобы не было FOUC/мигания.
+injectWebGlobalStyles();
 
 interface ProvidersProps {
   children: ReactNode;
@@ -19,10 +22,6 @@ export const Providers = ({ children }: ProvidersProps) => {
   const theme = useMemo(() => getTheme(themeName), [themeName]);
   const isDark = themeName === 'dark';
   const themeContextValue = useMemo(() => ({ theme, isDark }), [theme, isDark]);
-
-  useEffect(() => {
-    injectWebGlobalStyles();
-  }, []);
 
   return (
     <ThemeContext.Provider value={themeContextValue}>

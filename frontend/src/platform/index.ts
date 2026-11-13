@@ -3,7 +3,7 @@ export {
   isNative,
   isAndroid,
   isIOS,
-  isTauri,
+  getIsTauri,
   selectPlatform,
   setupPlatform,
 } from './platform';

@@ -2,7 +2,17 @@ import { NativeModules } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
 import { isAndroid, isIOS, isWeb } from './platform';
 
-const nativeStorage = isWeb ? null : createMMKV();
+type NativeStorage = ReturnType<typeof createMMKV>;
+
+let nativeStorage: NativeStorage | null = null;
+
+/** MMKV создаётся при первом обращении, а не при импорте модуля. */
+const getNativeStorage = (): NativeStorage => {
+  if (!nativeStorage) {
+    nativeStorage = createMMKV();
+  }
+  return nativeStorage;
+};
 
 /** Ключ-значение хранилище: localStorage в web, MMKV на native. */
 export const platformStorage = {
@@ -11,20 +21,20 @@ export const platformStorage = {
       localStorage.setItem(key, value);
       return;
     }
-    nativeStorage!.set(key, value);
+    getNativeStorage().set(key, value);
   },
   get: (key: string): string | null => {
     if (isWeb) {
       return localStorage.getItem(key);
     }
-    return nativeStorage ? (nativeStorage.getString(key) ?? null) : null;
+    return getNativeStorage().getString(key) ?? null;
   },
   remove: (key: string): void => {
     if (isWeb) {
       localStorage.removeItem(key);
       return;
     }
-    nativeStorage!.remove(key);
+    getNativeStorage().remove(key);
   },
 };
 
