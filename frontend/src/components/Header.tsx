@@ -13,9 +13,9 @@ import { GestureDetector } from 'react-native-gesture-handler';
 import ReAnimated from 'react-native-reanimated';
 import { getStyles } from './Header.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
-import { getLogicalDateStr } from '../utils/date';
 import { useTranslation } from '../utils/LanguageContext';
 import { useAppStore } from '../store/appStore';
+import { useLogicalDateStr } from '../hooks/useLogicalDate';
 
 
 export type ActiveViewType = 'list' | 'recycle' | 'settings';
@@ -55,7 +55,6 @@ export const Header = memo(({
   const authMode = useAppStore(state => state.authMode);
   const onMoodChange = useAppStore(state => state.handleMoodChange);
   const rpgHistory = useAppStore(state => state.rpgHistory);
-  const settings = useAppStore(state => state.settings);
   const dailyDays = useAppStore(state => state.dailyDays);
   const setDailyDays = useAppStore(state => state.setDailyDays);
   const dailyProgressEnd = useAppStore(state => state.dailyProgressEnd);
@@ -73,7 +72,7 @@ export const Header = memo(({
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();
-  const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
+  const todayStr = useLogicalDateStr();
   const todayEntry = rpgHistory?.find(item => item.date === todayStr);
   const currentMoodValue = todayEntry ? todayEntry.mood : null;
 

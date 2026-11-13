@@ -31,10 +31,12 @@ import { getStyles as getItemStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { FillProgress } from '../components/FillProgress';
 import { useTranslation } from '../utils/LanguageContext';
-import { getLogicalDateStr, getLogicalDayIndex } from '../utils/date';
 import { Todo, TodoType } from '../utils/storage'
 import { useAppStore } from '../store/appStore';
 import { useLeftAction } from '../hooks/useLeftAction';
+import { selectVisibleTodos } from '../domain/visibility';
+import { useLogicalDayIndex } from '../hooks/useLogicalDate';
+import { useDailyStats } from '../hooks/useDailyStats';
 
 
 interface DailyItemProps {
@@ -347,7 +349,6 @@ export const DailyTab = memo(() => {
   const setDailyDays = useAppStore(state => state.setDailyDays);
   const dailyProgressEnd = useAppStore(state => state.dailyProgressEnd);
   const setDailyProgressEnd = useAppStore(state => state.setDailyProgressEnd);
-  const settings = useAppStore(state => state.settings);
   const selectedTaskId = useAppStore(state => state.selectedTaskId);
   const focusInputTrigger = useAppStore(state => state.focusInputTrigger);
   const isActive = useAppStore(state => state.mainTab === 'daily');
@@ -369,25 +370,16 @@ export const DailyTab = memo(() => {
     }
   }, [focusInputTrigger, isActive]);
 
-  const todayDayIdx = useMemo(
-    () =>
-      getLogicalDayIndex(
-        getLogicalDateStr(settings?.reset_time, settings?.timezone)
-      ),
-    [settings?.reset_time, settings?.timezone]
-  );
+  const todayDayIdx = useLogicalDayIndex();
+  const stats = useDailyStats();
 
-  const dailies = useMemo(() =>
-    todoList
-      .filter(item => {
-        if (item.type !== 'daily' || item.deleted) return false;
-        const daysStr = item.days || '1111111';
-        return daysStr[todayDayIdx] === '1';
-      })
-      .sort((a, b) => {
-        if (a.completed && !b.completed) return 1;
-        if (!a.completed && b.completed) return -1;
-        return 0;
+  const dailies = useMemo(
+    () =>
+      selectVisibleTodos(todoList, {
+        mainTab: 'daily',
+        rpgSubtab: 'dashboard',
+        recycle: false,
+        dayIndex: todayDayIdx,
       }),
     [todoList, todayDayIdx]
   );
@@ -415,16 +407,10 @@ export const DailyTab = memo(() => {
     }
   }, [selectedTaskId, dailies]);
 
-  const progress = useMemo(() => {
-    if (dailies.length === 0) return 0;
-    const { needProgress, nowProgress } = dailies.reduce((acc, item) => {
-      acc.needProgress += (Number(item.progressEnd) || 0);
-      acc.nowProgress += (Number(item.progressNow) || 0);
-      return acc;
-    }, { needProgress: 0, nowProgress: 0 });
-
-    return Math.round((nowProgress / needProgress) * 100);
-  }, [dailies]);
+  const progress = useMemo(
+    () => Math.round(stats.dailyProgress * 100),
+    [stats.dailyProgress]
+  );
 
   const renderItem = useCallback(({ item }: { item: Todo }) => (
     <DailyItem

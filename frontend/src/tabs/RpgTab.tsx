@@ -20,9 +20,11 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getStyles } from './RpgTab.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
-import { getLogicalDateStr } from '../utils/date';
-import { computeDailyStats } from '../utils/dailyStats';
+import { parseHabitsDetail } from '../domain/daily';
+import { selectVisibleTodos } from '../domain/visibility';
 import { useTranslation } from '../utils/LanguageContext';
+import { useLogicalDateStr, useLogicalDayIndex } from '../hooks/useLogicalDate';
+import { useDailyStats } from '../hooks/useDailyStats';
 import { CalendarModal, SelectedDayDetail, CalendarCell } from '../components/CalendarModal';
 import { HabitsSubtab } from './rpg/HabitsSubtab';
 import { PiggyBankSubtab } from './rpg/PiggyBankSubtab';
@@ -119,10 +121,9 @@ export const RpgTab = memo(() => {
   const flatListRef = useRef<any>(null);
   const currentScrollY = useRef(0);
 
-  const todayStr = useMemo(
-    () => getLogicalDateStr(settings?.reset_time, settings?.timezone),
-    [settings?.reset_time, settings?.timezone]
-  );
+  const todayStr = useLogicalDateStr();
+  const todayDayIdx = useLogicalDayIndex();
+  const stats = useDailyStats();
 
   // Календарь и заголовок даты живут в том же логическом дне, что и задачи.
   const today = useMemo(() => {
@@ -131,10 +132,7 @@ export const RpgTab = memo(() => {
   }, [todayStr]);
 
   const [viewDate, setViewDate] = useState(() => {
-    const [year, month, day] = getLogicalDateStr(
-      settings?.reset_time,
-      settings?.timezone
-    ).split('-').map(Number);
+    const [year, month, day] = todayStr.split('-').map(Number);
     return new Date(year, month - 1, day);
   });
 
@@ -190,21 +188,6 @@ export const RpgTab = memo(() => {
       hideSubscription.remove();
     };
   }, []);
-
-  const positiveHabits = useMemo(() =>
-    todoList.filter(item => item.type === 'habit' && item.contribution === 1 && !item.deleted),
-    [todoList]
-  );
-
-  const negativeHabits = useMemo(() =>
-    todoList.filter(item => item.type === 'habit' && item.contribution === -1 && !item.deleted),
-    [todoList]
-  );
-
-  const neutralHabits = useMemo(() =>
-    todoList.filter(item => item.type === 'habit' && item.contribution === 0 && !item.deleted),
-    [todoList]
-  );
 
   const activeShows = useMemo(() =>
     todoList.filter(item => (item.type === 'tv_show' || item.type === 'movie') && !item.deleted),
@@ -267,16 +250,12 @@ export const RpgTab = memo(() => {
     }
   };
 
-  const dailyStats = useMemo(() => {
-    const stats = computeDailyStats(todoList, todayStr);
-
-    return {
-      dailiesProgress: Math.round(stats.dailyProgress * 100),
-      positiveCount: stats.posPoints,
-      negativeCount: stats.negPoints,
-      neutralCount: stats.neutralPoints,
-    };
-  }, [todoList, todayStr]);
+  const dailyStats = useMemo(() => ({
+    dailiesProgress: Math.round(stats.dailyProgress * 100),
+    positiveCount: stats.posPoints,
+    negativeCount: stats.negPoints,
+    neutralCount: stats.neutralPoints,
+  }), [stats]);
 
   const todayMood = useMemo(() => {
     const todayLog = rpgHistory.find(h => h.date === todayStr);
@@ -433,51 +412,33 @@ export const RpgTab = memo(() => {
   };
 
   const allHabits = useMemo(() =>
-    todoList.filter(item => item.type === 'habit' && !item.deleted),
-    [todoList]
+    selectVisibleTodos(todoList, {
+      mainTab: 'rpg',
+      rpgSubtab: 'habits',
+      recycle: false,
+      dayIndex: todayDayIdx,
+    }),
+    [todoList, todayDayIdx]
   );
 
   const dayHabits = useMemo(() => {
     if (!selectedDayDetail) return [];
     if (selectedDayDetail.dateStr === todayStr) {
-      return allHabits
-        .map(item => ({
-          id: item.id,
-          text: item.text,
-          contribution: item.contribution,
-          progressNow: Number(item.progressNow) || 0
-        }))
-        .filter(h => h.progressNow !== 0);
+      return stats.habits.filter(h => h.progressNow !== 0);
     }
-    if (!selectedDayDetail.log || !selectedDayDetail.log.habits_detail) {
-      return [];
-    }
-    try {
-      const parsed = typeof selectedDayDetail.log.habits_detail === 'string'
-        ? JSON.parse(selectedDayDetail.log.habits_detail)
-        : selectedDayDetail.log.habits_detail;
-      const list = Array.isArray(parsed) ? parsed : [];
-      return list
-        .map(h => ({
-          id: h.id,
-          text: h.text,
-          contribution: h.contribution,
-          progressNow: parseInt(h.progressNow, 10) || 0
-        }))
-        .filter(h => h.progressNow !== 0);
-    } catch {
-      return [];
-    }
-  }, [selectedDayDetail, allHabits, todayStr]);
+    return parseHabitsDetail(selectedDayDetail.log?.habits_detail).filter(
+      h => h.progressNow !== 0
+    );
+  }, [selectedDayDetail, todayStr, stats.habits]);
 
   const displayNeuPoints = useMemo(() => {
     if (selectedDayDetail?.dateStr === todayStr) {
-      return dailyStats.neutralCount;
+      return stats.neutralPoints;
     }
     return dayHabits
       .filter(h => h.contribution === 0)
-      .reduce((sum, h) => sum + (Number(h.progressNow) || 0), 0);
-  }, [selectedDayDetail, todayStr, dailyStats.neutralCount, dayHabits]);
+      .reduce((sum, h) => sum + h.progressNow, 0);
+  }, [selectedDayDetail, todayStr, stats.neutralPoints, dayHabits]);
 
   if (subtab === 'habits') {
     return (

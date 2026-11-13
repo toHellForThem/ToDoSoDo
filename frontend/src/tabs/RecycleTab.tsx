@@ -18,6 +18,8 @@ import { ClientEvent } from '../contract/events';
 import { Todo } from '../utils/storage'
 import { useAppStore } from '../store/appStore';
 import { useLeftAction } from '../hooks/useLeftAction';
+import { selectVisibleTodos, type VisibleMainTab } from '../domain/visibility';
+import { useLogicalDayIndex } from '../hooks/useLogicalDate';
 
 
 interface RecycleItemProps {
@@ -133,29 +135,20 @@ export const RecycleTab = memo(({ context }: RecycleTabProps) => {
   const setTodoList = useAppStore(state => state.setTodoList);
   const rpgSubtab = useAppStore(state => state.rpgSubtab);
   const selectedTaskId = useAppStore(state => state.selectedTaskId);
+  const todayDayIdx = useLogicalDayIndex();
   const leftAction = useLeftAction();
   const flatListRef = useRef<FlatList<Todo>>(null);
 
-  const activeTodos = useMemo(() => {
-    return todoList.filter(item => {
-      if (!item.deleted) return false;
-
-      if (context === 'rpg') {
-        if (rpgSubtab === 'habits') {
-          return item.type === 'habit';
-        }
-        if (rpgSubtab === 'piggy_bank') {
-          return item.type === 'piggy_bank';
-        }
-        if (rpgSubtab === 'tv_shows') {
-          return item.type === 'tv_show' || item.type === 'movie';
-        }
-        return item.type === 'habit' || item.type === 'piggy_bank' || item.type === 'tv_show' || item.type === 'movie';
-      }
-
-      return item.type === context;
-    });
-  }, [todoList, context, rpgSubtab]);
+  const activeTodos = useMemo(
+    () =>
+      selectVisibleTodos(todoList, {
+        mainTab: context as VisibleMainTab,
+        rpgSubtab,
+        recycle: true,
+        dayIndex: todayDayIdx,
+      }),
+    [todoList, context, rpgSubtab, todayDayIdx]
+  );
 
   useEffect(() => {
     if (!selectedTaskId || !flatListRef.current) return;
