@@ -5,9 +5,9 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import { Platform } from 'react-native';
 import { CommandRegistry } from './registry';
 import type { Command, CommandScope } from './types';
+import { isWeb } from '../platform';
 
 const CommandRegistryContext = createContext<CommandRegistry | null>(null);
 
@@ -26,7 +26,7 @@ export const ShortcutProvider = ({
   const registry = useMemo(() => new CommandRegistry(), []);
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    if (!isWeb || typeof window === 'undefined') return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       registry.handleKeyDown(event);

@@ -1,10 +1,7 @@
-import { useState, useEffect, useMemo, useRef, memo } from 'react';
+import { useEffect, useMemo, useRef, memo } from 'react';
 import {
   View,
   Keyboard,
-  LayoutAnimation,
-  Platform,
-  TextInput,
   NativeSyntheticEvent,
   NativeScrollEvent,
   useWindowDimensions,
@@ -24,6 +21,7 @@ import { TvShowsSubtab } from './rpg/TvShowsSubtab';
 import { RpgDashboard } from './rpg/RpgDashboard';
 import { useLeftAction } from '../hooks/useLeftAction';
 import { useAppStore } from '../store/appStore';
+import { useKeyboardInsets } from '../platform';
 
 const MOOD_LABEL_KEYS = [
   'mood_1',
@@ -75,8 +73,10 @@ export const RpgTab = memo(function RpgTab() {
     return result;
   }, [settings?.theme, t]);
 
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardInsets({
+    blurOnHide: true,
+    onHide: () => setFocusedGoalId(null),
+  });
 
   const flatListRef = useRef<any>(null);
   const currentScrollY = useRef(0);
@@ -84,32 +84,6 @@ export const RpgTab = memo(function RpgTab() {
   const todayStr = useLogicalDateStr();
   const todayDayIdx = useLogicalDayIndex();
   const stats = useDailyStats();
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', e => {
-      setKeyboardHeight(e.endCoordinates.height);
-      setKeyboardVisible(true);
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    });
-    const hideEvent =
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const hideSubscription = Keyboard.addListener(hideEvent, () => {
-      setKeyboardVisible(false);
-      setKeyboardHeight(0);
-      setFocusedGoalId(null);
-
-      const activeInput = TextInput.State.currentlyFocusedInput();
-      if (activeInput) {
-        TextInput.State.blurTextInput(activeInput);
-      }
-
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    });
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, [setFocusedGoalId]);
 
   const activeShows = useMemo(
     () =>

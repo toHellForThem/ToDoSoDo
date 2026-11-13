@@ -1,4 +1,4 @@
-import { View, ScrollView, Platform } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import Toast from 'react-native-toast-message';
 import { useSettingsController } from './settings/useSettingsController';
@@ -17,6 +17,7 @@ import {
 import { ShortcutsSection } from './settings/ShortcutsSection';
 import { AboutSection } from './settings/AboutSection';
 import { DailiesEditor } from './settings/DailiesEditor';
+import { isWeb } from '../platform';
 
 export const SettingsTab = () => {
   const c = useSettingsController();
@@ -164,7 +165,7 @@ export const SettingsTab = () => {
               t={c.t}
             />
           )}
-          {showMain && Platform.OS === 'web' && (
+          {showMain && isWeb && (
             <ShortcutsSection
               settings={c.settings}
               recordingKey={c.recordingKey}

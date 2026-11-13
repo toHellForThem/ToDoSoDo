@@ -1,5 +1,23 @@
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { selectPlatform } from '../platform';
 import { Theme } from '../theme/theme';
+
+const invisibleShadePosition = selectPlatform({
+  web: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  default: {
+    position: 'absolute' as const,
+    top: -120,
+    left: -100,
+    right: -110,
+    bottom: -1000,
+  },
+});
 
 export const getStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -71,14 +89,10 @@ export const getStyles = (theme: Theme) =>
       zIndex: 50,
     },
     invisibleShade: {
-      position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as any,
-      top: Platform.OS === 'web' ? 0 : -120,
-      left: Platform.OS === 'web' ? 0 : -100,
-      right: Platform.OS === 'web' ? 0 : -110,
-      bottom: Platform.OS === 'web' ? 0 : -1000,
+      ...invisibleShadePosition,
       zIndex: 49,
       backgroundColor: 'rgba(0,0,0,0.1)',
-    },
+    } as any,
     moodMeter: {
       top: 0,
       alignItems: 'center',

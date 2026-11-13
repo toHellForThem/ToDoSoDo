@@ -15,7 +15,6 @@ import {
   TouchableOpacity,
   TextInput,
   FlatList,
-  Platform,
   Keyboard,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
@@ -27,6 +26,7 @@ import {
 } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Todo } from '../../utils/storage';
+import { selectPlatform } from '../../platform';
 import { Theme } from '../../theme/theme';
 import { useTranslation } from '../../utils/LanguageContext';
 import { useInputFocus } from '../../commands';
@@ -239,7 +239,10 @@ const PiggyBankItem = memo(function PiggyBankItem({
                   isFlashing && { borderColor: theme.colors.icon.primary },
                 ]}
                 placeholder=""
-                keyboardType={Platform.OS === 'web' ? 'default' : 'numeric'}
+                keyboardType={selectPlatform({
+                  web: 'default',
+                  default: 'numeric',
+                })}
                 cursorColor={theme.colors.icon.primary}
                 selectionColor={theme.colors.icon.primary}
                 value={inputValue}

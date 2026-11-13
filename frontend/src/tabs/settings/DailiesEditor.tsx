@@ -1,12 +1,7 @@
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-} from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { Todo } from '../../utils/storage';
+import { selectPlatform } from '../../platform';
 import { useLeftAction } from '../../hooks/useLeftAction';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { SectionStyleProps } from './types';
@@ -33,13 +28,16 @@ export const DailiesEditor = ({
   t,
 }: DailiesEditorProps) => {
   const leftAction = useLeftAction();
+  const contentPaddingTop = selectPlatform({
+    web: theme.spacing.xl,
+    default: theme.spacing.md,
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop:
-            Platform.OS === 'web' ? theme.spacing.xl : theme.spacing.md,
+          paddingTop: contentPaddingTop,
           paddingBottom: theme.spacing.xxl,
           width: '100%',
           alignItems: 'center',

@@ -1,4 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
+import { selectPlatform } from '../platform';
 import { Theme } from '../theme/theme';
 
 export const getStyles = (theme: Theme) =>
@@ -389,7 +390,7 @@ export const getStyles = (theme: Theme) =>
       fontSize: 11,
       fontWeight: '800',
       color: theme.colors.icon.primary,
-      fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+      fontFamily: selectPlatform({ web: 'monospace', default: undefined }),
     },
     keycapTextActive: {
       color: theme.colors.text.white,
