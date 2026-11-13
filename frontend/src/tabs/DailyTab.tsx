@@ -5,7 +5,6 @@ import {
   memo,
   useMemo,
   useRef,
-  ReactNode,
   SetStateAction,
   Dispatch,
   RefObject
@@ -18,14 +17,11 @@ import {
   Text,
   Keyboard,
   LayoutAnimation,
-  Platform,
-  GestureResponderEvent,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
   useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { getStyles } from './DailyTab.styles';
 import { getStyles as getItemStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
@@ -38,6 +34,10 @@ import { useLeftAction } from '../hooks/useLeftAction';
 import { selectVisibleTodos } from '../domain/visibility';
 import { useLogicalDayIndex } from '../hooks/useLogicalDate';
 import { useDailyStats } from '../hooks/useDailyStats';
+import { SwipeableRow, type LeftActionRenderer } from '../components/SwipeableRow';
+import { SelectableItem } from '../components/SelectableItem';
+import { useWebPressGuard } from '../hooks/useWebPressGuard';
+import { useScrollToSelected } from '../hooks/useScrollToSelected';
 
 
 interface DailyItemProps {
@@ -48,7 +48,7 @@ interface DailyItemProps {
     field?: string
   ) => void;
   deleteTodo: (id: string) => void;
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
+  leftAction: LeftActionRenderer;
   isSelected: boolean;
 }
 
@@ -80,65 +80,17 @@ const DailyItem = memo(({
   const itemStyles = useStyles(getItemStyles);
   const { theme } = useAppTheme();
 
-  const startX = useRef(0);
-  const startY = useRef(0);
-
-  const handlePressIn = useCallback((e: GestureResponderEvent) => {
-    if (Platform.OS === 'web') {
-      startX.current = e.nativeEvent.pageX || 0;
-      startY.current = e.nativeEvent.pageY || 0;
-    }
-  }, []);
-
-  const handlePress = useCallback((e: GestureResponderEvent) => {
-    if (Platform.OS === 'web' && e) {
-      const endX = e.nativeEvent.pageX || 0;
-      const endY = e.nativeEvent.pageY || 0;
-      const dist = Math.sqrt(Math.pow(endX - startX.current, 2) + Math.pow(endY - startY.current, 2));
-      if (dist > 8) return;
-    }
-    statusChangeTask(item.id);
-  }, [item.id, statusChangeTask]);
+  const { handlePressIn, handlePress } = useWebPressGuard(
+    useCallback(() => statusChangeTask(item.id), [item.id, statusChangeTask])
+  );
 
   const handleDelete = useCallback(() => {
     deleteTodo(item.id);
   }, [item.id, deleteTodo]);
 
-  const renderLeft = useCallback((prog: any, drag: any) => {
-    return leftAction(prog, drag, 'toRecycle');
-  }, [leftAction]);
-
   return (
-    <Swipeable
-      friction={1.6}
-      leftThreshold={78}
-      overshootLeft={true}
-      renderLeftActions={renderLeft}
-      onSwipeableLeftOpen={handleDelete}
-      containerStyle={{
-        paddingTop: 2,
-        paddingBottom: 8,
-        paddingHorizontal: 20,
-        backgroundColor: 'transparent',
-      }}
-      activeOffsetX={[-15, 15]}
-      failOffsetY={[-15, 15]}
-    >
-      <View style={[
-        itemStyles.todoItem,
-        isSelected && { backgroundColor: theme.colors.icon.bg }
-      ]}>
-        {isSelected && (
-          <View style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 4,
-            backgroundColor: theme.colors.primary,
-            zIndex: 10,
-          }} />
-        )}
+    <SwipeableRow leftAction={leftAction} mode="toRecycle" onSwipeLeftOpen={handleDelete}>
+      <SelectableItem isSelected={isSelected}>
         <FillProgress
           progressNow={Number(item.progressNow)}
           progressEnd={Number(item.progressEnd)}
@@ -177,8 +129,8 @@ const DailyItem = memo(({
             color={theme.colors.icon.primary}
           />
         </TouchableOpacity>
-      </View>
-    </Swipeable>
+      </SelectableItem>
+    </SwipeableRow>
   );
 });
 
@@ -376,28 +328,7 @@ export const DailyTab = memo(() => {
     [todoList, todayDayIdx]
   );
 
-  useEffect(() => {
-    if (!selectedTaskId || !flatListRef.current) return;
-    const index = dailies.findIndex(item => item.id === selectedTaskId);
-    if (index !== -1) {
-      try {
-        flatListRef.current.scrollToIndex({
-          index,
-          viewPosition: 0.5,
-          animated: true,
-        });
-      } catch (err) {
-        try {
-          flatListRef.current.scrollToOffset({
-            offset: index * 60,
-            animated: true,
-          });
-        } catch {
-          // FlatList может не успеть измерить элемент — фолбэк уже применён.
-        }
-      }
-    }
-  }, [selectedTaskId, dailies]);
+  useScrollToSelected(flatListRef, dailies, selectedTaskId);
 
   const progress = useMemo(
     () => Math.round(stats.dailyProgress * 100),

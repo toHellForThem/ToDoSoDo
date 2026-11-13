@@ -5,7 +5,6 @@ import {
   useEffect,
   useRef,
   useState,
-  ReactNode,
   RefObject
 } from 'react';
 import {
@@ -14,12 +13,9 @@ import {
   TouchableOpacity,
   FlatList,
   Text,
-  Keyboard,
-  Platform,
-  GestureResponderEvent
+  Keyboard
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { getStyles } from './TodoTab.styles';
 import { getStyles as getItemStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
@@ -29,6 +25,10 @@ import { useAppStore } from '../store/appStore';
 import { useLeftAction } from '../hooks/useLeftAction';
 import { useInputFocus } from '../commands';
 import { selectVisibleTodos } from '../domain/visibility';
+import { SwipeableRow, type LeftActionRenderer } from '../components/SwipeableRow';
+import { SelectableItem } from '../components/SelectableItem';
+import { useWebPressGuard } from '../hooks/useWebPressGuard';
+import { useScrollToSelected } from '../hooks/useScrollToSelected';
 
 
 interface TodoItemProps {
@@ -39,7 +39,7 @@ interface TodoItemProps {
     field?: string
   ) => void;
   deleteTodo: (id: string) => void;
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
+  leftAction: LeftActionRenderer;
   isSelected: boolean;
 }
 
@@ -58,65 +58,17 @@ const TodoItem = memo(({
   const itemStyles = useStyles(getItemStyles);
   const { theme } = useAppTheme();
 
-  const startX = useRef<number>(0);
-  const startY = useRef<number>(0);
-
-  const handlePressIn = useCallback((e: GestureResponderEvent) => {
-    if (Platform.OS === 'web') {
-      startX.current = e.nativeEvent.pageX || 0;
-      startY.current = e.nativeEvent.pageY || 0;
-    }
-  }, []);
-
-  const handlePress = useCallback((e: GestureResponderEvent) => {
-    if (Platform.OS === 'web' && e) {
-      const endX = e.nativeEvent.pageX || 0;
-      const endY = e.nativeEvent.pageY || 0;
-      const dist = Math.sqrt(Math.pow(endX - startX.current, 2) + Math.pow(endY - startY.current, 2));
-      if (dist > 8) return;
-    }
-    statusChangeTask(item.id, 1);
-  }, [item.id, statusChangeTask]);
+  const { handlePressIn, handlePress } = useWebPressGuard(
+    useCallback(() => statusChangeTask(item.id, 1), [item.id, statusChangeTask])
+  );
 
   const handleDelete = useCallback(() => {
     deleteTodo(item.id);
   }, [item.id, deleteTodo]);
 
-  const renderLeft = useCallback((prog: any, drag: any) => {
-    return leftAction(prog, drag, 'toRecycle');
-  }, [leftAction]);
-
   return (
-    <Swipeable
-      friction={1.6}
-      leftThreshold={78}
-      overshootLeft={true}
-      renderLeftActions={renderLeft}
-      onSwipeableLeftOpen={handleDelete}
-      containerStyle={{
-        paddingTop: 2,
-        paddingBottom: 8,
-        paddingHorizontal: 20,
-        backgroundColor: 'transparent',
-      }}
-      activeOffsetX={[-15, 15]}
-      failOffsetY={[-15, 15]}
-    >
-      <View style={[
-        itemStyles.todoItem,
-        isSelected && { backgroundColor: theme.colors.icon.bg }
-      ]}>
-        {isSelected && (
-          <View style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 4,
-            backgroundColor: theme.colors.primary,
-            zIndex: 10,
-          }} />
-        )}
+    <SwipeableRow leftAction={leftAction} mode="toRecycle" onSwipeLeftOpen={handleDelete}>
+      <SelectableItem isSelected={isSelected}>
         <TouchableOpacity
           delayPressIn={150}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 100 }}
@@ -140,8 +92,8 @@ const TodoItem = memo(({
         >
           {item.text}
         </Text>
-      </View>
-    </Swipeable>
+      </SelectableItem>
+    </SwipeableRow>
   );
 });
 
@@ -226,28 +178,7 @@ export const TodoTab = memo(() => {
     return () => hideSubscription.remove();
   }, []);
 
-  useEffect(() => {
-    if (!selectedTaskId || !flatListRef.current) return;
-    const index = activeTodos.findIndex(item => item.id === selectedTaskId);
-    if (index !== -1) {
-      try {
-        flatListRef.current.scrollToIndex({
-          index,
-          viewPosition: 0.5,
-          animated: true,
-        });
-      } catch (err) {
-        try {
-          flatListRef.current.scrollToOffset({
-            offset: index * 60,
-            animated: true,
-          });
-        } catch {
-          // FlatList может не успеть измерить элемент — фолбэк уже применён.
-        }
-      }
-    }
-  }, [selectedTaskId, activeTodos]);
+  useScrollToSelected(flatListRef, activeTodos, selectedTaskId);
 
   const renderItem = useCallback(({ item }: { item: Todo }) => (
     <TodoItem
@@ -275,4 +206,3 @@ export const TodoTab = memo(() => {
     </View>
   );
 });
-
