@@ -10,8 +10,8 @@ import {
   TodoType,
   AuthMode
 } from '../utils/storage';
-import { socket } from '../utils/socket';
-import { request } from '../utils/protocol';
+import { emit } from '../contract/socket';
+import { ClientEvent } from '../contract/events';
 import {
   getLogicalDateStr,
   getLogicalDayStartMs,
@@ -113,8 +113,8 @@ export const useTodoActions = (
             ? { ...item, progressNow: 0, completed: false, updatedAt: resetAt }
             : item
         ));
-        socket.emit('client:confirm_reset', request({ type: 'daily', updatedAt: resetAt }));
-        socket.emit('client:confirm_reset', request({ type: 'habit', updatedAt: resetAt }));
+        emit(ClientEvent.CONFIRM_RESET, { type: 'daily', updatedAt: resetAt });
+        emit(ClientEvent.CONFIRM_RESET, { type: 'habit', updatedAt: resetAt });
 
         scheduleNextReset();
       }, msUntilReset);
@@ -170,7 +170,7 @@ export const useTodoActions = (
       return [...prev, updatedEntry];
     });
 
-    socket.emit('client:sync_daily_history', request(updatedEntry));
+    emit(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
   }, [todoList, settings?.reset_time, settings?.timezone]);
 
   const addTask = useCallback((
@@ -199,7 +199,7 @@ export const useTodoActions = (
         days: days,
       };
       setTodoList(prev => [newTodo, ...prev]);
-      socket.emit('client:sync_todo', request(newTodo));
+      emit(ClientEvent.SYNC_TODO, newTodo);
     }
   }, [mainTab]);
 
@@ -215,7 +215,7 @@ export const useTodoActions = (
       });
     });
     if (updated) {
-      socket.emit('client:sync_todo', request(updated));
+      emit(ClientEvent.SYNC_TODO, updated);
     }
   }, []);
 
@@ -337,7 +337,7 @@ export const useTodoActions = (
       });
     });
     if (updated) {
-      socket.emit('client:sync_todo', request(updated));
+      emit(ClientEvent.SYNC_TODO, updated);
     }
   }, []);
 
@@ -346,7 +346,7 @@ export const useTodoActions = (
     // Жёсткое удаление фиксируем локально, чтобы офлайн-удаление
     // не потерялось и дослалось на сервер при reconnect.
     TombstoneStorage.add(id);
-    socket.emit('client:delete_todo', request(id));
+    emit(ClientEvent.DELETE_TODO, id);
   }, []);
 
   const editTask = useCallback((id: string, updatedFields: Partial<Todo>) => {
@@ -367,7 +367,7 @@ export const useTodoActions = (
       });
     });
     if (updated) {
-      socket.emit('client:sync_todo', request(updated));
+      emit(ClientEvent.SYNC_TODO, updated);
     }
   }, []);
 
@@ -397,7 +397,7 @@ export const useTodoActions = (
         newHistory = [...prev, updatedEntry];
       }
 
-      socket.emit('client:sync_daily_history', request(updatedEntry));
+      emit(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
       return newHistory;
     });
   }, [todoList, settings]);

@@ -1,7 +1,9 @@
 import { useEffect, startTransition, Dispatch, SetStateAction } from 'react';
 import Toast from 'react-native-toast-message';
 import { socket } from '../utils/socket';
-import { AckPayload, ServerErrorPayload, request } from '../utils/protocol';
+import { emit, on } from '../contract/socket';
+import { ClientEvent, ServerEvent } from '../contract/events';
+import type { AckPayload, ServerErrorPayload } from '../contract/types';
 import {
   AuthStorage,
   RpgStorage,
@@ -39,12 +41,13 @@ export const useTodoSocket = ({
   useEffect(() => {
     let shouldReplaceTodos = false;
     let shouldReplaceHistory = false;
+    const unsubscribers: Array<() => void> = [];
 
     socket.on('connect', () => {
       console.log('Connected to Server!');
     });
 
-    socket.on('server:login_success', (data) => {
+    unsubscribers.push(on(ServerEvent.LOGIN_SUCCESS, (data) => {
       const { username, token, settings: serverSettings } = data;
 
       socket.auth = { username, token };
@@ -57,11 +60,11 @@ export const useTodoSocket = ({
 
       // Сначала досылаем жёсткие удаления, накопленные офлайн.
       TombstoneStorage.getAll().forEach(tombstone => {
-        socket.emit('client:delete_todo', request(tombstone.id));
+        emit(ClientEvent.DELETE_TODO, tombstone.id);
       });
 
-      socket.emit('client:bulk_sync_todos', request(localTodos));
-      socket.emit('client:bulk_sync_daily_history', request(localHistory));
+      emit(ClientEvent.BULK_SYNC_TODOS, localTodos);
+      emit(ClientEvent.BULK_SYNC_DAILY_HISTORY, localHistory);
 
       setAuthMode('auth');
       setAuthState('');
@@ -75,7 +78,7 @@ export const useTodoSocket = ({
       let finalSettings;
       if (localUpdatedAt > serverUpdatedAt) {
         finalSettings = localSettings;
-        socket.emit('client:update_settings', request(finalSettings));
+        emit(ClientEvent.UPDATE_SETTINGS, finalSettings);
       } else {
         finalSettings = { ...localSettings, ...serverSettings };
         // Если на сервере настройки ещё не кастомизировали (updatedAt = 0),
@@ -90,7 +93,7 @@ export const useTodoSocket = ({
             timezone: localSettings.timezone,
             updatedAt: Date.now()
           };
-          socket.emit('client:update_settings', request(finalSettings));
+          emit(ClientEvent.UPDATE_SETTINGS, finalSettings);
         }
       }
 
@@ -99,14 +102,14 @@ export const useTodoSocket = ({
       if (setMainTab && finalSettings?.main_page) {
         setMainTab(finalSettings.main_page);
       }
-    });
+    }));
 
-    socket.on('server:all_todos', (serverTodos) => {
+    unsubscribers.push(on(ServerEvent.ALL_TODOS, (serverTodos) => {
       const startOfToday = getLogicalDayStartMs(
         settings?.reset_time,
         settings?.timezone
       );
-      const resetTypes = new Set();
+      const resetTypes = new Set<string>();
 
       // Tombstones: если сервер всё ещё знает задачу — повторяем удаление,
       // если уже нет — метку можно снять.
@@ -115,7 +118,7 @@ export const useTodoSocket = ({
       const serverIds = new Set(serverTodos.map(item => item.id));
       tombstones.forEach(tombstone => {
         if (serverIds.has(tombstone.id)) {
-          socket.emit('client:delete_todo', request(tombstone.id));
+          emit(ClientEvent.DELETE_TODO, tombstone.id);
         } else {
           TombstoneStorage.remove(tombstone.id);
         }
@@ -148,7 +151,7 @@ export const useTodoSocket = ({
 
         if (resetTypes.size > 0) {
           resetTypes.forEach(type => {
-            socket.emit('client:confirm_reset', request({ type, updatedAt: startOfToday }));
+            emit(ClientEvent.CONFIRM_RESET, { type, updatedAt: startOfToday });
           });
         }
         return;
@@ -187,7 +190,7 @@ export const useTodoSocket = ({
                 merged[localIndex] = processedItem;
                 hasChanges = true;
               } else if ((lItem.updatedAt || 0) > processedItem.updatedAt) {
-                socket.emit('client:sync_todo', request(lItem));
+                emit(ClientEvent.SYNC_TODO, lItem);
               }
             }
           });
@@ -197,12 +200,12 @@ export const useTodoSocket = ({
 
       if (resetTypes.size > 0) {
         resetTypes.forEach(type => {
-          socket.emit('client:confirm_reset', request({ type, updatedAt: startOfToday }));
+          emit(ClientEvent.CONFIRM_RESET, { type, updatedAt: startOfToday });
         });
       }
-    });
+    }));
 
-    socket.on('server:todo_updated', (updatedTodo) => {
+    unsubscribers.push(on(ServerEvent.TODO_UPDATED, (updatedTodo) => {
       startTransition(() => {
         setTodoList(prev => {
           const index = prev.findIndex(t => t.id === updatedTodo.id);
@@ -218,23 +221,23 @@ export const useTodoSocket = ({
           return [...prev, updatedTodo];
         });
       });
-    });
+    }));
 
-    socket.on('server:todo_deleted', (deletedId) => {
+    unsubscribers.push(on(ServerEvent.TODO_DELETED, (deletedId) => {
       TombstoneStorage.remove(deletedId);
       startTransition(() => {
         setTodoList(prev => prev.filter(todo => todo.id !== deletedId));
       });
-    });
+    }));
 
-    socket.on('server:register_success', () => {
+    unsubscribers.push(on(ServerEvent.REGISTER_SUCCESS, () => {
       startTransition(() => {
         setAuthMode('');
         setAuthState('login');
       });
-    });
+    }));
 
-    socket.on('server:auth_expired', () => {
+    unsubscribers.push(on(ServerEvent.AUTH_EXPIRED, () => {
       startTransition(() => {
         // Истёкшая сессия не должна стирать локальные задачи и историю:
         // пользователь продолжает работать в local-режиме.
@@ -250,9 +253,9 @@ export const useTodoSocket = ({
           visibilityTime: 4000
         });
       });
-    });
+    }));
 
-    socket.on('server:month_history', (data) => {
+    unsubscribers.push(on(ServerEvent.MONTH_HISTORY, (data) => {
       startTransition(() => {
         if (data && data.history) {
           shouldReplaceHistory = false;
@@ -271,9 +274,9 @@ export const useTodoSocket = ({
           });
         }
       });
-    });
+    }));
 
-    socket.on('server:daily_history_updated', (data) => {
+    unsubscribers.push(on(ServerEvent.DAILY_HISTORY_UPDATED, (data) => {
       startTransition(() => {
         setRpgHistory(prev => {
           const index = prev.findIndex(h => h.date === data.date);
@@ -285,9 +288,9 @@ export const useTodoSocket = ({
           return [...prev, data];
         });
       });
-    });
+    }));
 
-    socket.on('server:settings_updated', (serverSettings) => {
+    unsubscribers.push(on(ServerEvent.SETTINGS_UPDATED, (serverSettings) => {
       startTransition(() => {
         AuthStorage.setSettings(serverSettings);
         setSettings(serverSettings);
@@ -295,9 +298,9 @@ export const useTodoSocket = ({
           setMainTab(serverSettings.main_page);
         }
       });
-    });
+    }));
 
-    socket.on('server:ack', (ack: AckPayload) => {
+    unsubscribers.push(on(ServerEvent.ACK, (ack: AckPayload) => {
       const { event, status, data } = ack;
 
       if (status === 'conflict') {
@@ -323,11 +326,13 @@ export const useTodoSocket = ({
               return next;
             });
           });
-        } else if (status === 'deleted' && data?.id) {
-          const deletedId = data.id as string;
-          startTransition(() => {
-            setTodoList(prev => prev.filter(t => t.id !== deletedId));
-          });
+        } else if (status === 'deleted') {
+          const deletedId = (data as { id?: string } | null)?.id;
+          if (deletedId) {
+            startTransition(() => {
+              setTodoList(prev => prev.filter(t => t.id !== deletedId));
+            });
+          }
         }
       } else if (event === 'client:update_settings' && status === 'conflict' && data) {
         const serverSettings = data as UserSettings;
@@ -354,9 +359,9 @@ export const useTodoSocket = ({
           });
         });
       }
-    });
+    }));
 
-    socket.on('server:error', (error: ServerErrorPayload) => {
+    unsubscribers.push(on(ServerEvent.ERROR, (error: ServerErrorPayload) => {
       if (error.code === 'unauthorized') {
         return;
       }
@@ -366,21 +371,11 @@ export const useTodoSocket = ({
         text2: error.message,
         visibilityTime: 4000
       });
-    });
+    }));
 
     return () => {
       socket.off('connect');
-      socket.off('server:all_todos');
-      socket.off('server:todo_updated');
-      socket.off('server:todo_deleted');
-      socket.off('server:login_success');
-      socket.off('server:register_success');
-      socket.off('server:auth_expired');
-      socket.off('server:month_history');
-      socket.off('server:daily_history_updated');
-      socket.off('server:settings_updated');
-      socket.off('server:ack');
-      socket.off('server:error');
+      unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [setTodoList, setAuthMode, setAuthState, setRpgHistory, setSettings, settings, setMainTab]);
 };

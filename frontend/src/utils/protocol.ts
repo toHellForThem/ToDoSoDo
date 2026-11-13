@@ -2,34 +2,18 @@
  * Протокол синхронизации: конверт запроса и типы ответов сервера.
  *
  * `request_id` возвращается в `server:ack` / `server:error`, чтобы
- * сопоставить ответ с отправленным изменением.
+ * сопоставить ответ с отправленным изменением.  Типы живут в
+ * `src/contract/types.ts` и синхронизированы с бэкендом.
  */
 
-export type AckStatus =
-  | 'applied'
-  | 'conflict'
-  | 'deleted'
-  | 'rejected'
-  | 'processed';
+import type { RequestEnvelope } from '../contract/types';
 
-export interface RequestEnvelope<T> {
-  request_id: string;
-  payload: T;
-}
-
-export interface AckPayload<T = any> {
-  request_id: string | null;
-  event: string;
-  status: AckStatus;
-  data: T | null;
-}
-
-export interface ServerErrorPayload {
-  code: string;
-  message: string;
-  request_id: string | null;
-  event: string | null;
-}
+export type {
+  AckPayload,
+  AckStatus,
+  RequestEnvelope,
+  ServerErrorPayload,
+} from '../contract/types';
 
 export const newRequestId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
