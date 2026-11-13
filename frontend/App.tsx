@@ -27,6 +27,7 @@ import { useMoodSheet } from './src/hooks/useMoodSheet';
 import { useShortcuts } from './src/hooks/useShortcuts';
 import { useAppStore } from './src/store/appStore';
 import { selectActiveItems } from './src/store/selectors';
+import { DEFAULT_SHORTCUTS } from './src/utils/storage';
 import { send } from './src/sync';
 import { ClientEvent } from './src/contract/events';
 
@@ -165,7 +166,7 @@ export default function App() {
     return () => backHandler.remove();
   }, [handleBackAction]);
 
-  const shortcuts = settings?.shortcuts;
+  const shortcuts = settings?.shortcuts || DEFAULT_SHORTCUTS;
 
   const shortcutsMap = useMemo(() => {
     const map: Record<string, (e?: any) => void> = {};
