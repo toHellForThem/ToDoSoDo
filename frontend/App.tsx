@@ -29,7 +29,7 @@ import { useMoodSheet } from './src/hooks/useMoodSheet';
 import { useShortcuts } from './src/hooks/useShortcuts';
 import { AuthStorage, AuthMode, DEFAULT_SHORTCUTS, Todo, UserSettings } from './src/utils/storage';
 import { getLogicalDateStr, getLogicalDayIndex } from './src/utils/date';
-import { emit } from './src/contract/socket';
+import { send } from './src/sync';
 import { ClientEvent } from './src/contract/events';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -519,7 +519,7 @@ export default function App() {
           });
         });
         if (updated) {
-          emit(ClientEvent.SYNC_TODO, updated);
+          send(ClientEvent.SYNC_TODO, updated);
         }
         setSelectedTaskId(nextSelectedId);
         return;

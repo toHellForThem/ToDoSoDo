@@ -6,7 +6,7 @@
  */
 
 import { socket } from '../utils/socket';
-import { request } from '../utils/protocol';
+import { newRequestId } from '../utils/protocol';
 import { ClientEvent, ServerEvent } from './events';
 import {
   AckPayload,
@@ -58,12 +58,26 @@ export interface ServerPayloads {
   [ServerEvent.ERROR]: ServerErrorPayload;
 }
 
-/** Отправляет мутирующее событие в конверте `{request_id, payload}`. */
+/** Отправляет мутирующее событие с заданным `request_id`. */
+export const emitWithRequestId = <E extends keyof ClientPayloads>(
+  event: E,
+  payload: ClientPayloads[E],
+  requestId: string
+): void => {
+  socket.emit(event, { request_id: requestId, payload });
+};
+
+/**
+ * Отправляет мутирующее событие в конверте `{request_id, payload}` и
+ * возвращает `request_id`, чтобы вызывающий мог сопоставить ack/error.
+ */
 export const emit = <E extends keyof ClientPayloads>(
   event: E,
   payload: ClientPayloads[E]
-): void => {
-  socket.emit(event, request(payload));
+): string => {
+  const requestId = newRequestId();
+  emitWithRequestId(event, payload, requestId);
+  return requestId;
 };
 
 /** Отправляет событие без конверта (login/register/logout). */
