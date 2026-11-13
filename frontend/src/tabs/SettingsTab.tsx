@@ -281,6 +281,11 @@ export const SettingsTab = () => {
   useShortcutRecorder(recordingKey !== null, event => {
     if (!recordingKey) return false;
 
+    if (event.key === 'Escape' || event.code === 'Escape') {
+      setRecordingKey(null);
+      return true;
+    }
+
     const combination = eventToCombination(event);
     if (!combination) return false;
 
