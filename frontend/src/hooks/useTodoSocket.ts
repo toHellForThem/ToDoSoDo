@@ -28,7 +28,7 @@ import {
   RpgHistoryItem,
 } from '../utils/storage';
 import { getLogicalDayStartMs } from '../utils/date';
-import { useAppStore } from '../store/appStore';
+import { normalizeMainTab, useAppStore } from '../store/appStore';
 
 interface UseTodoSocketOptions {
   onSessionCleared?: () => void;
@@ -68,6 +68,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
 
       store.setAuthMode('auth');
       store.setAuthState('');
+      store.setHistoryLoaded(false);
       AuthStorage.setUsername(username);
       AuthStorage.setToken(token);
       setSyncMode('auth');
@@ -109,13 +110,12 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
 
       AuthStorage.setSettings(finalSettings);
       store.setSettings(finalSettings);
-      if (finalSettings?.main_page) {
-        store.setMainTab(finalSettings.main_page);
-      }
+      store.setMainTab(normalizeMainTab(finalSettings?.main_page));
     }));
 
     unsubscribers.push(on(ServerEvent.ALL_TODOS, (serverTodos) => {
       const store = useAppStore.getState();
+      store.setHistoryLoaded(true);
       const currentSettings = store.settings;
       const startOfToday = getLogicalDayStartMs(
         currentSettings?.reset_time,
@@ -313,9 +313,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
         const store = useAppStore.getState();
         AuthStorage.setSettings(serverSettings);
         store.setSettings(serverSettings);
-        if (serverSettings?.main_page) {
-          store.setMainTab(serverSettings.main_page);
-        }
+        store.setMainTab(normalizeMainTab(serverSettings?.main_page));
       });
     }));
 
@@ -358,9 +356,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
         const store = useAppStore.getState();
         AuthStorage.setSettings(serverSettings);
         store.setSettings(serverSettings);
-        if (serverSettings?.main_page) {
-          store.setMainTab(serverSettings.main_page);
-        }
+        store.setMainTab(normalizeMainTab(serverSettings?.main_page));
       };
 
       const applyServerHistory = (serverEntry: RpgHistoryItem) => {

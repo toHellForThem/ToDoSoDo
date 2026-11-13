@@ -23,26 +23,14 @@ export const useTodoActions = () => {
   const rpgHistory = useAppStore(state => state.rpgHistory);
   const settings = useAppStore(state => state.settings);
   const authMode = useAppStore(state => state.authMode);
+  const historyLoaded = useAppStore(state => state.historyLoaded);
 
-  const isHistoryLoadedRef = useRef(!AuthStorage.getToken());
   const rpgHistoryRef = useRef(rpgHistory);
   const lastHistorySyncRef = useRef<string | null>(null);
 
   useEffect(() => {
     rpgHistoryRef.current = rpgHistory;
   }, [rpgHistory]);
-
-  // Любое обновление истории (с сервера или из UI) означает, что её можно
-  // отправлять обратно, не затирая серверные данные пустым локальным срезом.
-  useEffect(
-    () =>
-      useAppStore.subscribe((state, prevState) => {
-        if (state.rpgHistory !== prevState.rpgHistory) {
-          isHistoryLoadedRef.current = true;
-        }
-      }),
-    []
-  );
 
   const resetHistorySync = useCallback(() => {
     lastHistorySyncRef.current = null;
@@ -99,7 +87,9 @@ export const useTodoActions = () => {
 
   useEffect(() => {
     if (todoList.length === 0) return;
-    if (!isHistoryLoadedRef.current) return;
+    // В auth-режиме ждём ALL_TODOS, иначе отправим пустую историю и затрём
+    // серверную.  В local-режиме серверной истории нет — можно синкать сразу.
+    if (!historyLoaded && AuthStorage.getToken()) return;
 
     const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
     const stats = computeDailyStats(todoList, todayStr);
@@ -138,7 +128,7 @@ export const useTodoActions = () => {
     });
 
     send(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
-  }, [todoList, settings?.reset_time, settings?.timezone]);
+  }, [todoList, settings?.reset_time, settings?.timezone, historyLoaded]);
 
   return { resetHistorySync };
 };
