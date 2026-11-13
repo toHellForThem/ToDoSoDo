@@ -14,7 +14,7 @@ import {
  */
 export const useMonthHistory = (month: string, enabled: boolean) => {
   const [status, setStatus] = useState<MonthHistoryStatus>(() =>
-    enabled ? getMonthStatus(month) : 'idle'
+    enabled ? getMonthStatus(month) : 'idle',
   );
 
   useEffect(() => {

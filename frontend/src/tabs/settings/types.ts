@@ -3,7 +3,7 @@ import { TranslationDict } from '../../utils/translations';
 
 export type Translate = <K extends keyof TranslationDict>(
   key: K,
-  replacements?: Record<string, string | number>
+  replacements?: Record<string, string | number>,
 ) => TranslationDict[K];
 
 export interface SectionStyleProps {

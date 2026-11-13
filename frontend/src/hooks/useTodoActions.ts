@@ -4,17 +4,10 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import {
-  AuthStorage,
-  RpgStorage,
-  TodoStorage,
-} from '../utils/storage';
+import { AuthStorage, RpgStorage, TodoStorage } from '../utils/storage';
 import { send } from '../sync';
 import { ClientEvent } from '../contract/events';
-import {
-  getLogicalDateStr,
-  getNextResetMs,
-} from '../utils/date';
+import { getLogicalDateStr, getNextResetMs } from '../utils/date';
 import { buildHistoryEntry, computeDailyStats } from '../domain/daily';
 import { resetTodosForNewDay } from '../domain/reset';
 import { useAppStore } from '../store/appStore';
@@ -68,7 +61,7 @@ export const useTodoActions = () => {
         const store = useAppStore.getState();
         const { todos, resetTypes, changed } = resetTodosForNewDay(
           store.todoList,
-          resetAt
+          resetAt,
         );
         if (changed) {
           store.setTodoList(todos);
@@ -94,7 +87,10 @@ export const useTodoActions = () => {
     // серверную.  В local-режиме серверной истории нет — можно синкать сразу.
     if (!historyLoaded && AuthStorage.getToken()) return;
 
-    const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
+    const todayStr = getLogicalDateStr(
+      settings?.reset_time,
+      settings?.timezone,
+    );
     const stats = computeDailyStats(todoList, todayStr);
 
     // Эмитим только когда реально изменились цифры дня, а не на каждое
@@ -113,7 +109,7 @@ export const useTodoActions = () => {
     const updatedEntry = buildHistoryEntry(
       todayStr,
       stats,
-      existingEntry ? existingEntry.mood : null
+      existingEntry ? existingEntry.mood : null,
     );
 
     useAppStore.getState().setRpgHistory(prev => {

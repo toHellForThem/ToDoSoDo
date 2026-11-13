@@ -67,3 +67,8 @@ backend/htmlcov/
 # Desktop (Electron)
 desktop/node_modules/
 desktop/dist-mac-win-linux/
+
+# Frontend tests
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/

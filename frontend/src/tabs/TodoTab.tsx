@@ -5,7 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
-  RefObject
+  RefObject,
 } from 'react';
 import {
   View,
@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   FlatList,
   Text,
-  Keyboard
+  Keyboard,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getStyles } from './TodoTab.styles';
@@ -25,18 +25,20 @@ import { useAppStore } from '../store/appStore';
 import { useLeftAction } from '../hooks/useLeftAction';
 import { useInputFocus } from '../commands';
 import { selectVisibleTodos } from '../domain/visibility';
-import { SwipeableRow, type LeftActionRenderer } from '../components/SwipeableRow';
+import {
+  SwipeableRow,
+  type LeftActionRenderer,
+} from '../components/SwipeableRow';
 import { SelectableItem } from '../components/SelectableItem';
 import { useWebPressGuard } from '../hooks/useWebPressGuard';
 import { useScrollToSelected } from '../hooks/useScrollToSelected';
-
 
 interface TodoItemProps {
   item: Todo;
   statusChangeTask: (
     id: string,
     amount?: number | 'reset' | 'toggle_complete',
-    field?: string
+    field?: string,
   ) => void;
   deleteTodo: (id: string) => void;
   leftAction: LeftActionRenderer;
@@ -48,18 +50,21 @@ interface TodoInputProps {
   inputRef: RefObject<TextInput | null>;
 }
 
-const TodoItem = memo(({
+const TodoItem = memo(function TodoItem({
   item,
   statusChangeTask,
   deleteTodo,
   leftAction,
-  isSelected
-}: TodoItemProps) => {
+  isSelected,
+}: TodoItemProps) {
   const itemStyles = useStyles(getItemStyles);
   const { theme } = useAppTheme();
 
   const { handlePressIn, handlePress } = useWebPressGuard(
-    useCallback(() => statusChangeTask(item.id, 1), [item.id, statusChangeTask])
+    useCallback(
+      () => statusChangeTask(item.id, 1),
+      [item.id, statusChangeTask],
+    ),
   );
 
   const handleDelete = useCallback(() => {
@@ -67,7 +72,11 @@ const TodoItem = memo(({
   }, [item.id, deleteTodo]);
 
   return (
-    <SwipeableRow leftAction={leftAction} mode="toRecycle" onSwipeLeftOpen={handleDelete}>
+    <SwipeableRow
+      leftAction={leftAction}
+      mode="toRecycle"
+      onSwipeLeftOpen={handleDelete}
+    >
       <SelectableItem isSelected={isSelected}>
         <TouchableOpacity
           delayPressIn={150}
@@ -78,7 +87,10 @@ const TodoItem = memo(({
         >
           {item.completed && (
             <MaterialCommunityIcons
-              style={{ borderRadius: theme.radius.xs, backgroundColor: theme.colors.icon.bg }}
+              style={{
+                borderRadius: theme.radius.xs,
+                backgroundColor: theme.colors.icon.bg,
+              }}
               name={'check-bold'}
               size={20}
               color={theme.colors.icon.primary}
@@ -86,7 +98,10 @@ const TodoItem = memo(({
           )}
         </TouchableOpacity>
         <Text
-          style={[itemStyles.todoText, item.completed && itemStyles.completedText]}
+          style={[
+            itemStyles.todoText,
+            item.completed && itemStyles.completedText,
+          ]}
           onPressIn={handlePressIn}
           onPress={handlePress}
         >
@@ -97,7 +112,7 @@ const TodoItem = memo(({
   );
 });
 
-const TodoInput = memo(({ onAdd, inputRef }: TodoInputProps) => {
+const TodoInput = memo(function TodoInput({ onAdd, inputRef }: TodoInputProps) {
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();
@@ -120,6 +135,7 @@ const TodoInput = memo(({ onAdd, inputRef }: TodoInputProps) => {
   return (
     <View style={styles.inputContainer}>
       <TextInput
+        testID="todo-input"
         ref={inputRef}
         style={styles.input}
         value={task}
@@ -143,7 +159,7 @@ const TodoInput = memo(({ onAdd, inputRef }: TodoInputProps) => {
   );
 });
 
-export const TodoTab = memo(() => {
+export const TodoTab = memo(function TodoTab() {
   const todoList = useAppStore(state => state.todoList);
   const onAdd = useAppStore(state => state.addTask);
   const deleteTodo = useAppStore(state => state.handleDeleteTodo);
@@ -165,7 +181,7 @@ export const TodoTab = memo(() => {
         recycle: false,
         dayIndex: 0,
       }),
-    [todoList]
+    [todoList],
   );
 
   useEffect(() => {
@@ -180,15 +196,18 @@ export const TodoTab = memo(() => {
 
   useScrollToSelected(flatListRef, activeTodos, selectedTaskId);
 
-  const renderItem = useCallback(({ item }: { item: Todo }) => (
-    <TodoItem
-      item={item}
-      statusChangeTask={statusChangeTask}
-      deleteTodo={deleteTodo}
-      leftAction={leftAction}
-      isSelected={item.id === selectedTaskId}
-    />
-  ), [statusChangeTask, deleteTodo, leftAction, selectedTaskId]);
+  const renderItem = useCallback(
+    ({ item }: { item: Todo }) => (
+      <TodoItem
+        item={item}
+        statusChangeTask={statusChangeTask}
+        deleteTodo={deleteTodo}
+        leftAction={leftAction}
+        isSelected={item.id === selectedTaskId}
+      />
+    ),
+    [statusChangeTask, deleteTodo, leftAction, selectedTaskId],
+  );
 
   return (
     <View style={styles.todoWrapper}>
@@ -199,7 +218,7 @@ export const TodoTab = memo(() => {
         extraData={selectedTaskId}
         bounces={false}
         overScrollMode="never"
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingTop: 6, paddingBottom: 10 }}
       />

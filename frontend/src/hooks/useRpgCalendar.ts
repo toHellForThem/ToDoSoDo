@@ -8,7 +8,10 @@ import {
   type DailyStats,
 } from '../domain/daily';
 import type { RpgHistoryItem } from '../utils/storage';
-import type { CalendarCell, SelectedDayDetail } from '../components/CalendarModal';
+import type {
+  CalendarCell,
+  SelectedDayDetail,
+} from '../components/CalendarModal';
 import { formatMonthKey } from '../sync/history';
 import { useMonthHistory } from './useMonthHistory';
 
@@ -33,7 +36,8 @@ export const useRpgCalendar = ({
   isCalendarVisible,
   t,
 }: UseRpgCalendarOptions) => {
-  const [selectedDayDetail, setSelectedDayDetail] = useState<SelectedDayDetail | null>(null);
+  const [selectedDayDetail, setSelectedDayDetail] =
+    useState<SelectedDayDetail | null>(null);
   const [isHabitsExpanded, setIsHabitsExpanded] = useState(false);
 
   // Календарь и заголовок даты живут в том же логическом дне, что и задачи.
@@ -79,9 +83,15 @@ export const useRpgCalendar = ({
     setIsHabitsExpanded(false);
   };
 
-  const todayMonthGenitive = useMemo(() => t('months_genitive')[today.getMonth()], [today, t]);
+  const todayMonthGenitive = useMemo(
+    () => t('months_genitive')[today.getMonth()],
+    [today, t],
+  );
 
-  const currentMonthName = useMemo(() => t('months')[viewDate.getMonth()], [viewDate, t]);
+  const currentMonthName = useMemo(
+    () => t('months')[viewDate.getMonth()],
+    [viewDate, t],
+  );
 
   const selectedDayMonthGenitive = useMemo(() => {
     if (!selectedDayDetail?.dateStr) return '';
@@ -108,24 +118,27 @@ export const useRpgCalendar = ({
     return cells;
   }, [viewDate]);
 
-  const handleDayPress = useCallback((cell: CalendarCell) => {
-    if (!cell.dateStr) return;
-    const log = rpgHistory.find(h => h.date === cell.dateStr);
-    setSelectedDayDetail({
-      dateStr: cell.dateStr,
-      day: cell.day as number,
-      log: log || {
-        date: cell.dateStr || '',
-        mood: null,
-        daily_progress: 0,
-        pos_points: 0,
-        neg_points: 0,
-        habits_detail: '[]',
-        updatedAt: 0
-      }
-    });
-    setIsHabitsExpanded(false);
-  }, [rpgHistory]);
+  const handleDayPress = useCallback(
+    (cell: CalendarCell) => {
+      if (!cell.dateStr) return;
+      const log = rpgHistory.find(h => h.date === cell.dateStr);
+      setSelectedDayDetail({
+        dateStr: cell.dateStr,
+        day: cell.day as number,
+        log: log || {
+          date: cell.dateStr || '',
+          mood: null,
+          daily_progress: 0,
+          pos_points: 0,
+          neg_points: 0,
+          habits_detail: '[]',
+          updatedAt: 0,
+        },
+      });
+      setIsHabitsExpanded(false);
+    },
+    [rpgHistory],
+  );
 
   const calendarCommands = useMemo<Command[]>(() => {
     const navigateDay = (offset: number) => {
@@ -136,7 +149,9 @@ export const useRpgCalendar = ({
           targetCell = calendarCells.find(c => c.day !== null);
         }
       } else {
-        const currentIndex = calendarCells.findIndex(c => c.dateStr === selectedDayDetail.dateStr);
+        const currentIndex = calendarCells.findIndex(
+          c => c.dateStr === selectedDayDetail.dateStr,
+        );
         if (currentIndex !== -1) {
           const targetIndex = currentIndex + offset;
           if (targetIndex >= 0 && targetIndex < calendarCells.length) {
@@ -213,7 +228,7 @@ export const useRpgCalendar = ({
       return stats.habits.filter(h => h.progressNow !== 0);
     }
     return parseHabitsDetail(selectedDayDetail.log?.habits_detail).filter(
-      h => h.progressNow !== 0
+      h => h.progressNow !== 0,
     );
   }, [selectedDayDetail, todayStr, stats.habits]);
 

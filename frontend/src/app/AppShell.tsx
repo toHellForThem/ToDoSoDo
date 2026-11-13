@@ -36,17 +36,20 @@ export const AppShell = () => {
 
   const moodSheet = useMoodSheet(setIsMoodSheetOpen);
 
+  // useMoodSheet возвращает новый объект на каждый рендер; ссылки на
+  // SharedValue и useCallback-функции внутри него стабильны.
   const handleMoodSheet = useCallback(() => {
     if (moodSheet.isActive && moodSheet.isActive.value === 1) {
       moodSheet.closeSheet();
     } else {
       moodSheet.openSheet();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moodSheet.isActive, moodSheet.closeSheet, moodSheet.openSheet]);
 
   const isMoodSheetActive = useCallback(
     () => Boolean(moodSheet.isActive && moodSheet.isActive.value === 1),
-    [moodSheet.isActive]
+    [moodSheet.isActive],
   );
 
   const handleBackAction = useBackAction({
@@ -57,7 +60,7 @@ export const AppShell = () => {
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
       'hardwareBackPress',
-      handleBackAction
+      handleBackAction,
     );
 
     return () => backHandler.remove();
@@ -67,7 +70,7 @@ export const AppShell = () => {
 
   const focusActiveInput = useCallback(
     () => registry.focusActiveInput(),
-    [registry]
+    [registry],
   );
 
   const commands = useAppCommands({
@@ -91,7 +94,10 @@ export const AppShell = () => {
         isMoodSheetOpen={isMoodSheetOpen}
         isWideScreen={isWideScreen}
       />
-      <View style={styles.main} pointerEvents={isMoodSheetOpen ? 'none' : 'auto'}>
+      <View
+        style={styles.main}
+        pointerEvents={isMoodSheetOpen ? 'none' : 'auto'}
+      >
         <Navigation isWideScreen={isWideScreen} />
       </View>
       <TabBar />

@@ -49,31 +49,82 @@ export const useAppCommands = ({
       shortcut: string | undefined,
       scope: Command['scope'],
       run: Command['run'],
-      when?: Command['when']
+      when?: Command['when'],
     ) => {
       if (!shortcut) return;
       list.push({ id, title, shortcut, scope, run, when });
     };
 
-    add('tab.rpg', 'RPG tab', shortcuts?.rpg_tab, 'global', () => handleTabChange('rpg'));
-    add('tab.todo', 'To-do tab', shortcuts?.todo_tab, 'global', () => handleTabChange('todo'));
-    add('tab.daily', 'Daily tab', shortcuts?.daily_tab, 'global', () => handleTabChange('daily'));
-    add('subtab.habits', 'Habits subtab', shortcuts?.habits_subtab, 'global', () => handleSubtabChange('habits'));
-    add('subtab.piggy', 'Piggy bank subtab', shortcuts?.piggy_subtab, 'global', () => handleSubtabChange('piggy_bank'));
-    add('subtab.tv', 'TV shows subtab', shortcuts?.tv_subtab, 'global', () => handleSubtabChange('tv_shows'));
-    add('view.recycle', 'Recycle view', shortcuts?.recycle_view, 'global', () => toggleActiveView('recycle'));
-    add('view.settings', 'Settings view', shortcuts?.settings_view, 'global', () => toggleActiveView('settings'));
-    add('view.calendar', 'Calendar view', shortcuts?.calendar_view, 'global', () => toggleCalendar());
-    add('view.mood', 'Mood view', shortcuts?.mood_view, 'global', () => handleMoodSheet());
+    add('tab.rpg', 'RPG tab', shortcuts?.rpg_tab, 'global', () =>
+      handleTabChange('rpg'),
+    );
+    add('tab.todo', 'To-do tab', shortcuts?.todo_tab, 'global', () =>
+      handleTabChange('todo'),
+    );
+    add('tab.daily', 'Daily tab', shortcuts?.daily_tab, 'global', () =>
+      handleTabChange('daily'),
+    );
+    add(
+      'subtab.habits',
+      'Habits subtab',
+      shortcuts?.habits_subtab,
+      'global',
+      () => handleSubtabChange('habits'),
+    );
+    add(
+      'subtab.piggy',
+      'Piggy bank subtab',
+      shortcuts?.piggy_subtab,
+      'global',
+      () => handleSubtabChange('piggy_bank'),
+    );
+    add('subtab.tv', 'TV shows subtab', shortcuts?.tv_subtab, 'global', () =>
+      handleSubtabChange('tv_shows'),
+    );
+    add('view.recycle', 'Recycle view', shortcuts?.recycle_view, 'global', () =>
+      toggleActiveView('recycle'),
+    );
+    add(
+      'view.settings',
+      'Settings view',
+      shortcuts?.settings_view,
+      'global',
+      () => toggleActiveView('settings'),
+    );
+    add(
+      'view.calendar',
+      'Calendar view',
+      shortcuts?.calendar_view,
+      'global',
+      () => toggleCalendar(),
+    );
+    add('view.mood', 'Mood view', shortcuts?.mood_view, 'global', () =>
+      handleMoodSheet(),
+    );
 
     add('nav.back', 'Back', 'escape', 'global', () => handleBackAction());
 
     if (isMoodSheetOpen) {
-      add('mood.1', 'Mood 1', '1', 'modal', () => { handleMoodChange(1); closeMoodSheet(); });
-      add('mood.2', 'Mood 2', '2', 'modal', () => { handleMoodChange(2); closeMoodSheet(); });
-      add('mood.3', 'Mood 3', '3', 'modal', () => { handleMoodChange(3); closeMoodSheet(); });
-      add('mood.4', 'Mood 4', '4', 'modal', () => { handleMoodChange(4); closeMoodSheet(); });
-      add('mood.5', 'Mood 5', '5', 'modal', () => { handleMoodChange(5); closeMoodSheet(); });
+      add('mood.1', 'Mood 1', '1', 'modal', () => {
+        handleMoodChange(1);
+        closeMoodSheet();
+      });
+      add('mood.2', 'Mood 2', '2', 'modal', () => {
+        handleMoodChange(2);
+        closeMoodSheet();
+      });
+      add('mood.3', 'Mood 3', '3', 'modal', () => {
+        handleMoodChange(3);
+        closeMoodSheet();
+      });
+      add('mood.4', 'Mood 4', '4', 'modal', () => {
+        handleMoodChange(4);
+        closeMoodSheet();
+      });
+      add('mood.5', 'Mood 5', '5', 'modal', () => {
+        handleMoodChange(5);
+        closeMoodSheet();
+      });
     }
 
     const getActiveItems = () => selectActiveItems(useAppStore.getState());
@@ -153,7 +204,13 @@ export const useAppCommands = ({
       }
     };
     add('list.toggle', 'Toggle item', 'enter', listScope, handleToggleSelected);
-    add('list.toggle.space', 'Toggle item', 'space', listScope, handleToggleSelected);
+    add(
+      'list.toggle.space',
+      'Toggle item',
+      'space',
+      listScope,
+      handleToggleSelected,
+    );
 
     add('list.delete', 'Delete item', 'arrowright', listScope, () => {
       if (!selectedTaskId) return;

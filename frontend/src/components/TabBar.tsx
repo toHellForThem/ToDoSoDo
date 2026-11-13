@@ -5,7 +5,7 @@ import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
 import { useAppStore } from '../store/appStore';
 
-export const TabBar = memo(() => {
+export const TabBar = memo(function TabBar() {
   const currentTab = useAppStore(state => state.mainTab);
   const setCurrentTab = useAppStore(state => state.handleTabChange);
   const rpgSubtab = useAppStore(state => state.rpgSubtab);
@@ -17,7 +17,10 @@ export const TabBar = memo(() => {
   const isTodoActive = currentTab === 'todo';
   const isDailyActive = currentTab === 'daily';
 
-  const shouldBlink = (isRpgActive && rpgSubtab !== 'dashboard') || activeView === 'recycle' || activeView === 'settings';
+  const shouldBlink =
+    (isRpgActive && rpgSubtab !== 'dashboard') ||
+    activeView === 'recycle' ||
+    activeView === 'settings';
 
   const blinkAnim = useRef(new Animated.Value(1)).current;
 
@@ -35,12 +38,12 @@ export const TabBar = memo(() => {
             duration: 450,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     } else {
       blinkAnim.setValue(1);
     }
-  }, [shouldBlink]);
+  }, [shouldBlink, blinkAnim]);
 
   const renderActiveIndicator = (isActive: boolean) => {
     if (!isActive) return null;
@@ -62,39 +65,75 @@ export const TabBar = memo(() => {
   return (
     <View style={styles.footer}>
       <TouchableOpacity
+        testID="tab-rpg"
         style={[
           styles.tab,
           isRpgActive && styles.activeTab,
-          isRpgActive && { borderTopWidth: 0 }
+          isRpgActive && { borderTopWidth: 0 },
         ]}
         onPress={() => setCurrentTab('rpg')}
       >
         {renderActiveIndicator(isRpgActive)}
-        <Text style={[styles.tabText, { color: isRpgActive ? theme.colors.primary : theme.colors.text.secondary }]}>{t('tab_rpg')}</Text>
+        <Text
+          style={[
+            styles.tabText,
+            {
+              color: isRpgActive
+                ? theme.colors.primary
+                : theme.colors.text.secondary,
+            },
+          ]}
+        >
+          {t('tab_rpg')}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
+        testID="tab-todo"
         style={[
           styles.tab,
           isTodoActive && styles.activeTab,
-          isTodoActive && { borderTopWidth: 0 }
+          isTodoActive && { borderTopWidth: 0 },
         ]}
         onPress={() => setCurrentTab('todo')}
       >
         {renderActiveIndicator(isTodoActive)}
-        <Text style={[styles.tabText, { color: isTodoActive ? theme.colors.primary : theme.colors.text.secondary }]}>{t('tab_todo')}</Text>
+        <Text
+          style={[
+            styles.tabText,
+            {
+              color: isTodoActive
+                ? theme.colors.primary
+                : theme.colors.text.secondary,
+            },
+          ]}
+        >
+          {t('tab_todo')}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
+        testID="tab-daily"
         style={[
           styles.tab,
           isDailyActive && styles.activeTab,
-          isDailyActive && { borderTopWidth: 0 }
+          isDailyActive && { borderTopWidth: 0 },
         ]}
         onPress={() => setCurrentTab('daily')}
       >
         {renderActiveIndicator(isDailyActive)}
-        <Text style={[styles.tabText, { color: isDailyActive ? theme.colors.primary : theme.colors.text.secondary }]}>{t('tab_daily')}</Text>
+        <Text
+          style={[
+            styles.tabText,
+            {
+              color: isDailyActive
+                ? theme.colors.primary
+                : theme.colors.text.secondary,
+            },
+          ]}
+        >
+          {t('tab_daily')}
+        </Text>
       </TouchableOpacity>
     </View>
   );

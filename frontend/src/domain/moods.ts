@@ -33,6 +33,8 @@ const buildConfig = (colors: MoodColors[]): Record<number, MoodConfigItem> => {
 };
 
 /** Единый источник цветов и иконок настроений — цвета берутся из темы. */
-export const getMoodConfig = (themeName: ThemeName | undefined): Record<number, MoodConfigItem> => {
+export const getMoodConfig = (
+  themeName: ThemeName | undefined,
+): Record<number, MoodConfigItem> => {
   return buildConfig(getTheme(themeName ?? 'default').moods);
 };

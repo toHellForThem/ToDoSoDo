@@ -11,7 +11,7 @@ import {
   Language,
   ThemeName,
   DEFAULT_SHORTCUTS,
-  getDefaultSettings
+  getDefaultSettings,
 } from '../../utils/storage';
 import { socket, updateSocketUrlAndReconnect } from '../../utils/socket';
 import { emitRaw, on } from '../../contract/socket';
@@ -55,8 +55,12 @@ export const useSettingsController = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setPasswordVisible] = useState(false);
-  const [serverUrlInput, setServerUrlInput] = useState(() => AuthStorage.getServerUrl() || '');
-  const [recordingKey, setRecordingKey] = useState<keyof ShortcutSettings | null>(null);
+  const [serverUrlInput, setServerUrlInput] = useState(
+    () => AuthStorage.getServerUrl() || '',
+  );
+  const [recordingKey, setRecordingKey] = useState<
+    keyof ShortcutSettings | null
+  >(null);
   const [subView, setSubView] = useState<'dailies' | null>(null);
 
   useEffect(() => {
@@ -65,7 +69,10 @@ export const useSettingsController = () => {
         setSubView(null);
         return true;
       };
-      const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+      const subscription = BackHandler.addEventListener(
+        'hardwareBackPress',
+        handleBackPress,
+      );
       return () => {
         subscription.remove();
       };
@@ -77,9 +84,10 @@ export const useSettingsController = () => {
       setAuthMode('local');
     }
 
-    const handleAuthMessage = (
-      data: { status: 'success' | 'error' | 'info'; message: string }
-    ) => {
+    const handleAuthMessage = (data: {
+      status: 'success' | 'error' | 'info';
+      message: string;
+    }) => {
       if (data.status === 'success') {
         setUsername('');
         setPassword('');
@@ -88,7 +96,7 @@ export const useSettingsController = () => {
       Toast.show({
         type: data.status,
         text1: data.message,
-        visibilityTime: 3000
+        visibilityTime: 3000,
       });
     };
 
@@ -96,15 +104,22 @@ export const useSettingsController = () => {
   }, [authMode, setAuthMode]);
 
   useEffect(() => {
-    if ((authState === 'login' || authState === 'register') && !socket.connected) {
+    if (
+      (authState === 'login' || authState === 'register') &&
+      !socket.connected
+    ) {
       socket.connect();
     }
   }, [authState]);
 
-  const updateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
+  const updateSetting = <K extends keyof UserSettings>(
+    key: K,
+    value: UserSettings[K],
+  ) => {
     const updated: UserSettings = {
-      ...settings, [key]: value,
-      updatedAt: Date.now()
+      ...settings,
+      [key]: value,
+      updatedAt: Date.now(),
     } as UserSettings;
     setSettings(updated);
     AuthStorage.setSettings(updated);
@@ -122,7 +137,7 @@ export const useSettingsController = () => {
       Toast.show({
         type: 'error',
         text1: t('set_toast_url_err'),
-        visibilityTime: 3000
+        visibilityTime: 3000,
       });
       return;
     }
@@ -139,7 +154,7 @@ export const useSettingsController = () => {
       type: 'success',
       text1: t('set_toast_server_saved'),
       text2: t('set_toast_reconnect', { url: formattedUrl }),
-      visibilityTime: 3000
+      visibilityTime: 3000,
     });
   };
 
@@ -151,8 +166,10 @@ export const useSettingsController = () => {
     Toast.show({
       type: 'success',
       text1: t('set_toast_server_reset'),
-      text2: t('set_toast_reconnect', { url: process.env.EXPO_PUBLIC_SOCKET_URL || '' }),
-      visibilityTime: 3000
+      text2: t('set_toast_reconnect', {
+        url: process.env.EXPO_PUBLIC_SOCKET_URL || '',
+      }),
+      visibilityTime: 3000,
     });
   };
 
@@ -197,13 +214,15 @@ export const useSettingsController = () => {
   };
 
   const handleDonate = () => {
-    Linking.openURL('https://www.donationalerts.com/r/tohellforthem').catch(() => {
-      Toast.show({
-        type: 'error',
-        text1: t('set_toast_link_err'),
-        visibilityTime: 2500
-      });
-    });
+    Linking.openURL('https://www.donationalerts.com/r/tohellforthem').catch(
+      () => {
+        Toast.show({
+          type: 'error',
+          text1: t('set_toast_link_err'),
+          visibilityTime: 2500,
+        });
+      },
+    );
   };
 
   useScope('settings.recording', recordingKey !== null);
@@ -220,20 +239,24 @@ export const useSettingsController = () => {
     if (!combination) return false;
 
     const currentShortcuts = settings?.shortcuts || DEFAULT_SHORTCUTS;
-    const conflict = findShortcutConflict(currentShortcuts, combination, recordingKey);
+    const conflict = findShortcutConflict(
+      currentShortcuts,
+      combination,
+      recordingKey,
+    );
     if (conflict) {
       Toast.show({
         type: 'error',
         text1: t('set_shortcut_conflict'),
         text2: formatShortcut(combination),
-        visibilityTime: 2000
+        visibilityTime: 2000,
       });
       return true;
     }
 
     updateSetting('shortcuts', {
       ...currentShortcuts,
-      [recordingKey]: combination
+      [recordingKey]: combination,
     });
     setRecordingKey(null);
 
@@ -241,7 +264,7 @@ export const useSettingsController = () => {
       type: 'success',
       text1: t('set_shortcut_changed'),
       text2: formatShortcut(combination),
-      visibilityTime: 2000
+      visibilityTime: 2000,
     });
     return true;
   });
@@ -251,7 +274,7 @@ export const useSettingsController = () => {
     Toast.show({
       type: 'success',
       text1: t('set_toast_theme'),
-      visibilityTime: 2000
+      visibilityTime: 2000,
     });
   };
 
@@ -261,7 +284,7 @@ export const useSettingsController = () => {
       Toast.show({
         type: 'success',
         text1: (translations[newLang] || translations.ru).set_toast_lang,
-        visibilityTime: 2000
+        visibilityTime: 2000,
       });
     }, 100);
   };
@@ -273,17 +296,26 @@ export const useSettingsController = () => {
 
   const changeHours = (delta: number) => {
     const newHours = (hours + delta + 24) % 24;
-    updateSetting('reset_time', `${newHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+    updateSetting(
+      'reset_time',
+      `${newHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`,
+    );
   };
 
   const changeMinutes = (delta: number) => {
     const newMinutes = (minutes + delta + 60) % 60;
-    updateSetting('reset_time', `${hours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`);
+    updateSetting(
+      'reset_time',
+      `${hours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`,
+    );
   };
 
-  const activeRpgSubtab = (settings?.rpg_subtab === 'habits' || settings?.rpg_subtab === 'piggy_bank' || settings?.rpg_subtab === 'tv_shows')
-    ? settings.rpg_subtab
-    : null;
+  const activeRpgSubtab =
+    settings?.rpg_subtab === 'habits' ||
+    settings?.rpg_subtab === 'piggy_bank' ||
+    settings?.rpg_subtab === 'tv_shows'
+      ? settings.rpg_subtab
+      : null;
 
   const handleToggleDay = (item: Todo, idx: number) => {
     const daysArr = (item.days || '1111111').split('');
@@ -296,7 +328,10 @@ export const useSettingsController = () => {
   };
 
   const handleChangeProgressEnd = (item: Todo, delta: number) => {
-    const nextVal = Math.max(1, Math.min(20, (Number(item.progressEnd) || 1) + delta));
+    const nextVal = Math.max(
+      1,
+      Math.min(20, (Number(item.progressEnd) || 1) + delta),
+    );
     if (editTask) {
       editTask(item.id, { progressEnd: nextVal });
     }

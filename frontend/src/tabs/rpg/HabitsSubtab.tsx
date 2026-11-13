@@ -5,7 +5,7 @@ import {
   useEffect,
   useRef,
   RefObject,
-  ReactNode
+  ReactNode,
 } from 'react';
 import {
   View,
@@ -15,22 +15,21 @@ import {
   FlatList,
   Keyboard,
   NativeSyntheticEvent,
-  TextInputKeyPressEventData
+  TextInputKeyPressEventData,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { Todo } from '../../utils/storage'
-import { Theme } from '../../theme/theme'
+import { Todo } from '../../utils/storage';
+import { Theme } from '../../theme/theme';
 import { useTranslation } from '../../utils/LanguageContext';
 import { useInputFocus } from '../../commands';
-
 
 interface HabitItemProps {
   item: Todo;
   statusChangeTask: (
     id: string,
     amount?: number | 'reset' | 'toggle_complete',
-    field?: string
+    field?: string,
   ) => void;
   deleteToRecycle: (id: string) => void;
   renderSwipeLeft: (prog: any, drag: any) => ReactNode;
@@ -42,7 +41,7 @@ interface HabitItemProps {
 interface HabitInputProps {
   handleAddHabit: (
     name: string,
-    type: 'positive' | 'neutral' | 'negative'
+    type: 'positive' | 'neutral' | 'negative',
   ) => void;
   styles: any;
   theme: Theme;
@@ -50,15 +49,15 @@ interface HabitInputProps {
 }
 
 interface HabitsSubtabProps {
-  allHabits: Todo[],
+  allHabits: Todo[];
   handleAddHabit: (
     name: string,
-    type: 'positive' | 'neutral' | 'negative'
+    type: 'positive' | 'neutral' | 'negative',
   ) => void;
   statusChangeTask: (
     id: string,
     amount?: number | 'reset' | 'toggle_complete',
-    field?: string
+    field?: string,
   ) => void;
   deleteToRecycle: (id: string) => void;
   renderSwipeLeft: (prog: any, drag: any) => ReactNode;
@@ -68,7 +67,7 @@ interface HabitsSubtabProps {
   isActive: boolean;
 }
 
-const HabitItem = memo(({
+const HabitItem = memo(function HabitItem({
   item,
   statusChangeTask,
   deleteToRecycle,
@@ -76,7 +75,7 @@ const HabitItem = memo(({
   styles,
   theme,
   isSelected,
-}: HabitItemProps) => {
+}: HabitItemProps) {
   const handleReset = useCallback(() => {
     statusChangeTask(item.id, 'reset');
   }, [item.id, statusChangeTask]);
@@ -89,9 +88,12 @@ const HabitItem = memo(({
     deleteToRecycle(item.id);
   }, [item.id, deleteToRecycle]);
 
-  const renderSwipe = useCallback((prog: any, drag: any) => {
-    return renderSwipeLeft(prog, drag);
-  }, [renderSwipeLeft]);
+  const renderSwipe = useCallback(
+    (prog: any, drag: any) => {
+      return renderSwipeLeft(prog, drag);
+    },
+    [renderSwipeLeft],
+  );
 
   return (
     <Swipeable
@@ -109,20 +111,24 @@ const HabitItem = memo(({
       activeOffsetX={[-15, 15]}
       failOffsetY={[-15, 15]}
     >
-      <View style={[
-        styles.habitItem,
-        isSelected && { backgroundColor: theme.colors.icon.bg }
-      ]}>
+      <View
+        style={[
+          styles.habitItem,
+          isSelected && { backgroundColor: theme.colors.icon.bg },
+        ]}
+      >
         {isSelected && (
-          <View style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 4,
-            backgroundColor: theme.colors.primary,
-            zIndex: 10,
-          }} />
+          <View
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              backgroundColor: theme.colors.primary,
+              zIndex: 10,
+            }}
+          />
         )}
         <TouchableOpacity
           onPress={handleReset}
@@ -131,19 +137,32 @@ const HabitItem = memo(({
             width: 50,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: item.contribution === 1
-              ? 'rgba(52, 211, 153, 0.15)'
-              : item.contribution === -1
-                ? 'rgba(239, 68, 68, 0.15)'
-                : 'rgba(148, 163, 184, 0.15)',
+            backgroundColor:
+              item.contribution === 1
+                ? 'rgba(52, 211, 153, 0.15)'
+                : item.contribution === -1
+                  ? 'rgba(239, 68, 68, 0.15)'
+                  : 'rgba(148, 163, 184, 0.15)',
             borderBottomLeftRadius: theme.radius.xl,
             borderTopLeftRadius: theme.radius.xl,
           }}
         >
           <MaterialCommunityIcons
-            name={item.contribution === 1 ? 'plus' : item.contribution === -1 ? 'minus' : 'help'}
+            name={
+              item.contribution === 1
+                ? 'plus'
+                : item.contribution === -1
+                  ? 'minus'
+                  : 'help'
+            }
             size={25}
-            color={item.contribution === 1 ? '#34D399' : item.contribution === -1 ? '#EF4444' : '#94A3B8'}
+            color={
+              item.contribution === 1
+                ? '#34D399'
+                : item.contribution === -1
+                  ? '#EF4444'
+                  : '#94A3B8'
+            }
           />
         </TouchableOpacity>
         <Text style={styles.habitText}>{item.text}</Text>
@@ -161,51 +180,63 @@ const HabitItem = memo(({
           }}
           onPress={handleComplete}
         >
-          <MaterialCommunityIcons name="check-bold" size={25} color={theme.colors.icon.primary} />
+          <MaterialCommunityIcons
+            name="check-bold"
+            size={25}
+            color={theme.colors.icon.primary}
+          />
         </TouchableOpacity>
       </View>
     </Swipeable>
   );
 });
 
-const HabitInput = memo(({
+const HabitInput = memo(function HabitInput({
   handleAddHabit,
   styles,
   theme,
   inputRef,
-}: HabitInputProps) => {
+}: HabitInputProps) {
   const [habitName, setHabitName] = useState('');
-  const [pointsOrDeposit, setPointsOrDeposit] = useState<'positive' | 'neutral' | 'negative'>('positive');
+  const [pointsOrDeposit, setPointsOrDeposit] = useState<
+    'positive' | 'neutral' | 'negative'
+  >('positive');
   const { t } = useTranslation();
 
-  const handleKeyPress = useCallback((e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-    const native = e.nativeEvent as any
-    const key = native?.key || (e as any).key;
-    const isCtrl = native?.ctrlKey || native?.metaKey || (e as any).ctrlKey || (e as any).metaKey;
+  const handleKeyPress = useCallback(
+    (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      const native = e.nativeEvent as any;
+      const key = native?.key || (e as any).key;
+      const isCtrl =
+        native?.ctrlKey ||
+        native?.metaKey ||
+        (e as any).ctrlKey ||
+        (e as any).metaKey;
 
-
-    if (key === 'Escape') {
-      e.stopPropagation();
-      Keyboard.dismiss();
-      return;
-    }
-
-    if (isCtrl) {
-      if (key === '0') {
-        (e as any).preventDefault?.();
+      if (key === 'Escape') {
         e.stopPropagation();
-        setPointsOrDeposit('neutral');
-      } else if (key === '-') {
-        (e as any).preventDefault?.();
-        e.stopPropagation();
-        setPointsOrDeposit('negative');
-      } else if (key === '=') {
-        (e as any).preventDefault?.();
-        e.stopPropagation();
-        setPointsOrDeposit('positive');
+        Keyboard.dismiss();
+        return;
       }
-    }
-  }, [setPointsOrDeposit]);
+
+      if (isCtrl) {
+        if (key === '0') {
+          (e as any).preventDefault?.();
+          e.stopPropagation();
+          setPointsOrDeposit('neutral');
+        } else if (key === '-') {
+          (e as any).preventDefault?.();
+          e.stopPropagation();
+          setPointsOrDeposit('negative');
+        } else if (key === '=') {
+          (e as any).preventDefault?.();
+          e.stopPropagation();
+          setPointsOrDeposit('positive');
+        }
+      }
+    },
+    [setPointsOrDeposit],
+  );
 
   const handleAdd = useCallback(() => {
     if (!habitName.trim()) return;
@@ -219,28 +250,44 @@ const HabitInput = memo(({
         style={[
           styles.typeToggleButtonCompact,
           {
-            borderColor: pointsOrDeposit === 'positive'
+            borderColor:
+              pointsOrDeposit === 'positive'
+                ? '#34D399'
+                : pointsOrDeposit === 'neutral'
+                  ? '#94A3B8'
+                  : '#EF4444',
+            backgroundColor:
+              pointsOrDeposit === 'positive'
+                ? 'rgba(52, 211, 153, 0.15)'
+                : pointsOrDeposit === 'neutral'
+                  ? 'rgba(148, 163, 184, 0.15)'
+                  : 'rgba(239, 68, 68, 0.15)',
+          },
+        ]}
+        onPress={() =>
+          setPointsOrDeposit(prev => {
+            if (prev === 'positive') return 'neutral';
+            if (prev === 'neutral') return 'negative';
+            return 'positive';
+          })
+        }
+      >
+        <MaterialCommunityIcons
+          name={
+            pointsOrDeposit === 'positive'
+              ? 'plus'
+              : pointsOrDeposit === 'neutral'
+                ? 'help'
+                : 'minus'
+          }
+          size={20}
+          color={
+            pointsOrDeposit === 'positive'
               ? '#34D399'
               : pointsOrDeposit === 'neutral'
                 ? '#94A3B8'
-                : '#EF4444',
-            backgroundColor: pointsOrDeposit === 'positive'
-              ? 'rgba(52, 211, 153, 0.15)'
-              : pointsOrDeposit === 'neutral'
-                ? 'rgba(148, 163, 184, 0.15)'
-                : 'rgba(239, 68, 68, 0.15)',
+                : '#EF4444'
           }
-        ]}
-        onPress={() => setPointsOrDeposit(prev => {
-          if (prev === 'positive') return 'neutral';
-          if (prev === 'neutral') return 'negative';
-          return 'positive';
-        })}
-      >
-        <MaterialCommunityIcons
-          name={pointsOrDeposit === 'positive' ? 'plus' : pointsOrDeposit === 'neutral' ? 'help' : 'minus'}
-          size={20}
-          color={pointsOrDeposit === 'positive' ? '#34D399' : pointsOrDeposit === 'neutral' ? '#94A3B8' : '#EF4444'}
         />
       </TouchableOpacity>
       <TextInput
@@ -268,7 +315,7 @@ const HabitInput = memo(({
   );
 });
 
-export const HabitsSubtab = memo(({
+export const HabitsSubtab = memo(function HabitsSubtab({
   allHabits,
   handleAddHabit,
   statusChangeTask,
@@ -278,10 +325,9 @@ export const HabitsSubtab = memo(({
   theme,
   selectedTaskId,
   isActive,
-}: HabitsSubtabProps) => {
+}: HabitsSubtabProps) {
   const flatListRef = useRef<FlatList<Todo>>(null);
   const inputRef = useRef<TextInput>(null);
-  const { t } = useTranslation();
 
   useInputFocus('rpg', () => inputRef.current?.focus(), isActive);
 
@@ -295,29 +341,39 @@ export const HabitsSubtab = memo(({
           viewPosition: 0.5,
           animated: true,
         });
-      } catch (err) {
+      } catch {
         try {
           flatListRef.current.scrollToOffset({
             offset: index * 60,
             animated: true,
           });
-        } catch (innerErr) {
-          console.log('Scroll to selected habit failed:', innerErr);
+        } catch {
+          // Скролл к выбранной привычке не критичен для работы экрана.
         }
       }
     }
   }, [selectedTaskId, allHabits]);
-  const renderItem = useCallback(({ item }: { item: Todo }) => (
-    <HabitItem
-      item={item}
-      statusChangeTask={statusChangeTask}
-      deleteToRecycle={deleteToRecycle}
-      renderSwipeLeft={renderSwipeLeft}
-      styles={styles}
-      theme={theme}
-      isSelected={item.id === selectedTaskId}
-    />
-  ), [statusChangeTask, deleteToRecycle, renderSwipeLeft, styles, theme, selectedTaskId]);
+  const renderItem = useCallback(
+    ({ item }: { item: Todo }) => (
+      <HabitItem
+        item={item}
+        statusChangeTask={statusChangeTask}
+        deleteToRecycle={deleteToRecycle}
+        renderSwipeLeft={renderSwipeLeft}
+        styles={styles}
+        theme={theme}
+        isSelected={item.id === selectedTaskId}
+      />
+    ),
+    [
+      statusChangeTask,
+      deleteToRecycle,
+      renderSwipeLeft,
+      styles,
+      theme,
+      selectedTaskId,
+    ],
+  );
 
   return (
     <View style={styles.container}>
@@ -334,7 +390,7 @@ export const HabitsSubtab = memo(({
         extraData={selectedTaskId}
         bounces={false}
         overScrollMode="never"
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.habitList}
         renderItem={renderItem}
       />

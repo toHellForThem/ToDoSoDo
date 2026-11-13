@@ -9,7 +9,7 @@ export const useLogicalDateStr = (): string => {
 
   return useMemo(
     () => getLogicalDateStr(resetTime, timezone),
-    [resetTime, timezone]
+    [resetTime, timezone],
   );
 };
 

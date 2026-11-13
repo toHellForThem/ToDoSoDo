@@ -4,23 +4,25 @@ import {
   useMemo,
   useRef,
   Dispatch,
-  SetStateAction
+  SetStateAction,
 } from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { Text, TouchableOpacity, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { send } from '../sync';
 import { ClientEvent } from '../contract/events';
-import { Todo } from '../utils/storage'
+import { Todo } from '../utils/storage';
 import { useAppStore } from '../store/appStore';
 import { useLeftAction } from '../hooks/useLeftAction';
 import { selectVisibleTodos, type VisibleMainTab } from '../domain/visibility';
 import { useLogicalDayIndex } from '../hooks/useLogicalDate';
-import { SwipeableRow, type LeftActionRenderer } from '../components/SwipeableRow';
+import {
+  SwipeableRow,
+  type LeftActionRenderer,
+} from '../components/SwipeableRow';
 import { SelectableItem } from '../components/SelectableItem';
 import { useScrollToSelected } from '../hooks/useScrollToSelected';
-
 
 interface RecycleItemProps {
   item: Todo;
@@ -34,13 +36,13 @@ interface RecycleTabProps {
   context: string;
 }
 
-const RecycleItem = memo(({
+const RecycleItem = memo(function RecycleItem({
   item,
   deleteTodo,
   leftAction,
   setTodoList,
-  isSelected
-}: RecycleItemProps) => {
+  isSelected,
+}: RecycleItemProps) {
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
 
@@ -90,7 +92,7 @@ const RecycleItem = memo(({
         >
           <Ionicons
             style={{
-              alignItems: 'center'
+              alignItems: 'center',
             }}
             name={'arrow-undo-outline'}
             size={25}
@@ -102,7 +104,9 @@ const RecycleItem = memo(({
   );
 });
 
-export const RecycleTab = memo(({ context }: RecycleTabProps) => {
+export const RecycleTab = memo(function RecycleTab({
+  context,
+}: RecycleTabProps) {
   const todoList = useAppStore(state => state.todoList);
   const deleteTodo = useAppStore(state => state.deleteTodo);
   const setTodoList = useAppStore(state => state.setTodoList);
@@ -120,20 +124,23 @@ export const RecycleTab = memo(({ context }: RecycleTabProps) => {
         recycle: true,
         dayIndex: todayDayIdx,
       }),
-    [todoList, context, rpgSubtab, todayDayIdx]
+    [todoList, context, rpgSubtab, todayDayIdx],
   );
 
   useScrollToSelected(flatListRef, activeTodos, selectedTaskId);
 
-  const renderItem = useCallback(({ item }: { item: Todo }) => (
-    <RecycleItem
-      setTodoList={setTodoList}
-      item={item}
-      deleteTodo={deleteTodo}
-      leftAction={leftAction}
-      isSelected={item.id === selectedTaskId}
-    />
-  ), [deleteTodo, leftAction, selectedTaskId, setTodoList]);
+  const renderItem = useCallback(
+    ({ item }: { item: Todo }) => (
+      <RecycleItem
+        setTodoList={setTodoList}
+        item={item}
+        deleteTodo={deleteTodo}
+        leftAction={leftAction}
+        isSelected={item.id === selectedTaskId}
+      />
+    ),
+    [deleteTodo, leftAction, selectedTaskId, setTodoList],
+  );
 
   return (
     <FlatList
@@ -143,7 +150,7 @@ export const RecycleTab = memo(({ context }: RecycleTabProps) => {
       extraData={selectedTaskId}
       bounces={false}
       overScrollMode="never"
-      keyExtractor={(item) => item.id}
+      keyExtractor={item => item.id}
       renderItem={renderItem}
       contentContainerStyle={{ marginBottom: 16, paddingTop: 10 }}
     />

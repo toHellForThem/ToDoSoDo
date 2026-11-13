@@ -19,17 +19,21 @@ export const useWebPressGuard = (onTap: () => void) => {
     }
   }, []);
 
-  const handlePress = useCallback((event: GestureResponderEvent) => {
-    if (Platform.OS === 'web' && event) {
-      const endX = event.nativeEvent.pageX || 0;
-      const endY = event.nativeEvent.pageY || 0;
-      const distance = Math.sqrt(
-        Math.pow(endX - startX.current, 2) + Math.pow(endY - startY.current, 2)
-      );
-      if (distance > TAP_DISTANCE_THRESHOLD) return;
-    }
-    onTap();
-  }, [onTap]);
+  const handlePress = useCallback(
+    (event: GestureResponderEvent) => {
+      if (Platform.OS === 'web' && event) {
+        const endX = event.nativeEvent.pageX || 0;
+        const endY = event.nativeEvent.pageY || 0;
+        const distance = Math.sqrt(
+          Math.pow(endX - startX.current, 2) +
+            Math.pow(endY - startY.current, 2),
+        );
+        if (distance > TAP_DISTANCE_THRESHOLD) return;
+      }
+      onTap();
+    },
+    [onTap],
+  );
 
   return { handlePressIn, handlePress };
 };

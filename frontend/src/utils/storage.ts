@@ -1,15 +1,9 @@
 import { Platform, NativeModules } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
 import type {
-  AuthMode,
-  Language,
-  MainPage,
   RpgHistoryItem,
-  RpgSubtab,
   ShortcutSettings,
-  ThemeName,
   Todo,
-  TodoType,
   UserSettings,
 } from '../contract/types';
 
@@ -43,7 +37,7 @@ export const DEFAULT_SHORTCUTS: ShortcutSettings = {
   settings_view: 'mod+s',
   calendar_view: 'mod+c',
   mood_view: 'mod+x',
-}
+};
 
 const nativeStorage = Platform.OS !== 'web' ? createMMKV() : null;
 
@@ -64,7 +58,7 @@ const getSystemLanguage = () => {
       return 'ru';
     }
     return 'en';
-  } catch (error) {
+  } catch {
     return 'ru';
   }
 };
@@ -74,7 +68,7 @@ const getSystemTimezone = (): string => {
     if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     }
-  } catch (error) {
+  } catch {
     // Hermes без ICU — используем UTC, пользователь сможет поменять пояс.
   }
   return 'UTC';
@@ -91,10 +85,10 @@ export const getDefaultSettings = (): UserSettings => {
     reset_enabled: true,
     language: getSystemLanguage(),
     shortcuts: DEFAULT_SHORTCUTS,
-    updatedAt: 0
-  }
-  return settings
-}
+    updatedAt: 0,
+  };
+  return settings;
+};
 
 const core = {
   set: (key: string, value: string): void => {
@@ -108,7 +102,7 @@ const core = {
     if (Platform.OS === 'web') {
       return localStorage.getItem(key);
     } else {
-      return nativeStorage ? nativeStorage.getString(key) ?? null : null;
+      return nativeStorage ? (nativeStorage.getString(key) ?? null) : null;
     }
   },
   remove: (key: string): void => {
@@ -117,25 +111,27 @@ const core = {
     } else {
       nativeStorage!.remove(key);
     }
-  }
+  },
 };
 
 export { nativeStorage };
 
 export const TodoStorage = {
-  saveAll: (todos: Todo[]): void => core.set('todo_list', JSON.stringify(todos)),
+  saveAll: (todos: Todo[]): void =>
+    core.set('todo_list', JSON.stringify(todos)),
   getAll: (): Todo[] => {
     const data = core.get('todo_list');
     return data ? JSON.parse(data) : [];
-  }
+  },
 };
 
 export const RpgStorage = {
-  saveHistory: (history: RpgHistoryItem[]): void => core.set('rpg_history', JSON.stringify(history)),
+  saveHistory: (history: RpgHistoryItem[]): void =>
+    core.set('rpg_history', JSON.stringify(history)),
   getHistory: (): RpgHistoryItem[] => {
     const data = core.get('rpg_history');
     return data ? JSON.parse(data) : [];
-  }
+  },
 };
 
 /**
@@ -164,7 +160,7 @@ export const OutboxStorage = {
     try {
       const parsed = JSON.parse(data);
       return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
+    } catch {
       return [];
     }
   },
@@ -189,13 +185,15 @@ export const TombstoneStorage = {
     try {
       const parsed = JSON.parse(data);
       return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
+    } catch {
       return [];
     }
   },
   add: (id: string): void => {
     try {
-      const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
+      const tombstones = TombstoneStorage.getAll().filter(
+        item => item.id !== id,
+      );
       tombstones.push({ id, updatedAt: Date.now() });
       core.set('todo_tombstones', JSON.stringify(tombstones));
     } catch (error) {
@@ -205,7 +203,9 @@ export const TombstoneStorage = {
   },
   remove: (id: string): void => {
     try {
-      const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
+      const tombstones = TombstoneStorage.getAll().filter(
+        item => item.id !== id,
+      );
       core.set('todo_tombstones', JSON.stringify(tombstones));
     } catch (error) {
       console.warn('Failed to remove todo tombstone:', error);
@@ -213,7 +213,7 @@ export const TombstoneStorage = {
   },
   clear: (): void => {
     core.remove('todo_tombstones');
-  }
+  },
 };
 
 export const AuthStorage = {
@@ -223,7 +223,8 @@ export const AuthStorage = {
   setToken: (token: string): void => core.set('user_token', token),
   getToken: (): string | null => core.get('user_token'),
 
-  setSettings: (settings: UserSettings): void => core.set('user_settings', JSON.stringify(settings)),
+  setSettings: (settings: UserSettings): void =>
+    core.set('user_settings', JSON.stringify(settings)),
   getSettings: (): UserSettings => {
     const data = core.get('user_settings');
     const defaultShortcuts: ShortcutSettings = DEFAULT_SHORTCUTS;
@@ -235,8 +236,8 @@ export const AuthStorage = {
         ...parsed,
         shortcuts: {
           ...defaultShortcuts,
-          ...(parsed.shortcuts || {})
-        }
+          ...(parsed.shortcuts || {}),
+        },
       };
     }
     return defaultSettings;
@@ -259,5 +260,5 @@ export const AuthStorage = {
     core.remove('server_url');
     // Явный выход: tombstones прошлого пользователя не должны уйти под новым.
     TombstoneStorage.clear();
-  }
+  },
 };

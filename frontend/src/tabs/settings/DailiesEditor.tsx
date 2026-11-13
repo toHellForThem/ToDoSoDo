@@ -1,4 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { Todo } from '../../utils/storage';
 import { useLeftAction } from '../../hooks/useLeftAction';
@@ -32,7 +38,8 @@ export const DailiesEditor = ({
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop: Platform.OS === 'web' ? theme.spacing.xl : theme.spacing.md,
+          paddingTop:
+            Platform.OS === 'web' ? theme.spacing.xl : theme.spacing.md,
           paddingBottom: theme.spacing.xxl,
           width: '100%',
           alignItems: 'center',
@@ -40,15 +47,27 @@ export const DailiesEditor = ({
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ paddingHorizontal: 20, width: '100%', maxWidth: 600, alignSelf: 'center' }}>
-          <View style={[styles.card, {
-            flexDirection: 'row',
-            alignItems: 'center',
-            height: 54,
-            padding: 0,
-            overflow: 'hidden',
-            marginBottom: theme.spacing.smd,
-          }]}>
+        <View
+          style={{
+            paddingHorizontal: 20,
+            width: '100%',
+            maxWidth: 600,
+            alignSelf: 'center',
+          }}
+        >
+          <View
+            style={[
+              styles.card,
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                height: 54,
+                padding: 0,
+                overflow: 'hidden',
+                marginBottom: theme.spacing.smd,
+              },
+            ]}
+          >
             <TouchableOpacity
               onPress={onBack}
               style={{
@@ -62,18 +81,44 @@ export const DailiesEditor = ({
               }}
               activeOpacity={0.6}
             >
-              <Ionicons name="arrow-back" size={24} color={theme.colors.icon.primary} />
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.text.primary, marginLeft: 16 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '800',
+                color: theme.colors.text.primary,
+                marginLeft: 16,
+              }}
+            >
               {t('set_daily_edit')}
             </Text>
           </View>
         </View>
         {dailies.length === 0 ? (
           <View style={{ paddingHorizontal: 20, width: '100%', maxWidth: 600 }}>
-            <View style={[styles.card, { alignItems: 'center', paddingVertical: 30, marginBottom: 0 }]}>
-              <MaterialCommunityIcons name="calendar-blank" size={48} color={theme.colors.text.muted} />
-              <Text style={{ fontSize: 14, color: theme.colors.text.secondary, marginTop: 12 }}>
+            <View
+              style={[
+                styles.card,
+                { alignItems: 'center', paddingVertical: 30, marginBottom: 0 },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="calendar-blank"
+                size={48}
+                color={theme.colors.text.muted}
+              />
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: theme.colors.text.secondary,
+                  marginTop: 12,
+                }}
+              >
                 {t('set_daily_empty')}
               </Text>
             </View>
@@ -97,8 +142,23 @@ export const DailiesEditor = ({
                   alignSelf: 'center',
                 }}
               >
-                <View style={[itemStyles.todoItem, { flexDirection: 'column', alignItems: 'stretch', padding: theme.spacing.md }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View
+                  style={[
+                    itemStyles.todoItem,
+                    {
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      padding: theme.spacing.md,
+                    },
+                  ]}
+                >
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
+                  >
                     <Text
                       style={{
                         flex: 1,
@@ -110,19 +170,49 @@ export const DailiesEditor = ({
                     >
                       {item.text}
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <TouchableOpacity hitSlop={10} onPress={() => handleChangeProgressEnd(item, -1)}>
-                        <Ionicons name="remove-circle-outline" size={22} color={theme.colors.icon.primary} />
+                    <View
+                      style={{ flexDirection: 'row', alignItems: 'center' }}
+                    >
+                      <TouchableOpacity
+                        hitSlop={10}
+                        onPress={() => handleChangeProgressEnd(item, -1)}
+                      >
+                        <Ionicons
+                          name="remove-circle-outline"
+                          size={22}
+                          color={theme.colors.icon.primary}
+                        />
                       </TouchableOpacity>
-                      <Text style={{ fontSize: 14, fontWeight: 'bold', marginHorizontal: 10, color: theme.colors.text.primary }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 'bold',
+                          marginHorizontal: 10,
+                          color: theme.colors.text.primary,
+                        }}
+                      >
                         {item.progressEnd || 1}
                       </Text>
-                      <TouchableOpacity hitSlop={10} onPress={() => handleChangeProgressEnd(item, 1)}>
-                        <Ionicons name="add-circle-outline" size={22} color={theme.colors.icon.primary} />
+                      <TouchableOpacity
+                        hitSlop={10}
+                        onPress={() => handleChangeProgressEnd(item, 1)}
+                      >
+                        <Ionicons
+                          name="add-circle-outline"
+                          size={22}
+                          color={theme.colors.icon.primary}
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', marginTop: 12 }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      gap: 6,
+                      justifyContent: 'center',
+                      marginTop: 12,
+                    }}
+                  >
                     {t('daily_weekdays').map((day, idx) => {
                       const isSelected = daysStr[idx] === '1';
                       return (
@@ -135,16 +225,24 @@ export const DailiesEditor = ({
                             borderRadius: 8,
                             alignItems: 'center',
                             justifyContent: 'center',
-                            backgroundColor: isSelected ? theme.colors.primaryLight : 'transparent',
+                            backgroundColor: isSelected
+                              ? theme.colors.primaryLight
+                              : 'transparent',
                             borderWidth: 1.5,
-                            borderColor: isSelected ? theme.colors.primary : theme.colors.border.light,
+                            borderColor: isSelected
+                              ? theme.colors.primary
+                              : theme.colors.border.light,
                           }}
                         >
-                          <Text style={{
-                            fontSize: 12,
-                            fontWeight: 'bold',
-                            color: isSelected ? theme.colors.primary : theme.colors.text.secondary
-                          }}>
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 'bold',
+                              color: isSelected
+                                ? theme.colors.primary
+                                : theme.colors.text.secondary,
+                            }}
+                          >
                             {day}
                           </Text>
                         </TouchableOpacity>

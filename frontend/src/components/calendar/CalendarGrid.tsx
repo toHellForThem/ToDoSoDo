@@ -2,7 +2,11 @@ import { memo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { RpgHistoryItem } from '../../utils/storage';
 import { Theme } from '../../theme/theme';
-import { CalendarCell, CalendarMoodConfigItem, SelectedDayDetail } from './types';
+import {
+  CalendarCell,
+  CalendarMoodConfigItem,
+  SelectedDayDetail,
+} from './types';
 
 interface CalendarGridProps {
   calendarCells: CalendarCell[];
@@ -16,7 +20,7 @@ interface CalendarGridProps {
 }
 
 /** Сетка дней месяца с подсветкой настроения, сегодня и выбранного дня. */
-export const CalendarGrid = memo(({
+export const CalendarGrid = memo(function CalendarGrid({
   calendarCells,
   rpgHistory,
   activeMoodConfig,
@@ -25,15 +29,18 @@ export const CalendarGrid = memo(({
   handleDayPress,
   styles,
   theme,
-}: CalendarGridProps) => {
+}: CalendarGridProps) {
   return (
     <View style={styles.calendarGrid}>
       {calendarCells.map((cell, index) => {
-        const dayLog = cell.dateStr ? rpgHistory.find(h => h.date === cell.dateStr) : null;
+        const dayLog = cell.dateStr
+          ? rpgHistory.find(h => h.date === cell.dateStr)
+          : null;
         const cellMood = dayLog?.mood ?? null;
         const hasCellMood = cellMood != null && activeMoodConfig[cellMood];
         const isToday = cell.dateStr === todayStr;
-        const isSelected = selectedDayDetail && selectedDayDetail.dateStr === cell.dateStr;
+        const isSelected =
+          selectedDayDetail && selectedDayDetail.dateStr === cell.dateStr;
 
         let cellBg = 'transparent';
         let cellBorderColor = 'transparent';
@@ -71,18 +78,21 @@ export const CalendarGrid = memo(({
                 backgroundColor: cellBg,
                 borderColor: cellBorderColor,
                 borderWidth: cellBorderWidth,
-              }
+              },
             ]}
             onPress={() => handleDayPress(cell)}
           >
             {cell.day && (
-              <Text style={[
-                styles.calendarCellText,
-                {
-                  color: cellTextColor,
-                  fontWeight: (hasCellMood || isSelected || isToday) ? 'bold' : '600',
-                }
-              ]}>
+              <Text
+                style={[
+                  styles.calendarCellText,
+                  {
+                    color: cellTextColor,
+                    fontWeight:
+                      hasCellMood || isSelected || isToday ? 'bold' : '600',
+                  },
+                ]}
+              >
                 {cell.day}
               </Text>
             )}

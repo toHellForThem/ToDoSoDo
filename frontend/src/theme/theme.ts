@@ -1,6 +1,5 @@
 import { AuthStorage } from '../utils/storage';
 
-
 export interface MoodColors {
   color: string;
   glassBg: string;
@@ -8,28 +7,28 @@ export interface MoodColors {
 }
 
 export interface ThemeColors {
-  primary: string,
-  primaryLight: string,
-  background: string,
-  surface: string,
+  primary: string;
+  primaryLight: string;
+  background: string;
+  surface: string;
   text: {
-    primary: string,
-    secondary: string,
-    muted: string,
-    white: string,
-    link: string,
-  },
+    primary: string;
+    secondary: string;
+    muted: string;
+    white: string;
+    link: string;
+  };
   border: {
-    light: string,
-    default: string,
-  },
-  danger: string,
+    light: string;
+    default: string;
+  };
+  danger: string;
   icon: {
-    primary: string,
-    active: string,
-    bg: string,
-    bgActive: string,
-  }
+    primary: string;
+    active: string;
+    bg: string;
+    bgActive: string;
+  };
 }
 
 export interface Theme {
@@ -185,7 +184,7 @@ const spacing = {
   xl: 20,
   xxl: 24,
   xxxl: 30,
-}
+};
 
 const radius = {
   xs: 4,
@@ -195,7 +194,7 @@ const radius = {
   lg: 12,
   xl: 16,
   full: 9999,
-}
+};
 
 const sizes = {
   headerHeight: 60,
@@ -204,7 +203,7 @@ const sizes = {
   floatingContainer: 50,
   progressBar: 10,
   moodMeterHeight: 374,
-}
+};
 
 export const getTheme = (themeName: string): Theme => {
   let colors = defaultColors;
@@ -234,7 +233,8 @@ const getActiveThemeName = (): string => {
     if (saved?.theme) {
       return saved.theme;
     }
-  } catch (e) {
+  } catch {
+    // Повреждённые настройки не должны ломать старт приложения.
   }
   return 'default';
 };

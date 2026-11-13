@@ -22,7 +22,7 @@ const isResettable = (todo: Todo): boolean =>
  */
 export const resetTodoForNewDay = (
   todo: Todo,
-  startOfToday: number
+  startOfToday: number,
 ): Todo | null => {
   if (!isResettable(todo) || todo.updatedAt >= startOfToday) return null;
   return {
@@ -36,7 +36,7 @@ export const resetTodoForNewDay = (
 /** Сбрасывает все устаревшие daily/habit в списке. */
 export const resetStaleTodos = (
   todos: Todo[],
-  startOfToday: number
+  startOfToday: number,
 ): ResetResult => {
   const resetTypes = new Set<TodoType>();
   let changed = false;
@@ -58,7 +58,7 @@ export const resetStaleTodos = (
  */
 export const resetTodosForNewDay = (
   todos: Todo[],
-  resetAt: number
+  resetAt: number,
 ): ResetResult => {
   const resetTypes = new Set<TodoType>();
   let changed = false;

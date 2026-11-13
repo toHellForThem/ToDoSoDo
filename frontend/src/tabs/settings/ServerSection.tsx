@@ -23,11 +23,16 @@ export const ServerSection = ({
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderWithIcon}>
-        <MaterialCommunityIcons name="server" size={20} color={theme.colors.primary} />
+        <MaterialCommunityIcons
+          name="server"
+          size={20}
+          color={theme.colors.primary}
+        />
         <Text style={styles.cardTitle}>{t('set_server_config')}</Text>
       </View>
       <View style={{ marginTop: 12 }}>
         <PaperInput
+          testID="server-url-input"
           placeholder=" http://192.168.1.50:8000"
           value={serverUrlInput}
           onChangeText={setServerUrlInput}
@@ -45,16 +50,34 @@ export const ServerSection = ({
         />
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
           <TouchableOpacity
-            style={[styles.primaryAuthButton, { flex: 1, height: 40, paddingVertical: 0, justifyContent: 'center' }]}
+            style={[
+              styles.primaryAuthButton,
+              {
+                flex: 1,
+                height: 40,
+                paddingVertical: 0,
+                justifyContent: 'center',
+              },
+            ]}
             onPress={handleSaveServerUrl}
           >
             <Text style={styles.primaryAuthButtonText}>{t('set_save')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.secondaryAuthButton, { flex: 1, height: 40, paddingVertical: 0, justifyContent: 'center' }]}
+            style={[
+              styles.secondaryAuthButton,
+              {
+                flex: 1,
+                height: 40,
+                paddingVertical: 0,
+                justifyContent: 'center',
+              },
+            ]}
             onPress={handleResetServerUrl}
           >
-            <Text style={styles.secondaryAuthButtonText}>{t('set_reset_btn')}</Text>
+            <Text style={styles.secondaryAuthButtonText}>
+              {t('set_reset_btn')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

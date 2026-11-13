@@ -21,17 +21,10 @@ import {
 } from '../utils/storage';
 import { send } from '../sync';
 import { ClientEvent } from '../contract/events';
-import {
-  getLogicalDateStr,
-  getLogicalDayStartMs,
-} from '../utils/date';
+import { getLogicalDateStr, getLogicalDayStartMs } from '../utils/date';
 import { buildHistoryEntry, computeDailyStats } from '../domain/daily';
 import { resetStaleTodos } from '../domain/reset';
-import {
-  getProgressEnd,
-  getProgressNow,
-  isTodoComplete,
-} from '../domain/todo';
+import { getProgressEnd, getProgressNow, isTodoComplete } from '../domain/todo';
 
 export type MainTab = 'todo' | 'daily' | 'rpg';
 export type RpgSubtab = 'dashboard' | 'habits' | 'piggy_bank' | 'tv_shows';
@@ -39,7 +32,7 @@ export type ActiveView = 'list' | 'recycle' | 'settings';
 
 type Updater<T> = T | ((prev: T) => T);
 
-const resolveUpdater = <T,>(value: Updater<T>, prev: T): T =>
+const resolveUpdater = <T>(value: Updater<T>, prev: T): T =>
   typeof value === 'function' ? (value as (prev: T) => T)(prev) : value;
 
 const isMainTab = (value: unknown): value is MainTab =>
@@ -66,7 +59,7 @@ const loadInitialTodos = (): Todo[] => {
 
   const startOfToday = getLogicalDayStartMs(
     localSettings?.reset_time,
-    localSettings?.timezone
+    localSettings?.timezone,
   );
 
   const { todos, changed } = resetStaleTodos(list, startOfToday);
@@ -79,13 +72,18 @@ const loadInitialTodos = (): Todo[] => {
 const applyStatusChange = (
   todo: Todo,
   amount: number | 'reset' | 'toggle_complete',
-  field: string
+  field: string,
 ): Todo => {
   const type = todo.type;
 
   if (type === 'habit') {
     if (amount === 'reset') {
-      return { ...todo, progressNow: 0, completed: false, updatedAt: Date.now() };
+      return {
+        ...todo,
+        progressNow: 0,
+        completed: false,
+        updatedAt: Date.now(),
+      };
     }
     const change = Math.abs(amount as number);
     const newProgress = Math.max(0, getProgressNow(todo) + change);
@@ -223,14 +221,14 @@ export interface AppState {
     type?: TodoType,
     progressNow?: number | string,
     contribution?: number,
-    days?: string
+    days?: string,
   ) => void;
   deleteToRecycle: (id: string) => void;
   handleDeleteTodo: (id: string) => void;
   statusChangeTask: (
     id: string,
     amount?: number | 'reset' | 'toggle_complete',
-    field?: string
+    field?: string,
   ) => void;
   deleteTodo: (id: string) => void;
   editTask: (id: string, updatedFields: Partial<Todo>) => void;
@@ -302,7 +300,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     type,
     progressNow = 0,
     contribution = 0,
-    days = '1111111'
+    days = '1111111',
   ) => {
     if (!task.trim()) return;
 
@@ -390,14 +388,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   handleMoodChange: moodValue => {
     const { settings, todoList, rpgHistory } = get();
-    const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
+    const todayStr = getLogicalDateStr(
+      settings?.reset_time,
+      settings?.timezone,
+    );
     const stats = computeDailyStats(todoList, todayStr);
 
     const existingIndex = rpgHistory.findIndex(h => h.date === todayStr);
     const updatedEntry: RpgHistoryItem = buildHistoryEntry(
       todayStr,
       stats,
-      moodValue
+      moodValue,
     );
 
     const newHistory = [...rpgHistory];

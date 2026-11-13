@@ -50,11 +50,11 @@ interface CalendarModalProps {
   theme: Theme;
   t: <K extends keyof TranslationDict>(
     key: K,
-    options?: Record<string, string | number>
+    options?: Record<string, string | number>,
   ) => TranslationDict[K];
 }
 
-export const CalendarModal = memo(({
+export const CalendarModal = memo(function CalendarModal({
   isCalendarVisible,
   setCalendarVisible,
   currentMonthName,
@@ -81,7 +81,7 @@ export const CalendarModal = memo(({
   styles,
   theme,
   t,
-}: CalendarModalProps) => {
+}: CalendarModalProps) {
   const closeModal = () => {
     setCalendarVisible(false);
     setSelectedDayDetail(null);
@@ -95,9 +95,8 @@ export const CalendarModal = memo(({
       animationType="fade"
       onRequestClose={closeModal}
     >
-      <View style={styles.modalContainer}>
+      <View style={styles.modalContainer} testID="calendar-modal">
         <View style={styles.modalContent}>
-
           <TouchableOpacity
             style={{
               position: 'absolute',
@@ -145,7 +144,11 @@ export const CalendarModal = memo(({
               }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="chevron-back" size={28} color={theme.colors.icon.primary} />
+              <Ionicons
+                name="chevron-back"
+                size={28}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
 
             <Text
@@ -170,7 +173,11 @@ export const CalendarModal = memo(({
               }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="chevron-forward" size={28} color={theme.colors.icon.primary} />
+              <Ionicons
+                name="chevron-forward"
+                size={28}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
           </View>
 
@@ -245,7 +252,6 @@ export const CalendarModal = memo(({
               t={t}
             />
           )}
-
         </View>
       </View>
     </Modal>

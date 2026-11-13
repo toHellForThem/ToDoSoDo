@@ -13,11 +13,7 @@ import type { DailyHistory } from '../contract/types';
 import { getSyncMode, isOnline } from './client';
 
 export type MonthHistoryStatus =
-  | 'idle'
-  | 'loading'
-  | 'loaded'
-  | 'offline'
-  | 'error';
+  'idle' | 'loading' | 'loaded' | 'offline' | 'error';
 
 type MonthListener = (status: MonthHistoryStatus) => void;
 
@@ -59,7 +55,7 @@ export interface HistoryMergeResult {
  */
 export const mergeHistoryEntries = (
   current: DailyHistory[],
-  serverEntries: DailyHistory[]
+  serverEntries: DailyHistory[],
 ): HistoryMergeResult => {
   const next = [...current];
   const localNewer: DailyHistory[] = [];
@@ -105,7 +101,7 @@ export const mergeHistoryEntries = (
 
 export const subscribeMonth = (
   month: string,
-  listener: MonthListener
+  listener: MonthListener,
 ): (() => void) => {
   let bucket = listeners.get(month);
   if (!bucket) {
@@ -128,7 +124,7 @@ export const subscribeMonth = (
  */
 export const requestMonthHistory = (
   month: string,
-  force = false
+  force = false,
 ): MonthHistoryStatus => {
   requestedMonths.add(month);
 
@@ -155,7 +151,7 @@ export const requestMonthHistory = (
 
 export const resolveMonthHistory = (
   month: string,
-  requestId?: string | null
+  requestId?: string | null,
 ): void => {
   if (requestId) {
     pendingRequests.delete(requestId);

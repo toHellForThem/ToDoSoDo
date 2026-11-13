@@ -10,11 +10,13 @@ import { useAppStore } from '../store/appStore';
 export const useLeftAction = () => {
   const { theme } = useAppTheme();
   const language = useAppStore(state => state.settings?.language || 'ru');
-  const softDelete = useAppStore(state => state.settings?.soft_delete !== false);
+  const softDelete = useAppStore(
+    state => state.settings?.soft_delete !== false,
+  );
 
   return useCallback(
     (prog: any, drag: any, mode: string) =>
       renderLeftAction(prog, drag, mode, theme, language, softDelete),
-    [theme, language, softDelete]
+    [theme, language, softDelete],
   );
 };

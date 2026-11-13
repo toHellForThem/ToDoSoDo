@@ -1,4 +1,8 @@
-import { eventToCombination, isEditableTarget, normalizeCombination } from './keys';
+import {
+  eventToCombination,
+  isEditableTarget,
+  normalizeCombination,
+} from './keys';
 import type { Command, CommandScope } from './types';
 
 /**
@@ -80,7 +84,7 @@ export class CommandRegistry {
   getActiveScopes(): CommandScope[] {
     const scopes = Array.from(new Set(['global', ...this.scopeStack]));
     return scopes.sort(
-      (a, b) => (SCOPE_PRIORITY[a] ?? 10) - (SCOPE_PRIORITY[b] ?? 10)
+      (a, b) => (SCOPE_PRIORITY[a] ?? 10) - (SCOPE_PRIORITY[b] ?? 10),
     );
   }
 
