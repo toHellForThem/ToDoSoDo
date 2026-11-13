@@ -214,7 +214,13 @@ export const flush = (): void => {
       item.payload as never,
       item.requestId
     );
-    Outbox.markSent([item.requestId], item.requestId);
+    // BULK_* подтверждаются ACK и должны дождаться его.  Остальные
+    // события из этой ветки — «отправил и забыл».
+    if (ACK_EVENTS.has(item.event)) {
+      Outbox.markSent([item.requestId], item.requestId);
+    } else {
+      Outbox.remove(item.requestId);
+    }
   });
 };
 
