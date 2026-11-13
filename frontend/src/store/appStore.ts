@@ -36,6 +36,13 @@ type Updater<T> = T | ((prev: T) => T);
 const resolveUpdater = <T,>(value: Updater<T>, prev: T): T =>
   typeof value === 'function' ? (value as (prev: T) => T)(prev) : value;
 
+const isMainTab = (value: unknown): value is MainTab =>
+  value === 'todo' || value === 'daily' || value === 'rpg';
+
+/** Сервер может прислать неизвестный таб — не даём экрану стать пустым. */
+export const normalizeMainTab = (value: unknown): MainTab =>
+  isMainTab(value) ? value : 'todo';
+
 const isRpgSubtab = (value: string | undefined): value is RpgSubtab =>
   value === 'dashboard' ||
   value === 'habits' ||
@@ -82,6 +89,105 @@ const loadInitialTodos = (): Todo[] => {
   return list;
 };
 
+const applyStatusChange = (
+  todo: Todo,
+  amount: number | 'reset' | 'toggle_complete',
+  field: string
+): Todo => {
+  const type = todo.type;
+
+  if (type === 'habit') {
+    if (amount === 'reset') {
+      return { ...todo, progressNow: 0, updatedAt: Date.now() };
+    }
+    const change = Math.abs(amount as number);
+    const newProgress = Math.max(
+      0,
+      (parseInt(String(todo.progressNow), 10) || 0) + change
+    );
+    return { ...todo, progressNow: newProgress, updatedAt: Date.now() };
+  }
+
+  if (type === 'piggy_bank') {
+    const change = amount as number;
+    const newProgress = Math.max(
+      0,
+      (parseInt(String(todo.progressNow), 10) || 0) + change
+    );
+    return {
+      ...todo,
+      progressNow: newProgress,
+      completed:
+        newProgress >= (parseInt(String(todo.progressEnd), 10) || 0),
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (type === 'tv_show') {
+    if (amount === 'toggle_complete') {
+      return { ...todo, completed: !todo.completed, updatedAt: Date.now() };
+    }
+    let [season, episode] = (todo.progressNow || '1-1')
+      .toString()
+      .split('-')
+      .map(Number);
+    if (isNaN(season)) season = 1;
+    if (isNaN(episode)) episode = 1;
+
+    const change = amount as number;
+    if (field === 'season') {
+      season = Math.max(1, season + change);
+    } else {
+      episode = Math.max(1, episode + change);
+    }
+
+    return {
+      ...todo,
+      progressNow: `${season}-${episode}`,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (type === 'movie') {
+    const wasCompleted = todo.completed;
+    return {
+      ...todo,
+      completed: !wasCompleted,
+      progressNow: !wasCompleted ? '1' : '0',
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (todo.completed) {
+    return {
+      ...todo,
+      progressNow: 0,
+      completed: false,
+      contribution: 0,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (Number(todo.progressEnd) > 1) {
+    const nextProgress = Number(todo.progressNow) + 1;
+    return {
+      ...todo,
+      progressNow: nextProgress,
+      completed: nextProgress === Number(todo.progressEnd),
+      contribution: todo.type === 'daily' ? nextProgress : todo.contribution,
+      updatedAt: Date.now(),
+    };
+  }
+
+  return {
+    ...todo,
+    progressNow: 1,
+    completed: true,
+    contribution: todo.type === 'daily' ? 1 : todo.contribution,
+    updatedAt: Date.now(),
+  };
+};
+
 const initialSettings = AuthStorage.getSettings();
 
 let flashTimer: ReturnType<typeof setTimeout> | null = null;
@@ -93,6 +199,8 @@ export interface AppState {
   authState: string;
   todoList: Todo[];
   rpgHistory: RpgHistoryItem[];
+  /** История с сервера загружена — можно безопасно отправлять локальные цифры. */
+  historyLoaded: boolean;
 
   // Навигация
   mainTab: MainTab;
@@ -120,6 +228,7 @@ export interface AppState {
   setAuthState: (state: string) => void;
   setTodoList: (value: Updater<Todo[]>) => void;
   setRpgHistory: (value: Updater<RpgHistoryItem[]>) => void;
+  setHistoryLoaded: (loaded: boolean) => void;
   addTask: (
     task: string,
     progressEnd?: number,
@@ -171,8 +280,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   authState: '',
   todoList: loadInitialTodos(),
   rpgHistory: RpgStorage.getHistory(),
+  historyLoaded: false,
 
-  mainTab: (initialSettings.main_page as MainTab) || 'todo',
+  mainTab: normalizeMainTab(initialSettings.main_page),
   rpgSubtab: isRpgSubtab(initialSettings.rpg_subtab)
     ? initialSettings.rpg_subtab
     : 'dashboard',
@@ -198,6 +308,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(state => ({ todoList: resolveUpdater(value, state.todoList) })),
   setRpgHistory: value =>
     set(state => ({ rpgHistory: resolveUpdater(value, state.rpgHistory) })),
+  setHistoryLoaded: historyLoaded => set({ historyLoaded }),
 
   addTask: (
     task,
@@ -209,7 +320,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   ) => {
     if (!task.trim()) return;
 
-    const { mainTab } = get();
+    const { mainTab, todoList } = get();
     const todoType = type ?? (mainTab as TodoType);
     let defaultContrib = contribution;
     if (defaultContrib === 0 && (todoType === 'todo' || todoType === mainTab)) {
@@ -229,22 +340,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       days,
     };
 
-    set(state => ({ todoList: [newTodo, ...state.todoList] }));
+    set({ todoList: [newTodo, ...todoList] });
     send(ClientEvent.SYNC_TODO, newTodo);
   },
 
   deleteToRecycle: id => {
-    let updated: Todo | null = null;
-    set(state => ({
-      todoList: state.todoList.map(todo => {
-        if (todo.id !== id) return todo;
-        updated = { ...todo, deleted: true, updatedAt: Date.now() };
-        return updated;
-      }),
-    }));
-    if (updated) {
-      send(ClientEvent.SYNC_TODO, updated);
-    }
+    const { todoList } = get();
+    const target = todoList.find(todo => todo.id === id);
+    if (!target) return;
+
+    const updated: Todo = { ...target, deleted: true, updatedAt: Date.now() };
+    set({
+      todoList: todoList.map(todo => (todo.id === id ? updated : todo)),
+    });
+    send(ClientEvent.SYNC_TODO, updated);
   },
 
   handleDeleteTodo: id => {
@@ -257,131 +366,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   statusChangeTask: (id, amount = 1, field = 'episode') => {
-    let updated: Todo | null = null;
-    set(state => ({
-      todoList: state.todoList.map(todo => {
-        if (todo.id !== id) return todo;
-        const type = todo.type;
+    const { todoList } = get();
+    const target = todoList.find(todo => todo.id === id);
+    if (!target) return;
 
-        if (type === 'habit') {
-          if (amount === 'reset') {
-            updated = { ...todo, progressNow: 0, updatedAt: Date.now() };
-            return updated;
-          }
-          const change = Math.abs(amount as number);
-          const newProgress = Math.max(
-            0,
-            (parseInt(String(todo.progressNow), 10) || 0) + change
-          );
-          updated = {
-            ...todo,
-            progressNow: newProgress,
-            updatedAt: Date.now(),
-          };
-          return updated;
-        }
-
-        if (type === 'piggy_bank') {
-          const change = amount as number;
-          const newProgress = Math.max(
-            0,
-            (parseInt(String(todo.progressNow), 10) || 0) + change
-          );
-          updated = {
-            ...todo,
-            progressNow: newProgress,
-            completed:
-              newProgress >= (parseInt(String(todo.progressEnd), 10) || 0),
-            updatedAt: Date.now(),
-          };
-          return updated;
-        }
-
-        if (type === 'tv_show') {
-          if (amount === 'toggle_complete') {
-            updated = {
-              ...todo,
-              completed: !todo.completed,
-              updatedAt: Date.now(),
-            };
-            return updated;
-          }
-          let [season, episode] = (todo.progressNow || '1-1')
-            .toString()
-            .split('-')
-            .map(Number);
-          if (isNaN(season)) season = 1;
-          if (isNaN(episode)) episode = 1;
-
-          const change = amount as number;
-          if (field === 'season') {
-            season = Math.max(1, season + change);
-          } else {
-            episode = Math.max(1, episode + change);
-          }
-
-          updated = {
-            ...todo,
-            progressNow: `${season}-${episode}`,
-            updatedAt: Date.now(),
-          };
-          return updated;
-        }
-
-        if (type === 'movie') {
-          const wasCompleted = todo.completed;
-          updated = {
-            ...todo,
-            completed: !wasCompleted,
-            progressNow: !wasCompleted ? '1' : '0',
-            updatedAt: Date.now(),
-          };
-          return updated;
-        }
-
-        if (todo.completed) {
-          updated = {
-            ...todo,
-            progressNow: 0,
-            completed: false,
-            contribution: 0,
-            updatedAt: Date.now(),
-          };
-          return updated;
-        }
-
-        if (Number(todo.progressEnd) > 1) {
-          const nextProgress = Number(todo.progressNow) + 1;
-          updated = {
-            ...todo,
-            progressNow: nextProgress,
-            completed: nextProgress === Number(todo.progressEnd),
-            contribution:
-              todo.type === 'daily' ? nextProgress : todo.contribution,
-            updatedAt: Date.now(),
-          };
-          return updated;
-        }
-
-        updated = {
-          ...todo,
-          progressNow: 1,
-          completed: true,
-          contribution: todo.type === 'daily' ? 1 : todo.contribution,
-          updatedAt: Date.now(),
-        };
-        return updated;
-      }),
-    }));
-    if (updated) {
-      send(ClientEvent.SYNC_TODO, updated);
-    }
+    const updated = applyStatusChange(target, amount, field);
+    set({
+      todoList: todoList.map(todo => (todo.id === id ? updated : todo)),
+    });
+    send(ClientEvent.SYNC_TODO, updated);
   },
 
   deleteTodo: id => {
-    set(state => ({
-      todoList: state.todoList.filter(item => item.id !== id),
-    }));
+    const { todoList } = get();
+    set({ todoList: todoList.filter(item => item.id !== id) });
     // Жёсткое удаление фиксируем локально, чтобы офлайн-удаление
     // не потерялось и дослалось на сервер при reconnect.
     TombstoneStorage.add(id);
@@ -389,57 +387,51 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   editTask: (id, updatedFields) => {
-    let updated: Todo | null = null;
-    set(state => ({
-      todoList: state.todoList.map(todo => {
-        if (todo.id !== id) return todo;
-        const merged = { ...todo, ...updatedFields, updatedAt: Date.now() };
-        if ('progressEnd' in updatedFields || 'progressNow' in updatedFields) {
-          const nextProgressEnd = parseInt(String(merged.progressEnd), 10) || 1;
-          const nextProgressNow = parseInt(String(merged.progressNow), 10) || 0;
-          merged.completed = nextProgressNow >= nextProgressEnd;
-        }
-        updated = merged;
-        return updated;
-      }),
-    }));
-    if (updated) {
-      send(ClientEvent.SYNC_TODO, updated);
+    const { todoList } = get();
+    const target = todoList.find(todo => todo.id === id);
+    if (!target) return;
+
+    const merged: Todo = { ...target, ...updatedFields, updatedAt: Date.now() };
+    if ('progressEnd' in updatedFields || 'progressNow' in updatedFields) {
+      const nextProgressEnd = parseInt(String(merged.progressEnd), 10) || 1;
+      const nextProgressNow = parseInt(String(merged.progressNow), 10) || 0;
+      merged.completed = nextProgressNow >= nextProgressEnd;
     }
+
+    set({
+      todoList: todoList.map(todo => (todo.id === id ? merged : todo)),
+    });
+    send(ClientEvent.SYNC_TODO, merged);
   },
 
   handleMoodChange: moodValue => {
-    const { settings, todoList } = get();
+    const { settings, todoList, rpgHistory } = get();
     const todayStr = getLogicalDateStr(settings?.reset_time, settings?.timezone);
     const stats = computeDailyStats(todoList, todayStr);
 
-    set(state => {
-      const existingIndex = state.rpgHistory.findIndex(
-        h => h.date === todayStr
-      );
-      const updatedEntry: RpgHistoryItem = {
-        date: todayStr,
-        mood: moodValue,
-        daily_progress: stats.dailyProgress,
-        pos_points: stats.posPoints,
-        neg_points: stats.negPoints,
-        habits_detail: stats.habitsDetail,
-        updatedAt: Date.now(),
-      };
+    const existingIndex = rpgHistory.findIndex(h => h.date === todayStr);
+    const updatedEntry: RpgHistoryItem = {
+      date: todayStr,
+      mood: moodValue,
+      daily_progress: stats.dailyProgress,
+      pos_points: stats.posPoints,
+      neg_points: stats.negPoints,
+      habits_detail: stats.habitsDetail,
+      updatedAt: Date.now(),
+    };
 
-      const newHistory = [...state.rpgHistory];
-      if (existingIndex !== -1) {
-        newHistory[existingIndex] = updatedEntry;
-      } else {
-        newHistory.push(updatedEntry);
-      }
+    const newHistory = [...rpgHistory];
+    if (existingIndex !== -1) {
+      newHistory[existingIndex] = updatedEntry;
+    } else {
+      newHistory.push(updatedEntry);
+    }
 
-      send(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
-      return { rpgHistory: newHistory };
-    });
+    set({ rpgHistory: newHistory });
+    send(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
   },
 
-  setMainTab: mainTab => set({ mainTab }),
+  setMainTab: tab => set({ mainTab: normalizeMainTab(tab) }),
   setRpgSubtab: rpgSubtab => set({ rpgSubtab, focusedGoalId: null }),
   setActiveView: activeView => set({ activeView }),
   toggleActiveView: view =>
@@ -448,13 +440,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedTaskId: null,
     })),
   handleTabChange: tab =>
-    set({
-      mainTab: tab,
-      rpgSubtab: tab === 'rpg' ? 'dashboard' : get().rpgSubtab,
+    set(state => ({
+      mainTab: normalizeMainTab(tab),
+      rpgSubtab: tab === 'rpg' ? 'dashboard' : state.rpgSubtab,
       activeView: 'list',
       focusedGoalId: null,
       selectedTaskId: null,
-    }),
+    })),
   handleSubtabChange: subtab =>
     set({
       mainTab: 'rpg',
