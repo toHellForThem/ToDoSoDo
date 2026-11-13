@@ -37,7 +37,7 @@ export const AppShell = () => {
   const moodSheet = useMoodSheet(setIsMoodSheetOpen);
 
   const handleMoodSheet = useCallback(() => {
-    if (moodSheet.isActive.value === 1) {
+    if (moodSheet.isActive && moodSheet.isActive.value === 1) {
       moodSheet.closeSheet();
     } else {
       moodSheet.openSheet();
@@ -45,7 +45,7 @@ export const AppShell = () => {
   }, [moodSheet.isActive, moodSheet.closeSheet, moodSheet.openSheet]);
 
   const isMoodSheetActive = useCallback(
-    () => moodSheet.isActive.value === 1,
+    () => Boolean(moodSheet.isActive && moodSheet.isActive.value === 1),
     [moodSheet.isActive]
   );
 
