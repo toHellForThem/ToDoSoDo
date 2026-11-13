@@ -8,7 +8,7 @@ import {
   withTiming,
   interpolate,
   runOnJS,
-  Easing
+  Easing,
 } from 'react-native-reanimated';
 
 const MAX_PULL = 396;
@@ -50,14 +50,14 @@ export const useMoodSheet = (onStateChange?: (active: boolean) => void) => {
         context.value = translateY.value;
         if (onStateChange) runOnJS(onStateChange)(true);
       })
-      .onUpdate((event) => {
+      .onUpdate(event => {
         let newValue = context.value + event.translationY;
 
         if (newValue < 0) newValue = 0;
         if (newValue > MAX_PULL) newValue = MAX_PULL;
         translateY.value = newValue;
       })
-      .onEnd((event) => {
+      .onEnd(event => {
         const swipeVelocity = event.velocityY;
         if (swipeVelocity > 500 || event.translationY > MAX_PULL * 0.4) {
           translateY.value = withTiming(MAX_PULL, TIMING_CONFIG);
@@ -83,10 +83,9 @@ export const useMoodSheet = (onStateChange?: (active: boolean) => void) => {
   }, [onStateChange, translateY, context, isActive]);
 
   const tapGesture = useMemo(() => {
-    return Gesture.Tap()
-      .onEnd(() => {
-        runOnJS(toggleSheet)();
-      });
+    return Gesture.Tap().onEnd(() => {
+      runOnJS(toggleSheet)();
+    });
   }, [toggleSheet]);
 
   const composedGesture = useMemo(() => {
@@ -98,11 +97,7 @@ export const useMoodSheet = (onStateChange?: (active: boolean) => void) => {
   }));
 
   const tailStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      translateY.value,
-      [0, MAX_PULL],
-      [0, 1]
-    );
+    const opacity = interpolate(translateY.value, [0, MAX_PULL], [0, 1]);
     return {
       opacity: opacity,
     };
@@ -112,11 +107,7 @@ export const useMoodSheet = (onStateChange?: (active: boolean) => void) => {
     return {
       transform: [
         {
-          translateY: interpolate(
-            translateY.value,
-            [0, MAX_PULL],
-            [-400, 0]
-          ),
+          translateY: interpolate(translateY.value, [0, MAX_PULL], [-400, 0]),
         },
       ],
     };

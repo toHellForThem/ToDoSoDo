@@ -7,12 +7,22 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"e2e/**/*.{ts,mjs}\" App.tsx App.styles.ts index.js babel.config.js eslint.config.js playwright.config.ts vitest.config.ts",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"e2e/**/*.{ts,mjs}\" App.tsx App.styles.ts index.js babel.config.js eslint.config.js playwright.config.ts vitest.config.ts",
+    "test": "vitest run",
+    "test:ci": "vitest run",
+    "test:watch": "vitest",
+    "export:web": "expo export --platform web",
+    "e2e:build": "node e2e/build.mjs",
+    "e2e": "playwright test",
+    "contract:check": "node scripts/check-contract.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.3",
-    "axios": "^1.15.2",
     "babel-preset-expo": "~54.0.10",
     "expo": "~54.0.33",
     "expo-font": "~14.0.12",
@@ -27,11 +37,18 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-toast-message": "^2.3.3",
     "react-native-web": "^0.21.0",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "zustand": "^5.1.0"
   },
   "private": true,
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/react": "~19.1.10",
-    "typescript": "~5.9.2"
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.10.1",
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.7"
   }
 }

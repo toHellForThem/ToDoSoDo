@@ -18,7 +18,7 @@ const getCardStyle = (theme: Theme) => ({
   elevation: 2,
 });
 
-export const getStyles = (theme) => {
+export const getStyles = (theme: Theme) => {
   const CARD_STYLE = getCardStyle(theme);
   return StyleSheet.create({
     container: {
@@ -187,6 +187,17 @@ export const getStyles = (theme) => {
       fontSize: 24,
       fontWeight: 'bold',
       color: theme.colors.text.primary,
+    },
+    calendarStatusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.md,
+    },
+    calendarStatusText: {
+      fontSize: 12,
+      color: theme.colors.text.secondary,
     },
     calendarGrid: {
       flexDirection: 'row',

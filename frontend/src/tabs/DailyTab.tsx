@@ -1,14 +1,12 @@
 import {
   useState,
-  useEffect,
   useCallback,
   memo,
   useMemo,
   useRef,
-  ReactNode,
   SetStateAction,
   Dispatch,
-  RefObject
+  RefObject,
 } from 'react';
 import {
   View,
@@ -17,31 +15,41 @@ import {
   FlatList,
   Text,
   Keyboard,
-  LayoutAnimation,
-  Platform,
-  GestureResponderEvent,
   NativeSyntheticEvent,
-  TextInputKeyPressEventData
+  TextInputKeyPressEventData,
+  useWindowDimensions,
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { getStyles } from './DailyTab.styles';
 import { getStyles as getItemStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { FillProgress } from '../components/FillProgress';
 import { useTranslation } from '../utils/LanguageContext';
-import { Todo, TodoType } from '../utils/storage'
-
+import { Todo, TodoType } from '../utils/storage';
+import { useAppStore } from '../store/appStore';
+import { useInputFocus } from '../commands';
+import { useLeftAction } from '../hooks/useLeftAction';
+import { selectVisibleTodos } from '../domain/visibility';
+import { useLogicalDayIndex } from '../hooks/useLogicalDate';
+import { useDailyStats } from '../hooks/useDailyStats';
+import {
+  SwipeableRow,
+  type LeftActionRenderer,
+} from '../components/SwipeableRow';
+import { useKeyboardInsets } from '../platform';
+import { SelectableItem } from '../components/SelectableItem';
+import { useWebPressGuard } from '../hooks/useWebPressGuard';
+import { useScrollToSelected } from '../hooks/useScrollToSelected';
 
 interface DailyItemProps {
-  item: Todo,
+  item: Todo;
   statusChangeTask: (
     id: string,
     amount?: number | 'reset' | 'toggle_complete',
-    field?: string
+    field?: string,
   ) => void;
   deleteTodo: (id: string) => void;
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
+  leftAction: LeftActionRenderer;
   isSelected: boolean;
 }
 
@@ -52,113 +60,42 @@ interface DailyInputProps {
     type?: TodoType,
     progressNow?: number | string,
     contribution?: number,
-    days?: string
+    days?: string,
   ) => void;
   dailyDays: string;
   setDailyDays: Dispatch<SetStateAction<string>>;
   dailyProgressEnd: number;
   setDailyProgressEnd: Dispatch<SetStateAction<number>>;
   isWideScreen: boolean;
-  inputRef: RefObject<TextInput>;
+  inputRef: RefObject<TextInput | null>;
 }
 
-interface DailyTabProps {
-  todoList: Todo[];
-  onAdd: (
-    task: string,
-    progressEnd?: number,
-    type?: TodoType,
-    progressNow?: number | string,
-    contribution?: number,
-    days?: string
-  ) => void;
-  statusChangeTask: (
-    id: string,
-    amount?: number | 'reset' | 'toggle_complete',
-    field?: string
-  ) => void;
-  deleteTodo: (id: string) => void;
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
-  dailyDays: string;
-  setDailyDays: Dispatch<SetStateAction<string>>;
-  dailyProgressEnd: number;
-  setDailyProgressEnd: Dispatch<SetStateAction<number>>;
-  isWideScreen: boolean;
-  selectedTaskId: string | null;
-  focusInputTrigger: number;
-  isActive: boolean;
-}
-
-const DailyItem = memo(({
+const DailyItem = memo(function DailyItem({
   item,
   statusChangeTask,
   deleteTodo,
   leftAction,
-  isSelected
-}: DailyItemProps) => {
+  isSelected,
+}: DailyItemProps) {
   const styles = useStyles(getStyles);
   const itemStyles = useStyles(getItemStyles);
   const { theme } = useAppTheme();
 
-  const startX = useRef(0);
-  const startY = useRef(0);
-
-  const handlePressIn = useCallback((e: GestureResponderEvent) => {
-    if (Platform.OS === 'web') {
-      startX.current = e.nativeEvent.pageX || 0;
-      startY.current = e.nativeEvent.pageY || 0;
-    }
-  }, []);
-
-  const handlePress = useCallback((e: GestureResponderEvent) => {
-    if (Platform.OS === 'web' && e) {
-      const endX = e.nativeEvent.pageX || 0;
-      const endY = e.nativeEvent.pageY || 0;
-      const dist = Math.sqrt(Math.pow(endX - startX.current, 2) + Math.pow(endY - startY.current, 2));
-      if (dist > 8) return;
-    }
-    statusChangeTask(item.id);
-  }, [item.id, statusChangeTask]);
+  const { handlePressIn, handlePress } = useWebPressGuard(
+    useCallback(() => statusChangeTask(item.id), [item.id, statusChangeTask]),
+  );
 
   const handleDelete = useCallback(() => {
     deleteTodo(item.id);
   }, [item.id, deleteTodo]);
 
-  const renderLeft = useCallback((prog, drag) => {
-    return leftAction(prog, drag, 'toRecycle');
-  }, [leftAction]);
-
   return (
-    <Swipeable
-      friction={1.6}
-      leftThreshold={78}
-      overshootLeft={true}
-      renderLeftActions={renderLeft}
-      onSwipeableLeftOpen={handleDelete}
-      containerStyle={{
-        paddingTop: 2,
-        paddingBottom: 8,
-        paddingHorizontal: 20,
-        backgroundColor: 'transparent',
-      }}
-      activeOffsetX={[-15, 15]}
-      failOffsetY={[-15, 15]}
+    <SwipeableRow
+      leftAction={leftAction}
+      mode="toRecycle"
+      onSwipeLeftOpen={handleDelete}
     >
-      <View style={[
-        itemStyles.todoItem,
-        isSelected && { backgroundColor: theme.colors.icon.bg }
-      ]}>
-        {isSelected && (
-          <View style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 4,
-            backgroundColor: theme.colors.primary,
-            zIndex: 10,
-          }} />
-        )}
+      <SelectableItem isSelected={isSelected}>
         <FillProgress
           progressNow={Number(item.progressNow)}
           progressEnd={Number(item.progressEnd)}
@@ -167,7 +104,7 @@ const DailyItem = memo(({
           style={[
             itemStyles.todoText,
             { backgroundColor: 'transparent' },
-            item.completed && styles.completedTextDaily
+            item.completed && styles.completedTextDaily,
           ]}
           onPressIn={handlePressIn}
           onPress={handlePress}
@@ -190,19 +127,19 @@ const DailyItem = memo(({
         >
           <Ionicons
             style={{
-              alignItems: 'center'
+              alignItems: 'center',
             }}
             name={item.completed ? 'flash-sharp' : 'flash-outline'}
             size={25}
             color={theme.colors.icon.primary}
           />
         </TouchableOpacity>
-      </View>
-    </Swipeable>
+      </SelectableItem>
+    </SwipeableRow>
   );
 });
 
-const DailyInput = memo(({
+const DailyInput = memo(function DailyInput({
   onAdd,
   dailyDays,
   setDailyDays,
@@ -210,58 +147,41 @@ const DailyInput = memo(({
   setDailyProgressEnd,
   isWideScreen,
   inputRef,
-}: DailyInputProps) => {
+}: DailyInputProps) {
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();
 
   const [task, setTask] = useState('');
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardInsets({
+    blurOnHide: true,
+  });
 
-  const handleKeyPress = useCallback((e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-    const native = e.nativeEvent as any
-    const key = native?.key || (e as any).key;
-    const isCtrl = native?.ctrlKey || native?.metaKey || (e as any).ctrlKey || (e as any).metaKey;
+  const handleKeyPress = useCallback(
+    (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      const native = e.nativeEvent as any;
+      const key = native?.key || (e as any).key;
+      const isCtrl =
+        native?.ctrlKey ||
+        native?.metaKey ||
+        (e as any).ctrlKey ||
+        (e as any).metaKey;
 
-    if (key === 'Escape') {
-      e.stopPropagation();
-      Keyboard.dismiss();
-      return;
-    }
-
-    if (isCtrl && /^[1-9]$/.test(key)) {
-      e.preventDefault();
-      e.stopPropagation();
-      const val = parseInt(key, 10);
-      setDailyProgressEnd(val);
-    }
-  }, [setDailyProgressEnd]);
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardVisible(true);
-    });
-
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false);
-
-      const activeInput = TextInput.State.currentlyFocusedInput();
-      if (activeInput) {
-        TextInput.State.blurTextInput(activeInput);
+      if (key === 'Escape') {
+        e.stopPropagation();
+        Keyboard.dismiss();
+        return;
       }
 
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
+      if (isCtrl && /^[1-9]$/.test(key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        const val = parseInt(key, 10);
+        setDailyProgressEnd(val);
+      }
+    },
+    [setDailyProgressEnd],
+  );
 
   const handleAdd = useCallback(() => {
     if (task.trim()) {
@@ -270,7 +190,14 @@ const DailyInput = memo(({
       setDailyProgressEnd(1);
       setDailyDays('1111111');
     }
-  }, [task, dailyProgressEnd, dailyDays, onAdd, setDailyProgressEnd, setDailyDays]);
+  }, [
+    task,
+    dailyProgressEnd,
+    dailyDays,
+    onAdd,
+    setDailyProgressEnd,
+    setDailyDays,
+  ]);
 
   return (
     <>
@@ -288,23 +215,37 @@ const DailyInput = memo(({
           onKeyPress={handleKeyPress}
         />
         <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-          <MaterialCommunityIcons name="plus-thick" size={24} color={theme.colors.icon.primary} />
+          <MaterialCommunityIcons
+            name="plus-thick"
+            size={24}
+            color={theme.colors.icon.primary}
+          />
         </TouchableOpacity>
       </View>
       {!isWideScreen && (
         <View
           pointerEvents={isKeyboardVisible ? 'auto' : 'none'}
-          style={[styles.floatingContainer, {
-            bottom: keyboardHeight - 71,
-            opacity: isKeyboardVisible ? 1 : 0,
-            flexDirection: 'column',
-            height: 100,
-            paddingVertical: 12,
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }]}
+          style={[
+            styles.floatingContainer,
+            {
+              bottom: keyboardHeight - 71,
+              opacity: isKeyboardVisible ? 1 : 0,
+              flexDirection: 'column',
+              height: 100,
+              paddingVertical: 12,
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            },
+          ]}
         >
-          <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center', width: '100%' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 8,
+              justifyContent: 'center',
+              width: '100%',
+            }}
+          >
             {t('daily_weekdays').map((day, idx) => {
               const isSelected = dailyDays[idx] === '1';
               return (
@@ -324,35 +265,75 @@ const DailyInput = memo(({
                     borderRadius: 9,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: isSelected ? theme.colors.background : 'transparent',
+                    backgroundColor: isSelected
+                      ? theme.colors.background
+                      : 'transparent',
                     borderWidth: 1.5,
-                    borderColor: isSelected ? theme.colors.primary : 'transparent',
+                    borderColor: isSelected
+                      ? theme.colors.primary
+                      : 'transparent',
                   }}
                 >
-                  <Text style={{
-                    fontSize: 13,
-                    fontWeight: 'bold',
-                    color: isSelected ? theme.colors.primary : theme.colors.text.secondary
-                  }}>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 'bold',
+                      color: isSelected
+                        ? theme.colors.primary
+                        : theme.colors.text.secondary,
+                    }}
+                  >
                     {day}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-            <TouchableOpacity hitSlop={15} onPress={() => {
-              setDailyProgressEnd(dailyProgressEnd === 1 ? 1 : dailyProgressEnd - 1);
-            }}>
-              <Ionicons name="remove-circle-outline" size={24} color={theme.colors.icon.primary} />
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+            }}
+          >
+            <TouchableOpacity
+              hitSlop={15}
+              onPress={() => {
+                setDailyProgressEnd(
+                  dailyProgressEnd === 1 ? 1 : dailyProgressEnd - 1,
+                );
+              }}
+            >
+              <Ionicons
+                name="remove-circle-outline"
+                size={24}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', marginHorizontal: 15, color: theme.colors.text.primary }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: 'bold',
+                marginHorizontal: 15,
+                color: theme.colors.text.primary,
+              }}
+            >
               {dailyProgressEnd}
             </Text>
-            <TouchableOpacity hitSlop={15} onPress={() => {
-              setDailyProgressEnd(dailyProgressEnd === 20 ? 20 : dailyProgressEnd + 1);
-            }}>
-              <Ionicons name="add-circle-outline" size={24} color={theme.colors.icon.primary} />
+            <TouchableOpacity
+              hitSlop={15}
+              onPress={() => {
+                setDailyProgressEnd(
+                  dailyProgressEnd === 20 ? 20 : dailyProgressEnd + 1,
+                );
+              }}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={24}
+                color={theme.colors.icon.primary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -361,95 +342,60 @@ const DailyInput = memo(({
   );
 });
 
-export const DailyTab = memo(({
-  todoList,
-  onAdd,
-  statusChangeTask,
-  deleteTodo,
-  leftAction,
-  dailyDays,
-  setDailyDays,
-  dailyProgressEnd,
-  setDailyProgressEnd,
-  isWideScreen,
-  selectedTaskId,
-  focusInputTrigger,
-  isActive,
-}: DailyTabProps) => {
+export const DailyTab = memo(function DailyTab() {
+  const todoList = useAppStore(state => state.todoList);
+  const onAdd = useAppStore(state => state.addTask);
+  const statusChangeTask = useAppStore(state => state.statusChangeTask);
+  const deleteTodo = useAppStore(state => state.handleDeleteTodo);
+  const dailyDays = useAppStore(state => state.dailyDays);
+  const setDailyDays = useAppStore(state => state.setDailyDays);
+  const dailyProgressEnd = useAppStore(state => state.dailyProgressEnd);
+  const setDailyProgressEnd = useAppStore(state => state.setDailyProgressEnd);
+  const selectedTaskId = useAppStore(state => state.selectedTaskId);
+  const isActive = useAppStore(state => state.mainTab === 'daily');
+  const leftAction = useLeftAction();
+  const { width } = useWindowDimensions();
+  const isWideScreen = width >= 900;
   const styles = useStyles(getStyles);
   const { t } = useTranslation();
   const flatListRef = useRef<FlatList<Todo>>(null);
   const inputRef = useRef<TextInput>(null);
-  const lastTrigger = useRef(focusInputTrigger);
 
-  useEffect(() => {
-    if (focusInputTrigger !== lastTrigger.current) {
-      lastTrigger.current = focusInputTrigger;
-      if (isActive) {
-        inputRef.current?.focus();
-      }
-    }
-  }, [focusInputTrigger, isActive]);
+  useInputFocus('daily', () => inputRef.current?.focus(), isActive);
 
-  const dailies = useMemo(() =>
-    todoList
-      .filter(item => {
-        if (item.type !== 'daily' || item.deleted) return false;
-        const todayDayIdx = (new Date().getDay() + 6) % 7;
-        const daysStr = item.days || '1111111';
-        return daysStr[todayDayIdx] === '1';
-      })
-      .sort((a, b) => {
-        if (a.completed && !b.completed) return 1;
-        if (!a.completed && b.completed) return -1;
-        return 0;
+  const todayDayIdx = useLogicalDayIndex();
+  const stats = useDailyStats();
+
+  const dailies = useMemo(
+    () =>
+      selectVisibleTodos(todoList, {
+        mainTab: 'daily',
+        rpgSubtab: 'dashboard',
+        recycle: false,
+        dayIndex: todayDayIdx,
       }),
-    [todoList]
+    [todoList, todayDayIdx],
   );
 
-  useEffect(() => {
-    if (!selectedTaskId || !flatListRef.current) return;
-    const index = dailies.findIndex(item => item.id === selectedTaskId);
-    if (index !== -1) {
-      try {
-        flatListRef.current.scrollToIndex({
-          index,
-          viewPosition: 0.5,
-          animated: true,
-        });
-      } catch (err) {
-        try {
-          flatListRef.current.scrollToOffset({
-            offset: index * 60,
-            animated: true,
-          });
-        } catch (innerErr) {
-          console.log('Scroll to selected daily failed:', innerErr);
-        }
-      }
-    }
-  }, [selectedTaskId, dailies]);
+  useScrollToSelected(flatListRef, dailies, selectedTaskId);
 
-  const progress = useMemo(() => {
-    if (dailies.length === 0) return 0;
-    const { needProgress, nowProgress } = dailies.reduce((acc, item) => {
-      acc.needProgress += (Number(item.progressEnd) || 0);
-      acc.nowProgress += (Number(item.progressNow) || 0);
-      return acc;
-    }, { needProgress: 0, nowProgress: 0 });
+  const progress = useMemo(
+    () => Math.round(stats.dailyProgress * 100),
+    [stats.dailyProgress],
+  );
 
-    return Math.round((nowProgress / needProgress) * 100);
-  }, [dailies]);
-
-  const renderItem = useCallback(({ item }: { item: Todo }) => (
-    <DailyItem
-      item={item}
-      statusChangeTask={statusChangeTask}
-      deleteTodo={deleteTodo}
-      leftAction={leftAction}
-      isSelected={item.id === selectedTaskId}
-    />
-  ), [statusChangeTask, deleteTodo, leftAction, selectedTaskId]);
+  const renderItem = useCallback(
+    ({ item }: { item: Todo }) => (
+      <DailyItem
+        item={item}
+        statusChangeTask={statusChangeTask}
+        deleteTodo={deleteTodo}
+        leftAction={leftAction}
+        isSelected={item.id === selectedTaskId}
+      />
+    ),
+    [statusChangeTask, deleteTodo, leftAction, selectedTaskId],
+  );
 
   return (
     <View style={styles.todoWrapper}>
@@ -468,12 +414,19 @@ export const DailyTab = memo(({
         extraData={selectedTaskId}
         bounces={false}
         overScrollMode="never"
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingTop: 6, paddingBottom: 10 }}
       />
       <View style={styles.progressContainer}>
-        <Text style={[styles.progressText, progress === 100 && styles.progressTextCompleted]}>{t('daily_progress', { progress })}</Text>
+        <Text
+          style={[
+            styles.progressText,
+            progress === 100 && styles.progressTextCompleted,
+          ]}
+        >
+          {t('daily_progress', { progress })}
+        </Text>
         <View style={styles.progressBarBg}>
           <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
         </View>
