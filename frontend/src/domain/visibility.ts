@@ -46,6 +46,8 @@ export const isTodoVisible = (todo: Todo, view: TodoView): boolean => {
 
   if (mainTab === 'daily') {
     if (todo.type !== 'daily') return false;
+    // В корзине показываем все удалённые daily независимо от дня недели.
+    if (recycle) return true;
     const days = todo.days || '1111111';
     return days[dayIndex] === '1';
   }

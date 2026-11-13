@@ -109,6 +109,8 @@ const applyStatusChange = (
   }
 
   if (type === 'tv_show') {
+    // Сброс дня не должен трогать сериалы и их флаг выполненности.
+    if (amount === 'reset') return todo;
     if (amount === 'toggle_complete') {
       return { ...todo, completed: !todo.completed, updatedAt: Date.now() };
     }
@@ -134,6 +136,8 @@ const applyStatusChange = (
   }
 
   if (type === 'movie') {
+    // Сброс дня не должен трогать фильмы и их флаг выполненности.
+    if (amount === 'reset') return todo;
     const wasCompleted = todo.completed;
     return {
       ...todo,

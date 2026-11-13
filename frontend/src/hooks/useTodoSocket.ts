@@ -25,10 +25,15 @@ import {
   TombstoneStorage,
   UserSettings,
   Todo,
+  TodoType,
   RpgHistoryItem,
 } from '../utils/storage';
 import { getLogicalDayStartMs } from '../utils/date';
-import { resetStaleTodos, resetTodoForNewDay } from '../domain/reset';
+import {
+  resetStaleTodos,
+  resetTodoForNewDay,
+  type ResetResult,
+} from '../domain/reset';
 import { normalizeMainTab, useAppStore } from '../store/appStore';
 
 interface UseTodoSocketOptions {
@@ -122,7 +127,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
         currentSettings?.reset_time,
         currentSettings?.timezone
       );
-      const resetTypes = new Set<string>();
+      const resetTypes = new Set<TodoType>();
 
       // Tombstones: если сервер всё ещё знает задачу — повторяем удаление,
       // если уже нет — метку можно снять.
@@ -143,10 +148,14 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
         const visibleTodos = serverTodos.filter(
           sItem => !tombstoneIds.has(sItem.id)
         );
-        const resetResult =
+        const resetResult: ResetResult =
           currentSettings?.reset_enabled !== false
             ? resetStaleTodos(visibleTodos, startOfToday)
-            : { todos: visibleTodos, resetTypes: new Set<string>() };
+            : {
+                todos: visibleTodos,
+                resetTypes: new Set<TodoType>(),
+                changed: false,
+              };
 
         startTransition(() => {
           store.setTodoList(resetResult.todos);

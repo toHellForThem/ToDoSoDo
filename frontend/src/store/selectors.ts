@@ -27,11 +27,10 @@ export const selectVisibleItems = (
   // В настройках списка нет — стрелки не должны менять выделение.
   if (activeView === 'settings') return [];
   return selectVisibleTodos(todoList, {
-    mainTab,
-    rpgSubtab,
-    recycle: activeView === 'recycle',
-    dayIndex: selectTodayDayIndex(state),
-    ...view,
+    mainTab: view.mainTab ?? mainTab,
+    rpgSubtab: view.rpgSubtab ?? rpgSubtab,
+    recycle: view.recycle ?? activeView === 'recycle',
+    dayIndex: view.dayIndex ?? selectTodayDayIndex(state),
   });
 };
 

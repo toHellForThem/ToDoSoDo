@@ -69,9 +69,6 @@ export const computeDailyStats = (
   const dailies = todos.filter(item =>
     isDailyScheduledForDay(item, logicalDayIdx)
   );
-  const hasAnyDaily = todos.some(
-    item => item.type === 'daily' && !item.deleted
-  );
 
   let dailyProgress = 0.0;
   if (dailies.length > 0) {
@@ -84,8 +81,6 @@ export const computeDailyStats = (
       { needProgress: 0, nowProgress: 0 }
     );
     dailyProgress = needProgress > 0 ? nowProgress / needProgress : 1.0;
-  } else if (hasAnyDaily) {
-    dailyProgress = 1.0;
   }
 
   const habits = buildHabitSnapshot(todos);
