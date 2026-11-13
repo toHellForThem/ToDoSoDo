@@ -27,6 +27,7 @@ import { useTranslation } from '../utils/LanguageContext';
 import { Todo } from '../utils/storage';
 import { useAppStore } from '../store/appStore';
 import { useLeftAction } from '../hooks/useLeftAction';
+import { useInputFocus } from '../commands';
 import { selectVisibleTodos } from '../domain/visibility';
 
 
@@ -196,22 +197,13 @@ export const TodoTab = memo(() => {
   const deleteTodo = useAppStore(state => state.handleDeleteTodo);
   const statusChangeTask = useAppStore(state => state.statusChangeTask);
   const selectedTaskId = useAppStore(state => state.selectedTaskId);
-  const focusInputTrigger = useAppStore(state => state.focusInputTrigger);
   const isActive = useAppStore(state => state.mainTab === 'todo');
   const leftAction = useLeftAction();
   const styles = useStyles(getStyles);
   const flatListRef = useRef<FlatList<Todo>>(null);
   const inputRef = useRef<TextInput>(null);
-  const lastTrigger = useRef(focusInputTrigger);
 
-  useEffect(() => {
-    if (focusInputTrigger !== lastTrigger.current) {
-      lastTrigger.current = focusInputTrigger;
-      if (isActive) {
-        inputRef.current?.focus();
-      }
-    }
-  }, [focusInputTrigger, isActive]);
+  useInputFocus('todo', () => inputRef.current?.focus(), isActive);
 
   const activeTodos = useMemo(
     () =>

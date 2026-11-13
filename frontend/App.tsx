@@ -24,7 +24,13 @@ import { LanguageProvider } from './src/utils/LanguageContext';
 import { useTodoActions } from './src/hooks/useTodoActions';
 import { useTodoSocket } from './src/hooks/useTodoSocket';
 import { useMoodSheet } from './src/hooks/useMoodSheet';
-import { useShortcuts } from './src/hooks/useShortcuts';
+import {
+  ShortcutProvider,
+  useCommandRegistry,
+  useCommands,
+  useScope,
+} from './src/commands';
+import type { Command } from './src/commands';
 import { useAppStore } from './src/store/appStore';
 import { selectActiveItems } from './src/store/selectors';
 import { DEFAULT_SHORTCUTS } from './src/utils/storage';
@@ -78,7 +84,8 @@ const useMoods = () => {
   }, [themeName]);
 };
 
-export default function App() {
+function AppContent() {
+  const registry = useCommandRegistry();
   const { width } = useWindowDimensions();
   const isWideScreen = width >= 900;
 
@@ -104,7 +111,6 @@ export default function App() {
   const deleteTodo = useAppStore(state => state.deleteTodo);
   const handleDeleteTodo = useAppStore(state => state.handleDeleteTodo);
   const setTodoList = useAppStore(state => state.setTodoList);
-  const triggerFocusInput = useAppStore(state => state.triggerFocusInput);
 
   const isDark = settings?.theme === 'dark';
   const theme = useMemo(() => getTheme(settings?.theme), [settings?.theme]);
@@ -122,7 +128,7 @@ export default function App() {
     } else {
       moodSheet.openSheet();
     }
-  }, [moodSheet]);
+  }, [moodSheet.isActive, moodSheet.closeSheet, moodSheet.openSheet]);
 
   const handleBackAction = useCallback(() => {
     if (moodSheet.isActive && moodSheet.isActive.value === 1) {
@@ -147,7 +153,8 @@ export default function App() {
 
     return false;
   }, [
-    moodSheet,
+    moodSheet.isActive,
+    moodSheet.closeSheet,
     isCalendarVisible,
     activeView,
     mainTab,
@@ -168,36 +175,45 @@ export default function App() {
 
   const shortcuts = settings?.shortcuts || DEFAULT_SHORTCUTS;
 
-  const shortcutsMap = useMemo(() => {
-    const map: Record<string, (e?: any) => void> = {};
-    if (shortcuts?.rpg_tab) map[shortcuts.rpg_tab] = () => handleTabChange('rpg');
-    if (shortcuts?.todo_tab) map[shortcuts.todo_tab] = () => handleTabChange('todo');
-    if (shortcuts?.daily_tab) map[shortcuts.daily_tab] = () => handleTabChange('daily');
-    if (shortcuts?.habits_subtab) map[shortcuts.habits_subtab] = () => handleSubtabChange('habits');
-    if (shortcuts?.piggy_subtab) map[shortcuts.piggy_subtab] = () => handleSubtabChange('piggy_bank');
-    if (shortcuts?.tv_subtab) map[shortcuts.tv_subtab] = () => handleSubtabChange('tv_shows');
-    if (shortcuts?.recycle_view) map[shortcuts.recycle_view] = () => toggleActiveView('recycle');
-    if (shortcuts?.settings_view) map[shortcuts.settings_view] = () => toggleActiveView('settings');
-    if (shortcuts?.calendar_view) map[shortcuts.calendar_view] = () => toggleCalendar();
-    if (shortcuts?.mood_view) map[shortcuts.mood_view] = () => handleMoodSheet();
-
-    map['escape'] = () => {
-      handleBackAction();
+  const commands = useMemo<Command[]>(() => {
+    const list: Command[] = [];
+    const add = (
+      id: string,
+      title: string,
+      shortcut: string | undefined,
+      scope: Command['scope'],
+      run: Command['run'],
+      when?: Command['when']
+    ) => {
+      if (!shortcut) return;
+      list.push({ id, title, shortcut, scope, run, when });
     };
 
+    add('tab.rpg', 'RPG tab', shortcuts?.rpg_tab, 'global', () => handleTabChange('rpg'));
+    add('tab.todo', 'To-do tab', shortcuts?.todo_tab, 'global', () => handleTabChange('todo'));
+    add('tab.daily', 'Daily tab', shortcuts?.daily_tab, 'global', () => handleTabChange('daily'));
+    add('subtab.habits', 'Habits subtab', shortcuts?.habits_subtab, 'global', () => handleSubtabChange('habits'));
+    add('subtab.piggy', 'Piggy bank subtab', shortcuts?.piggy_subtab, 'global', () => handleSubtabChange('piggy_bank'));
+    add('subtab.tv', 'TV shows subtab', shortcuts?.tv_subtab, 'global', () => handleSubtabChange('tv_shows'));
+    add('view.recycle', 'Recycle view', shortcuts?.recycle_view, 'global', () => toggleActiveView('recycle'));
+    add('view.settings', 'Settings view', shortcuts?.settings_view, 'global', () => toggleActiveView('settings'));
+    add('view.calendar', 'Calendar view', shortcuts?.calendar_view, 'global', () => toggleCalendar());
+    add('view.mood', 'Mood view', shortcuts?.mood_view, 'global', () => handleMoodSheet());
+
+    add('nav.back', 'Back', 'escape', 'global', () => handleBackAction());
+
     if (isMoodSheetOpen) {
-      map['1'] = () => { handleMoodChange(1); moodSheet.closeSheet(); };
-      map['2'] = () => { handleMoodChange(2); moodSheet.closeSheet(); };
-      map['3'] = () => { handleMoodChange(3); moodSheet.closeSheet(); };
-      map['4'] = () => { handleMoodChange(4); moodSheet.closeSheet(); };
-      map['5'] = () => { handleMoodChange(5); moodSheet.closeSheet(); };
+      add('mood.1', 'Mood 1', '1', 'modal', () => { handleMoodChange(1); moodSheet.closeSheet(); });
+      add('mood.2', 'Mood 2', '2', 'modal', () => { handleMoodChange(2); moodSheet.closeSheet(); });
+      add('mood.3', 'Mood 3', '3', 'modal', () => { handleMoodChange(3); moodSheet.closeSheet(); });
+      add('mood.4', 'Mood 4', '4', 'modal', () => { handleMoodChange(4); moodSheet.closeSheet(); });
+      add('mood.5', 'Mood 5', '5', 'modal', () => { handleMoodChange(5); moodSheet.closeSheet(); });
     }
 
     const getActiveItems = () => selectActiveItems(useAppStore.getState());
+    const listScope = mainTab;
 
-    map['arrowdown'] = (e: any) => {
-      if (isCalendarVisible) return;
-      e.preventDefault();
+    add('list.next', 'Next item', 'arrowdown', listScope, () => {
       const items = getActiveItems();
       if (items.length === 0) return;
       const currentIndex = items.findIndex(item => item.id === selectedTaskId);
@@ -208,11 +224,9 @@ export default function App() {
       } else {
         setSelectedTaskId(items[currentIndex + 1].id);
       }
-    };
+    });
 
-    map['arrowup'] = (e: any) => {
-      if (isCalendarVisible) return;
-      e.preventDefault();
+    add('list.prev', 'Previous item', 'arrowup', listScope, () => {
       const items = getActiveItems();
       if (items.length === 0) return;
       const currentIndex = items.findIndex(item => item.id === selectedTaskId);
@@ -223,15 +237,13 @@ export default function App() {
       } else {
         setSelectedTaskId(items[currentIndex - 1].id);
       }
-    };
+    });
 
-    const handleToggleSelected = (e: any) => {
-      if (isCalendarVisible) return;
+    const handleToggleSelected = () => {
       if (!selectedTaskId) return;
       const items = getActiveItems();
       const selectedItem = items.find(item => item.id === selectedTaskId);
       if (!selectedItem) return;
-      e.preventDefault();
 
       if (activeView === 'recycle') {
         const index = items.findIndex(item => item.id === selectedTaskId);
@@ -274,64 +286,55 @@ export default function App() {
         statusChangeTask(selectedTaskId, 1);
       }
     };
-    map['enter'] = handleToggleSelected;
-    map['space'] = handleToggleSelected;
+    add('list.toggle', 'Toggle item', 'enter', listScope, handleToggleSelected);
+    add('list.toggle.space', 'Toggle item', 'space', listScope, handleToggleSelected);
 
-    map['arrowright'] = (e: any) => {
-      if (isCalendarVisible) return;
+    add('list.delete', 'Delete item', 'arrowright', listScope, () => {
       if (!selectedTaskId) return;
       const items = getActiveItems();
       const index = items.findIndex(item => item.id === selectedTaskId);
-      if (index !== -1) {
-        e.preventDefault();
-        let nextSelectedId: string | null = null;
-        if (items.length > 1) {
-          if (index === items.length - 1) {
-            nextSelectedId = items[index - 1].id;
-          } else {
-            nextSelectedId = items[index + 1].id;
-          }
-        }
-        if (activeView === 'recycle') {
-          deleteTodo(selectedTaskId);
-        } else {
-          handleDeleteTodo(selectedTaskId);
-        }
-        setSelectedTaskId(nextSelectedId);
-      }
-    };
+      if (index === -1) return;
 
-    map['backspace'] = (e: any) => {
-      if (isCalendarVisible) return;
+      let nextSelectedId: string | null = null;
+      if (items.length > 1) {
+        if (index === items.length - 1) {
+          nextSelectedId = items[index - 1].id;
+        } else {
+          nextSelectedId = items[index + 1].id;
+        }
+      }
+      if (activeView === 'recycle') {
+        deleteTodo(selectedTaskId);
+      } else {
+        handleDeleteTodo(selectedTaskId);
+      }
+      setSelectedTaskId(nextSelectedId);
+    });
+
+    add('list.decrement', 'Decrement item', 'backspace', listScope, () => {
       if (!selectedTaskId) return;
       const items = getActiveItems();
       const selectedItem = items.find(item => item.id === selectedTaskId);
       if (!selectedItem) return;
       if (selectedItem.type === 'habit') {
-        e.preventDefault();
         statusChangeTask(selectedTaskId, 'reset');
       } else if (selectedItem.type === 'piggy_bank') {
-        e.preventDefault();
         statusChangeTask(selectedTaskId, -1);
       } else if (selectedItem.type === 'tv_show') {
-        e.preventDefault();
         statusChangeTask(selectedTaskId, -1, 'episode');
       }
-    };
+    });
 
-    map['i'] = (e: any) => {
-      if (isCalendarVisible) return;
-      e.preventDefault();
-      triggerFocusInput();
-    };
+    add('focus.activeInput', 'Focus active input', 'i', 'global', () => {
+      registry.focusActiveInput();
+    });
 
-    return map;
+    return list;
   }, [
     shortcuts,
     isMoodSheetOpen,
     selectedTaskId,
     mainTab,
-    rpgSubtab,
     handleTabChange,
     handleSubtabChange,
     toggleActiveView,
@@ -339,18 +342,19 @@ export default function App() {
     handleMoodSheet,
     handleBackAction,
     handleMoodChange,
-    moodSheet,
+    moodSheet.closeSheet,
     statusChangeTask,
     handleDeleteTodo,
     deleteTodo,
     setTodoList,
-    triggerFocusInput,
     setSelectedTaskId,
-    isCalendarVisible,
     activeView,
+    registry,
   ]);
 
-  useShortcuts(shortcutsMap);
+  useCommands(commands);
+  useScope(mainTab);
+  useScope('modal', isMoodSheetOpen);
 
   const themeContextValue = useMemo(() => ({ theme, isDark }), [theme, isDark]);
 
@@ -451,5 +455,13 @@ export default function App() {
         </SafeAreaProvider>
       </LanguageProvider>
     </ThemeContext.Provider>
+  );
+}
+
+export default function App() {
+  return (
+    <ShortcutProvider>
+      <AppContent />
+    </ShortcutProvider>
   );
 }

@@ -38,6 +38,15 @@ import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
 import { useAppStore, type MainTab } from '../store/appStore';
 import { useLeftAction } from '../hooks/useLeftAction';
+import {
+  eventToCombination,
+  findShortcutConflict,
+  formatKeyPart,
+  formatShortcut,
+  normalizeCombination,
+  useScope,
+  useShortcutRecorder,
+} from '../commands';
 
 export const SettingsTab = () => {
   const authMode = useAppStore(state => state.authMode);
@@ -96,25 +105,6 @@ export const SettingsTab = () => {
     }
   };
 
-  const formatShortcut = (shortcutStr: string | undefined) => {
-    if (!shortcutStr) return '';
-    const parts = shortcutStr.split('+');
-    const formattedParts = parts.map(part => {
-      const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      if (part === 'mod') {
-        return isMac ? '⌘' : 'Ctrl';
-      }
-      if (part === 'alt') {
-        return isMac ? '⌥' : 'Alt';
-      }
-      if (part === 'shift') {
-        return isMac ? '⇧' : 'Shift';
-      }
-      return part.toUpperCase();
-    });
-    return formattedParts.join(' + ');
-  };
-
   const renderKeycaps = (shortcutStr: string | undefined, isRecording: boolean) => {
     if (isRecording) {
       return (
@@ -126,21 +116,11 @@ export const SettingsTab = () => {
       );
     }
     if (!shortcutStr) return null;
-    const parts = shortcutStr.split('+');
+    const parts = normalizeCombination(shortcutStr).split('+');
     return (
       <View style={styles.shortcutKeysContainer}>
         {parts.map((part, index) => {
-          let text = part;
-          const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-          if (part === 'mod') {
-            text = isMac ? '⌘' : 'Ctrl';
-          } else if (part === 'alt') {
-            text = isMac ? '⌥' : 'Alt';
-          } else if (part === 'shift') {
-            text = isMac ? '⇧' : 'Shift';
-          } else {
-            text = text.toUpperCase();
-          }
+          const text = formatKeyPart(part);
           return (
             <View key={index} style={{ flexDirection: 'row', alignItems: 'center' }}>
               {index > 0 && (
@@ -158,60 +138,6 @@ export const SettingsTab = () => {
     );
   };
 
-  useEffect(() => {
-    if (!recordingKey) return;
-
-    const handleCaptureKeyDown = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const isMod = e.ctrlKey || e.metaKey;
-      const isAlt = e.altKey;
-      const isShift = e.shiftKey;
-
-      let key = e.key.toLowerCase();
-      if (e.code) {
-        if (e.code.startsWith('Key')) {
-          key = e.code.slice(3).toLowerCase();
-        } else if (e.code.startsWith('Digit')) {
-          key = e.code.slice(5);
-        }
-      }
-
-      if (key === 'control' || key === 'meta' || key === 'shift' || key === 'alt') {
-        return;
-      }
-
-      const pressedKeys = [];
-      if (isMod) pressedKeys.push('mod');
-      if (isAlt) pressedKeys.push('alt');
-      if (isShift) pressedKeys.push('shift');
-      pressedKeys.push(key);
-      const combination = pressedKeys.join('+');
-
-      const currentShortcuts = settings?.shortcuts || DEFAULT_SHORTCUTS;
-      const updatedShortcuts = {
-        ...currentShortcuts,
-        [recordingKey]: combination
-      };
-      updateSetting('shortcuts', updatedShortcuts);
-      setRecordingKey(null);
-
-      Toast.show({
-        type: 'success',
-        text1: settings?.language === 'ru' ? 'Горячая клавиша изменена!' : 'Shortcut changed!',
-        text2: `${formatShortcut(combination)}`,
-        visibilityTime: 2000
-      });
-    };
-
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('keydown', handleCaptureKeyDown, true);
-      return () => {
-        window.removeEventListener('keydown', handleCaptureKeyDown, true);
-      };
-    }
-  }, [recordingKey, settings]);
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setPasswordVisible] = useState(false);
   const [serverUrlInput, setServerUrlInput] = useState(() => AuthStorage.getServerUrl() || '');
@@ -349,6 +275,46 @@ export const SettingsTab = () => {
       setMainTab(value as MainTab);
     }
   };
+
+  useScope('settings.recording', recordingKey !== null);
+
+  useShortcutRecorder(recordingKey !== null, event => {
+    if (!recordingKey) return false;
+
+    if (event.key === 'Escape' || event.code === 'Escape') {
+      setRecordingKey(null);
+      return true;
+    }
+
+    const combination = eventToCombination(event);
+    if (!combination) return false;
+
+    const currentShortcuts = settings?.shortcuts || DEFAULT_SHORTCUTS;
+    const conflict = findShortcutConflict(currentShortcuts, combination, recordingKey);
+    if (conflict) {
+      Toast.show({
+        type: 'error',
+        text1: settings?.language === 'ru' ? 'Комбинация уже занята' : 'Shortcut already in use',
+        text2: formatShortcut(combination),
+        visibilityTime: 2000
+      });
+      return true;
+    }
+
+    updateSetting('shortcuts', {
+      ...currentShortcuts,
+      [recordingKey]: combination
+    });
+    setRecordingKey(null);
+
+    Toast.show({
+      type: 'success',
+      text1: settings?.language === 'ru' ? 'Горячая клавиша изменена!' : 'Shortcut changed!',
+      text2: formatShortcut(combination),
+      visibilityTime: 2000
+    });
+    return true;
+  });
 
   const handleThemeChange = (newTheme: ThemeName) => {
     updateSetting('theme', newTheme);

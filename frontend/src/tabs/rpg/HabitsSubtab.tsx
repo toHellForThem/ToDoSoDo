@@ -22,6 +22,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Todo } from '../../utils/storage'
 import { Theme } from '../../theme/theme'
 import { useTranslation } from '../../utils/LanguageContext';
+import { useInputFocus } from '../../commands';
 
 
 interface HabitItemProps {
@@ -64,7 +65,6 @@ interface HabitsSubtabProps {
   styles: any;
   theme: Theme;
   selectedTaskId: string | null;
-  focusInputTrigger: number;
   isActive: boolean;
 }
 
@@ -277,22 +277,13 @@ export const HabitsSubtab = memo(({
   styles,
   theme,
   selectedTaskId,
-  focusInputTrigger,
   isActive,
 }: HabitsSubtabProps) => {
   const flatListRef = useRef<FlatList<Todo>>(null);
   const inputRef = useRef<TextInput>(null);
-  const lastTrigger = useRef(focusInputTrigger);
   const { t } = useTranslation();
 
-  useEffect(() => {
-    if (focusInputTrigger !== lastTrigger.current) {
-      lastTrigger.current = focusInputTrigger;
-      if (isActive) {
-        inputRef.current?.focus();
-      }
-    }
-  }, [focusInputTrigger, isActive]);
+  useInputFocus('rpg', () => inputRef.current?.focus(), isActive);
 
   useEffect(() => {
     if (!selectedTaskId || !flatListRef.current) return;

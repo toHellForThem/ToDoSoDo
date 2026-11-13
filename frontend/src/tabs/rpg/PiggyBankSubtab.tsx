@@ -25,6 +25,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Todo } from '../../utils/storage';
 import { Theme } from '../../theme/theme';
 import { useTranslation } from '../../utils/LanguageContext';
+import { useInputFocus } from '../../commands';
 
 
 interface PiggyBankItemProps {
@@ -68,7 +69,6 @@ interface PiggyBankSubtabProps {
   piggyInputs: Record<string, string>;
   setPiggyInputs: Dispatch<SetStateAction<Record<string, string>>>;
   selectedTaskId: string | null;
-  focusInputTrigger: number;
   isActive: boolean;
 }
 
@@ -319,21 +319,12 @@ export const PiggyBankSubtab = memo(({
   piggyInputs,
   setPiggyInputs,
   selectedTaskId,
-  focusInputTrigger,
   isActive,
 }: PiggyBankSubtabProps) => {
   const inputRef = useRef<TextInput>(null);
-  const lastTrigger = useRef(focusInputTrigger);
   const { t } = useTranslation();
 
-  useEffect(() => {
-    if (focusInputTrigger !== lastTrigger.current) {
-      lastTrigger.current = focusInputTrigger;
-      if (isActive) {
-        inputRef.current?.focus();
-      }
-    }
-  }, [focusInputTrigger, isActive]);
+  useInputFocus('rpg', () => inputRef.current?.focus(), isActive);
 
   useEffect(() => {
     if (!selectedTaskId || !flatListRef?.current) return;

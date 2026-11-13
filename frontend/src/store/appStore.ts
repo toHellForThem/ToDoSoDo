@@ -199,7 +199,6 @@ export interface AppState {
 
   // Выделение и фокус
   selectedTaskId: string | null;
-  focusInputTrigger: number;
 
   // UI-состояние
   focusedGoalId: string | null;
@@ -249,7 +248,6 @@ export interface AppState {
 
   // Выделение и фокус
   setSelectedTaskId: (id: string | null) => void;
-  triggerFocusInput: () => void;
 
   // UI-состояние
   setFocusedGoalId: (value: Updater<string | null>) => void;
@@ -279,7 +277,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   isCalendarVisible: false,
 
   selectedTaskId: null,
-  focusInputTrigger: 0,
 
   focusedGoalId: null,
   flashingGoalId: null,
@@ -452,8 +449,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   setSelectedTaskId: selectedTaskId => set({ selectedTaskId }),
-  triggerFocusInput: () =>
-    set(state => ({ focusInputTrigger: state.focusInputTrigger + 1 })),
 
   setFocusedGoalId: value =>
     set(state => ({

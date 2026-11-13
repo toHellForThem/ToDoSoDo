@@ -33,6 +33,7 @@ import { FillProgress } from '../components/FillProgress';
 import { useTranslation } from '../utils/LanguageContext';
 import { Todo, TodoType } from '../utils/storage'
 import { useAppStore } from '../store/appStore';
+import { useInputFocus } from '../commands';
 import { useLeftAction } from '../hooks/useLeftAction';
 import { selectVisibleTodos } from '../domain/visibility';
 import { useLogicalDayIndex } from '../hooks/useLogicalDate';
@@ -350,7 +351,6 @@ export const DailyTab = memo(() => {
   const dailyProgressEnd = useAppStore(state => state.dailyProgressEnd);
   const setDailyProgressEnd = useAppStore(state => state.setDailyProgressEnd);
   const selectedTaskId = useAppStore(state => state.selectedTaskId);
-  const focusInputTrigger = useAppStore(state => state.focusInputTrigger);
   const isActive = useAppStore(state => state.mainTab === 'daily');
   const leftAction = useLeftAction();
   const { width } = useWindowDimensions();
@@ -359,16 +359,8 @@ export const DailyTab = memo(() => {
   const { t } = useTranslation();
   const flatListRef = useRef<FlatList<Todo>>(null);
   const inputRef = useRef<TextInput>(null);
-  const lastTrigger = useRef(focusInputTrigger);
 
-  useEffect(() => {
-    if (focusInputTrigger !== lastTrigger.current) {
-      lastTrigger.current = focusInputTrigger;
-      if (isActive) {
-        inputRef.current?.focus();
-      }
-    }
-  }, [focusInputTrigger, isActive]);
+  useInputFocus('daily', () => inputRef.current?.focus(), isActive);
 
   const todayDayIdx = useLogicalDayIndex();
   const stats = useDailyStats();
