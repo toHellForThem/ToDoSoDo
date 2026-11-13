@@ -106,7 +106,33 @@ export const send = <E extends keyof ClientPayloads>(
 export const flush = (): void => {
   if (!isOnline()) return;
 
-  const items = Outbox.getAll().filter(item => !item.sent);
+  const allItems = Outbox.getAll();
+
+  // Удаление важнее создания: не отправляем SYNC_TODO для задач, которые
+  // уже удалены в outbox, иначе после reconnect они воскреснут на сервере.
+  const deletedIds = new Set(
+    allItems
+      .filter(item => item.event === ClientEvent.DELETE_TODO)
+      .map(item => item.payload as string)
+  );
+  const staleCreateIds = new Set(
+    allItems
+      .filter(
+        item =>
+          item.event === ClientEvent.SYNC_TODO &&
+          deletedIds.has((item.payload as Todo)?.id)
+      )
+      .map(item => item.requestId)
+  );
+  if (staleCreateIds.size > 0) {
+    Outbox.saveAll(
+      allItems.filter(item => !staleCreateIds.has(item.requestId))
+    );
+  }
+
+  const items = allItems.filter(
+    item => !item.sent && !staleCreateIds.has(item.requestId)
+  );
   if (items.length === 0) return;
 
   const todos = new Map<string, Todo>();
@@ -222,6 +248,11 @@ export const handleError = (error: ServerErrorPayload): void => {
     // Исчерпавшие лимит операции больше не ретраим, иначе получим
     // бесконечный цикл отправки.
     const exhausted = affected.filter(item => item.attempts >= 5);
+    if (exhausted.length > 0) {
+      notifySyncError(
+        'Не удалось сохранить часть изменений после нескольких попыток'
+      );
+    }
     exhausted.forEach(item => {
       console.error('[Sync] Max retry attempts reached for item:', item);
     });
