@@ -1,5 +1,4 @@
-import { Platform, NativeModules } from 'react-native';
-import { createMMKV } from 'react-native-mmkv';
+import { getSystemLocale, platformStorage } from '../platform';
 import type {
   RpgHistoryItem,
   ShortcutSettings,
@@ -39,21 +38,9 @@ export const DEFAULT_SHORTCUTS: ShortcutSettings = {
   mood_view: 'mod+x',
 };
 
-const nativeStorage = Platform.OS !== 'web' ? createMMKV() : null;
-
 const getSystemLanguage = () => {
   try {
-    let locale = '';
-    if (Platform.OS === 'ios') {
-      const settings = NativeModules.SettingsManager?.settings;
-      locale = settings?.AppleLocale || settings?.AppleLanguages?.[0] || '';
-    } else if (Platform.OS === 'android') {
-      locale = NativeModules.I18nManager?.localeIdentifier || '';
-    } else {
-      if (typeof navigator !== 'undefined') {
-        locale = navigator.language || '';
-      }
-    }
+    const locale = getSystemLocale();
     if (locale && locale.toLowerCase().startsWith('ru')) {
       return 'ru';
     }
@@ -91,30 +78,10 @@ export const getDefaultSettings = (): UserSettings => {
 };
 
 const core = {
-  set: (key: string, value: string): void => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(key, value);
-    } else {
-      nativeStorage!.set(key, value);
-    }
-  },
-  get: (key: string): string | null => {
-    if (Platform.OS === 'web') {
-      return localStorage.getItem(key);
-    } else {
-      return nativeStorage ? (nativeStorage.getString(key) ?? null) : null;
-    }
-  },
-  remove: (key: string): void => {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem(key);
-    } else {
-      nativeStorage!.remove(key);
-    }
-  },
+  set: platformStorage.set,
+  get: platformStorage.get,
+  remove: platformStorage.remove,
 };
-
-export { nativeStorage };
 
 export const TodoStorage = {
   saveAll: (todos: Todo[]): void =>

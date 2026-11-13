@@ -1,3 +1,5 @@
+import { detectMacPlatform } from '../platform/detect';
+
 const MODIFIER_KEYS = new Set([
   'control',
   'ctrl',
@@ -28,11 +30,7 @@ const CODE_ALIASES: Record<string, string> = {
   PageDown: 'pagedown',
 };
 
-export const isMacPlatform = (): boolean => {
-  if (typeof navigator === 'undefined') return false;
-  const platform = navigator.platform || '';
-  return /mac|iphone|ipad|ipod/i.test(platform);
-};
+export const isMacPlatform = detectMacPlatform;
 
 /** Клавиша из события без модификаторов. `null` — нажаты только модификаторы. */
 export const keyFromEvent = (event: KeyboardEvent): string | null => {

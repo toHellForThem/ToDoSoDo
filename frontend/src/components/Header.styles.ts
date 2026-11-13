@@ -1,5 +1,18 @@
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, ViewStyle } from 'react-native';
+import { selectPlatform } from '../platform';
 import { Theme } from '../theme/theme';
+
+const invisibleShadePosition: ViewStyle = {
+  // RN Web поддерживает `fixed`, но в типах React Native его нет.
+  position: selectPlatform({
+    web: 'fixed' as unknown as ViewStyle['position'],
+    default: 'absolute' as const,
+  }),
+  top: selectPlatform({ web: 0, default: -120 }),
+  left: selectPlatform({ web: 0, default: -100 }),
+  right: selectPlatform({ web: 0, default: -110 }),
+  bottom: selectPlatform({ web: 0, default: -1000 }),
+};
 
 export const getStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -71,11 +84,7 @@ export const getStyles = (theme: Theme) =>
       zIndex: 50,
     },
     invisibleShade: {
-      position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as any,
-      top: Platform.OS === 'web' ? 0 : -120,
-      left: Platform.OS === 'web' ? 0 : -100,
-      right: Platform.OS === 'web' ? 0 : -110,
-      bottom: Platform.OS === 'web' ? 0 : -1000,
+      ...invisibleShadePosition,
       zIndex: 49,
       backgroundColor: 'rgba(0,0,0,0.1)',
     },

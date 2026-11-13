@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Keyboard, Platform, BackHandler, Linking } from 'react-native';
+import { Keyboard, BackHandler } from 'react-native';
 import Toast from 'react-native-toast-message';
 import {
   AuthStorage,
@@ -19,6 +19,7 @@ import { ClientEvent, ServerEvent } from '../../contract/events';
 import { send, setSyncMode, clear as clearSync } from '../../sync';
 import { useAppTheme, useStyles } from '../../theme/ThemeContext';
 import { useTranslation } from '../../utils/LanguageContext';
+import { isAndroid, openExternalUrl } from '../../platform';
 import { translations } from '../../utils/translations';
 import { useAppStore, type MainTab } from '../../store/appStore';
 import { getStyles } from '../SettingsTab.styles';
@@ -64,7 +65,7 @@ export const useSettingsController = () => {
   const [subView, setSubView] = useState<'dailies' | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === 'android' && subView) {
+    if (isAndroid && subView) {
       const handleBackPress = () => {
         setSubView(null);
         return true;
@@ -214,7 +215,7 @@ export const useSettingsController = () => {
   };
 
   const handleDonate = () => {
-    Linking.openURL('https://www.donationalerts.com/r/tohellforthem').catch(
+    openExternalUrl('https://www.donationalerts.com/r/tohellforthem').catch(
       () => {
         Toast.show({
           type: 'error',

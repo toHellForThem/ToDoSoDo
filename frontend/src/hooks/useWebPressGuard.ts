@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
-import { GestureResponderEvent, Platform } from 'react-native';
+import { GestureResponderEvent } from 'react-native';
+import { isWeb } from '../platform';
 
 const TAP_DISTANCE_THRESHOLD = 8;
 
@@ -13,7 +14,7 @@ export const useWebPressGuard = (onTap: () => void) => {
   const startY = useRef(0);
 
   const handlePressIn = useCallback((event: GestureResponderEvent) => {
-    if (Platform.OS === 'web') {
+    if (isWeb) {
       startX.current = event.nativeEvent.pageX || 0;
       startY.current = event.nativeEvent.pageY || 0;
     }
@@ -21,7 +22,7 @@ export const useWebPressGuard = (onTap: () => void) => {
 
   const handlePress = useCallback(
     (event: GestureResponderEvent) => {
-      if (Platform.OS === 'web' && event) {
+      if (isWeb && event) {
         const endX = event.nativeEvent.pageX || 0;
         const endY = event.nativeEvent.pageY || 0;
         const distance = Math.sqrt(

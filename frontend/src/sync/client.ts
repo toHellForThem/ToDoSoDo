@@ -6,6 +6,7 @@
  * outbox.  `flush` при reconnect/login собирает накопленное в bulk-запросы.
  */
 
+import { dispatchWebEvent } from '../platform';
 import { socket } from '../utils/socket';
 import { AuthStorage } from '../utils/storage';
 import { emitWithRequestId, ClientPayloads } from '../contract/socket';
@@ -59,13 +60,7 @@ const notifySyncError = (message: string): void => {
   }
 
   // Fallback для web: событие может слушать любой слой приложения.
-  if (
-    typeof window !== 'undefined' &&
-    typeof window.dispatchEvent === 'function' &&
-    typeof CustomEvent !== 'undefined'
-  ) {
-    window.dispatchEvent(new CustomEvent('sync:error', { detail: message }));
-  }
+  dispatchWebEvent('sync:error', message);
 };
 
 export const setSyncMode = (next: SyncMode): void => {

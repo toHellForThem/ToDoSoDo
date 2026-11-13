@@ -1,14 +1,9 @@
-import { Platform, UIManager } from 'react-native';
 import { ShortcutProvider } from './src/commands';
 import { Providers } from './src/app/Providers';
 import { AppShell } from './src/app/AppShell';
+import { setupPlatform } from './src/platform';
 
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+setupPlatform();
 
 export default function App() {
   return (

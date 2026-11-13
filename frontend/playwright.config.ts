@@ -40,7 +40,8 @@ export default defineConfig({
       ? []
       : [
           {
-            command: 'python -m uvicorn main:app --host 127.0.0.1 --port 8001',
+            command:
+              'python -m uvicorn main:socket_app --host 127.0.0.1 --port 8001',
             cwd: '../backend',
             url: `http://127.0.0.1:${API_PORT}/health`,
             reuseExistingServer: !process.env.CI,

@@ -1,6 +1,5 @@
 import {
   useState,
-  useEffect,
   useCallback,
   memo,
   useMemo,
@@ -16,7 +15,6 @@ import {
   FlatList,
   Text,
   Keyboard,
-  LayoutAnimation,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
   useWindowDimensions,
@@ -38,6 +36,7 @@ import {
   SwipeableRow,
   type LeftActionRenderer,
 } from '../components/SwipeableRow';
+import { useKeyboardInsets } from '../platform';
 import { SelectableItem } from '../components/SelectableItem';
 import { useWebPressGuard } from '../hooks/useWebPressGuard';
 import { useScrollToSelected } from '../hooks/useScrollToSelected';
@@ -154,8 +153,9 @@ const DailyInput = memo(function DailyInput({
   const { t } = useTranslation();
 
   const [task, setTask] = useState('');
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardInsets({
+    blurOnHide: true,
+  });
 
   const handleKeyPress = useCallback(
     (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
@@ -182,31 +182,6 @@ const DailyInput = memo(function DailyInput({
     },
     [setDailyProgressEnd],
   );
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', e => {
-      setKeyboardHeight(e.endCoordinates.height);
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardVisible(true);
-    });
-
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false);
-
-      const activeInput = TextInput.State.currentlyFocusedInput();
-      if (activeInput) {
-        TextInput.State.blurTextInput(activeInput);
-      }
-
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
 
   const handleAdd = useCallback(() => {
     if (task.trim()) {
