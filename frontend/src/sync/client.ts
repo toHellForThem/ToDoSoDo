@@ -35,8 +35,11 @@ const ACK_EVENTS = new Set<string>([
   ClientEvent.BULK_SYNC_DAILY_HISTORY,
 ]);
 
-/** Ошибки, после которых операцию имеет смысл повторить. */
-const RETRYABLE_ERRORS = new Set<string>(['internal_error', 'conflict']);
+/**
+ * Ошибки, после которых операцию имеет смысл повторить.  `conflict` сюда
+ * не входит: конфликты разрешаются через ACK сервера, а не ретраем.
+ */
+const RETRYABLE_ERRORS = new Set<string>(['internal_error']);
 
 export const setSyncMode = (next: SyncMode): void => {
   mode = next;
@@ -165,6 +168,9 @@ export const flush = (): void => {
 /** Ack подтверждает операцию (или весь bulk-запрос) — убираем из outbox. */
 export const handleAck = (ack: AckPayload): void => {
   if (!ack.request_id) return;
+  if (ack.status === 'rejected') {
+    console.warn('[Sync] Payload rejected by server:', ack);
+  }
   Outbox.removeBatch(ack.request_id);
 };
 

@@ -44,11 +44,24 @@ export const enqueue = (
   const existing = OutboxStorage.getAll();
   // Уже отправленные записи не трогаем: их ждёт ack.  Неотправленную
   // версию той же сущности заменяем актуальной.
-  const filtered = key
-    ? existing.filter(
-        item => item.sent || keyOf(item.event, item.payload) !== key
-      )
-    : existing;
+  const filtered = existing.filter(item => {
+    if (item.sent) return true;
+    if (key && keyOf(item.event, item.payload) === key) return false;
+
+    // Офлайн-создание и последующее удаление одной сущности: если создание
+    // ещё не ушло на сервер, отправлять его вместе с удалением бессмысленно.
+    if (event === ClientEvent.DELETE_TODO) {
+      const id = payload as string;
+      if (
+        item.event === ClientEvent.SYNC_TODO &&
+        (item.payload as Todo)?.id === id
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   const record: OutboxRecord = {
     requestId: newRequestId(),
