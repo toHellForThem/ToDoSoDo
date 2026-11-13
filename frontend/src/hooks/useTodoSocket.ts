@@ -3,7 +3,12 @@ import Toast from 'react-native-toast-message';
 import { socket } from '../utils/socket';
 import { emit, on } from '../contract/socket';
 import { ClientEvent, ServerEvent } from '../contract/events';
-import type { AckPayload, ServerErrorPayload } from '../contract/types';
+import type {
+  AckPayload,
+  AckStatus,
+  BulkResult,
+  ServerErrorPayload
+} from '../contract/types';
 import {
   AuthStorage,
   RpgStorage,
@@ -312,41 +317,35 @@ export const useTodoSocket = ({
         });
       }
 
-      if (event === 'client:sync_todo') {
-        if (status === 'conflict' && data) {
-          const serverTodo = data as Todo;
-          startTransition(() => {
-            setTodoList(prev => {
-              const index = prev.findIndex(t => t.id === serverTodo.id);
-              if (index === -1) {
-                return [...prev, serverTodo];
-              }
-              const next = [...prev];
-              next[index] = serverTodo;
-              return next;
-            });
+      const applyServerTodo = (serverTodo: Todo) => {
+        startTransition(() => {
+          setTodoList(prev => {
+            const index = prev.findIndex(t => t.id === serverTodo.id);
+            if (index === -1) {
+              return [...prev, serverTodo];
+            }
+            const next = [...prev];
+            next[index] = serverTodo;
+            return next;
           });
-        } else if (status === 'deleted') {
-          const deletedId = (data as { id?: string } | null)?.id;
-          if (deletedId) {
-            startTransition(() => {
-              setTodoList(prev => prev.filter(t => t.id !== deletedId));
-            });
-          }
-        }
-      } else if (event === 'client:update_settings' && status === 'conflict' && data) {
-        const serverSettings = data as UserSettings;
+        });
+      };
+
+      const removeTodo = (id: string) => {
+        startTransition(() => {
+          setTodoList(prev => prev.filter(t => t.id !== id));
+        });
+      };
+
+      const applyServerSettings = (serverSettings: UserSettings) => {
         AuthStorage.setSettings(serverSettings);
         setSettings(serverSettings);
         if (setMainTab && serverSettings?.main_page) {
           setMainTab(serverSettings.main_page);
         }
-      } else if (
-        event === 'client:sync_daily_history' &&
-        status === 'conflict' &&
-        data
-      ) {
-        const serverEntry = data as RpgHistoryItem;
+      };
+
+      const applyServerHistory = (serverEntry: RpgHistoryItem) => {
         startTransition(() => {
           setRpgHistory(prev => {
             const index = prev.findIndex(h => h.date === serverEntry.date);
@@ -357,6 +356,64 @@ export const useTodoSocket = ({
             next[index] = serverEntry;
             return next;
           });
+        });
+      };
+
+      // Сервер — источник истины: и conflict, и applied несут каноничную
+      // версию в data, поэтому применяем её к локальным сторам.
+      if (event === ClientEvent.SYNC_TODO) {
+        if ((status === 'conflict' || status === 'applied') && data) {
+          applyServerTodo(data as Todo);
+        } else if (status === 'deleted') {
+          const deletedId = (data as { id?: string } | null)?.id;
+          if (deletedId) {
+            removeTodo(deletedId);
+          }
+        }
+      } else if (event === ClientEvent.DELETE_TODO) {
+        const deletedId = (data as { id?: string } | null)?.id;
+        if (deletedId) {
+          TombstoneStorage.remove(deletedId);
+          removeTodo(deletedId);
+        }
+      } else if (event === ClientEvent.UPDATE_SETTINGS) {
+        if ((status === 'conflict' || status === 'applied') && data) {
+          applyServerSettings(data as UserSettings);
+        }
+      } else if (event === ClientEvent.SYNC_DAILY_HISTORY) {
+        if ((status === 'conflict' || status === 'applied') && data) {
+          applyServerHistory(data as RpgHistoryItem);
+        }
+      } else if (event === ClientEvent.BULK_SYNC_TODOS) {
+        const results =
+          (data as { results?: BulkResult<Todo>[] } | null)?.results ?? [];
+        results.forEach(result => {
+          if (result.status === 'deleted') {
+            removeTodo(result.id);
+          } else if (result.todo) {
+            applyServerTodo(result.todo);
+          }
+        });
+      } else if (event === ClientEvent.BULK_DELETE_TODOS) {
+        const results =
+          (data as { results?: BulkResult<Todo>[] } | null)?.results ?? [];
+        results.forEach(result => {
+          TombstoneStorage.remove(result.id);
+          removeTodo(result.id);
+        });
+      } else if (event === ClientEvent.BULK_SYNC_DAILY_HISTORY) {
+        const results =
+          (data as {
+            results?: Array<{
+              date: string;
+              status: AckStatus;
+              entry: RpgHistoryItem;
+            }>;
+          } | null)?.results ?? [];
+        results.forEach(result => {
+          if (result.entry) {
+            applyServerHistory(result.entry);
+          }
         });
       }
     }));
