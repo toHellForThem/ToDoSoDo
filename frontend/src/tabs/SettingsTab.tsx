@@ -1,4 +1,4 @@
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,9 +24,7 @@ import {
   RpgStorage,
   UserSettings,
   ShortcutSettings,
-  RpgHistoryItem,
   Todo,
-  AuthMode,
   Language,
   ThemeName,
   DEFAULT_SHORTCUTS,
@@ -38,37 +36,22 @@ import { ClientEvent, ServerEvent } from '../contract/events';
 import { send, setSyncMode, clear as clearSync } from '../sync';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
+import { useAppStore, type MainTab } from '../store/appStore';
+import { useLeftAction } from '../hooks/useLeftAction';
 
-
-interface SettingsTabProps {
-  authMode: AuthMode;
-  setAuthMode: (mode: AuthMode) => void;
-  authState: string;
-  setAuthState: (state: string) => void;
-  settings: UserSettings;
-  setSettings: (settings: UserSettings) => void;
-  setTodoList: (todoList: Todo[]) => void;
-  setRpgHistory: (rpg_history: RpgHistoryItem[]) => void;
-  setMainTab?: (main_tab: string) => void;
-  todoList: Todo[];
-  editTask: (id: string, updated_fields: Partial<Todo>) => void;
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
-}
-
-export const SettingsTab = ({
-  authMode,
-  setAuthMode,
-  authState,
-  setAuthState,
-  settings,
-  setSettings,
-  setTodoList,
-  setRpgHistory,
-  setMainTab,
-  todoList,
-  editTask,
-  leftAction
-}: SettingsTabProps) => {
+export const SettingsTab = () => {
+  const authMode = useAppStore(state => state.authMode);
+  const setAuthMode = useAppStore(state => state.setAuthMode);
+  const authState = useAppStore(state => state.authState);
+  const setAuthState = useAppStore(state => state.setAuthState);
+  const settings = useAppStore(state => state.settings);
+  const setSettings = useAppStore(state => state.setSettings);
+  const setTodoList = useAppStore(state => state.setTodoList);
+  const setRpgHistory = useAppStore(state => state.setRpgHistory);
+  const setMainTab = useAppStore(state => state.setMainTab);
+  const todoList = useAppStore(state => state.todoList);
+  const editTask = useAppStore(state => state.editTask);
+  const leftAction = useLeftAction();
   const styles = useStyles(getStyles);
   const itemStyles = useStyles(getItemStyles);
   const { theme } = useAppTheme();
@@ -362,8 +345,8 @@ export const SettingsTab = ({
     AuthStorage.setSettings(updated);
     // В local-режиме настройки копятся в outbox и уходят при логине.
     send(ClientEvent.UPDATE_SETTINGS, updated);
-    if (key === 'main_page' && setMainTab) {
-      setMainTab(value as string);
+    if (key === 'main_page') {
+      setMainTab(value as MainTab);
     }
   };
 

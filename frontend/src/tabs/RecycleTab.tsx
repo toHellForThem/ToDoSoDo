@@ -16,6 +16,8 @@ import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { send } from '../sync';
 import { ClientEvent } from '../contract/events';
 import { Todo } from '../utils/storage'
+import { useAppStore } from '../store/appStore';
+import { useLeftAction } from '../hooks/useLeftAction';
 
 
 interface RecycleItemProps {
@@ -27,13 +29,7 @@ interface RecycleItemProps {
 }
 
 interface RecycleTabProps {
-  todoList: Todo[];
-  deleteTodo: (id: string) => void;
-  leftAction: (prog: any, drag: any, mode: string) => ReactNode;
-  setTodoList: Dispatch<SetStateAction<Todo[]>>;
   context: string;
-  rpgSubtab?: string;
-  selectedTaskId: string | null;
 }
 
 const RecycleItem = memo(({
@@ -131,15 +127,13 @@ const RecycleItem = memo(({
   );
 });
 
-export const RecycleTab = memo(({
-  todoList,
-  deleteTodo,
-  leftAction,
-  setTodoList,
-  context,
-  rpgSubtab,
-  selectedTaskId
-}: RecycleTabProps) => {
+export const RecycleTab = memo(({ context }: RecycleTabProps) => {
+  const todoList = useAppStore(state => state.todoList);
+  const deleteTodo = useAppStore(state => state.deleteTodo);
+  const setTodoList = useAppStore(state => state.setTodoList);
+  const rpgSubtab = useAppStore(state => state.rpgSubtab);
+  const selectedTaskId = useAppStore(state => state.selectedTaskId);
+  const leftAction = useLeftAction();
   const flatListRef = useRef<FlatList<Todo>>(null);
 
   const activeTodos = useMemo(() => {
@@ -179,8 +173,8 @@ export const RecycleTab = memo(({
             offset: index * 60,
             animated: true,
           });
-        } catch (innerErr) {
-          console.log('Scroll to selected recycled item failed:', innerErr);
+        } catch {
+          // FlatList может не успеть измерить элемент — фолбэк уже применён.
         }
       }
     }
