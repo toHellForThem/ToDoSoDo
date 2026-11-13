@@ -291,16 +291,19 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
         .filter(entry => entry.date.startsWith(data.month));
       if (serverEntries.length === 0) return;
 
-      // Мержим по `updatedAt` через функциональный апдейтер: берём
-      // актуальное состояние стора, а не замыкание на момент ответа.
-      const localNewer: RpgHistoryItem[] = [];
-      useAppStore.getState().setRpgHistory(prev => {
-        const result = mergeHistoryEntries(prev, serverEntries);
-        localNewer.push(...result.localNewer);
-        return result.changed ? result.next : prev;
-      });
+      // «Сухой» расчёт от текущего стора — только чтобы собрать записи
+      // для досылки.  Сам апдейтер остаётся чистым.
+      const state = useAppStore.getState();
+      const dryRun = mergeHistoryEntries(state.rpgHistory, serverEntries);
 
-      localNewer.forEach(entry => {
+      if (dryRun.changed) {
+        useAppStore.getState().setRpgHistory(prev => {
+          const result = mergeHistoryEntries(prev, serverEntries);
+          return result.changed ? result.next : prev;
+        });
+      }
+
+      dryRun.localNewer.forEach(entry => {
         send(ClientEvent.SYNC_DAILY_HISTORY, entry);
       });
     }));
