@@ -9,6 +9,7 @@ import {
   handleAck,
   handleError,
   invalidateMonthHistory,
+  mergeHistoryEntries,
   onReconnect,
   rejectMonthHistory,
   resetPendingMonthRequests,
@@ -290,44 +291,14 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
         .filter(entry => entry.date.startsWith(data.month));
       if (serverEntries.length === 0) return;
 
-      // Мержим по `updatedAt`: серверная версия новее — берём её,
-      // локальная новее — оставляем и досылаем на сервер.
-      const store = useAppStore.getState();
-      const merged = [...store.rpgHistory];
+      // Мержим по `updatedAt` через функциональный апдейтер: берём
+      // актуальное состояние стора, а не замыкание на момент ответа.
       const localNewer: RpgHistoryItem[] = [];
-      let hasChanges = false;
-
-      serverEntries.forEach(srvLog => {
-        const localIdx = merged.findIndex(h => h.date === srvLog.date);
-        if (localIdx === -1) {
-          merged.push(srvLog);
-          hasChanges = true;
-          return;
-        }
-
-        const localLog = merged[localIdx];
-        if ((srvLog.updatedAt || 0) >= (localLog.updatedAt || 0)) {
-          if (
-            srvLog.updatedAt !== localLog.updatedAt ||
-            srvLog.mood !== localLog.mood ||
-            srvLog.daily_progress !== localLog.daily_progress ||
-            srvLog.pos_points !== localLog.pos_points ||
-            srvLog.neg_points !== localLog.neg_points ||
-            srvLog.habits_detail !== localLog.habits_detail
-          ) {
-            merged[localIdx] = srvLog;
-            hasChanges = true;
-          }
-        } else {
-          localNewer.push(localLog);
-        }
+      useAppStore.getState().setRpgHistory(prev => {
+        const result = mergeHistoryEntries(prev, serverEntries);
+        localNewer.push(...result.localNewer);
+        return result.changed ? result.next : prev;
       });
-
-      if (hasChanges) {
-        startTransition(() => {
-          useAppStore.getState().setRpgHistory(merged);
-        });
-      }
 
       localNewer.forEach(entry => {
         send(ClientEvent.SYNC_DAILY_HISTORY, entry);
