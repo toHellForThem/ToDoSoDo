@@ -45,8 +45,11 @@ export const enqueue = (
   // Уже отправленные записи не трогаем: их ждёт ack.  Неотправленную
   // версию той же сущности заменяем актуальной.
   const filtered = existing.filter(item => {
-    // Удаление вычищает все версии создания, включая уже отправленные:
-    // иначе reconnect переотправит SYNC_TODO и воскресит задачу.
+    if (item.sent) return true;
+
+    // Офлайн-создание и последующее удаление одной сущности: если создание
+    // ещё не ушло на сервер, отправлять его вместе с удалением бессмысленно.
+    // Уже отправленный SYNC_TODO оставляем — его разрешит ACK/Error по LWW.
     if (event === ClientEvent.DELETE_TODO) {
       const id = payload as string;
       if (
@@ -57,7 +60,6 @@ export const enqueue = (
       }
     }
 
-    if (item.sent) return true;
     if (key && keyOf(item.event, item.payload) === key) return false;
 
     return true;

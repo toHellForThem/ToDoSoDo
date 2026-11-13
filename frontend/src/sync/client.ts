@@ -41,6 +41,33 @@ const ACK_EVENTS = new Set<string>([
  */
 const RETRYABLE_ERRORS = new Set<string>(['internal_error']);
 
+type SyncErrorListener = (message: string) => void;
+
+let errorListener: SyncErrorListener | null = null;
+
+/** UI подписывается на ошибки синхронизации, чтобы показать тост. */
+export const setSyncErrorListener = (
+  listener: SyncErrorListener | null
+): void => {
+  errorListener = listener;
+};
+
+const notifySyncError = (message: string): void => {
+  if (errorListener) {
+    errorListener(message);
+    return;
+  }
+
+  // Fallback для web: событие может слушать любой слой приложения.
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.dispatchEvent === 'function' &&
+    typeof CustomEvent !== 'undefined'
+  ) {
+    window.dispatchEvent(new CustomEvent('sync:error', { detail: message }));
+  }
+};
+
 export const setSyncMode = (next: SyncMode): void => {
   mode = next;
 };
@@ -170,6 +197,7 @@ export const handleAck = (ack: AckPayload): void => {
   if (!ack.request_id) return;
   if (ack.status === 'rejected') {
     console.warn('[Sync] Payload rejected by server:', ack);
+    notifySyncError('Не удалось сохранить изменения: сервер отклонил операцию');
   }
   Outbox.removeBatch(ack.request_id);
 };
@@ -214,6 +242,11 @@ export const handleError = (error: ServerErrorPayload): void => {
         )
     );
   } else {
+    notifySyncError(
+      error.code === 'conflict'
+        ? 'Не удалось сохранить изменения из-за конфликта данных'
+        : `Не удалось сохранить изменения: ${error.message}`
+    );
     Outbox.saveAll(items.filter(item => !affectedIds.has(item.requestId)));
   }
 };

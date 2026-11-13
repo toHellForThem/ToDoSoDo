@@ -10,6 +10,7 @@ import {
   handleError,
   onReconnect,
   setSyncMode,
+  setSyncErrorListener,
 } from '../sync';
 import type {
   AckPayload,
@@ -59,6 +60,18 @@ export const useTodoSocket = ({
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+
+  useEffect(() => {
+    setSyncErrorListener(message => {
+      Toast.show({
+        type: 'error',
+        text1: 'Синхронизация',
+        text2: message,
+        visibilityTime: 4000,
+      });
+    });
+    return () => setSyncErrorListener(null);
+  }, []);
 
   useEffect(() => {
     const unsubscribers: Array<() => void> = [];
