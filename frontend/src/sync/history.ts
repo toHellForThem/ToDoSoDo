@@ -65,7 +65,16 @@ export const mergeHistoryEntries = (
   const localNewer: DailyHistory[] = [];
   let changed = false;
 
-  serverEntries.forEach(srvLog => {
+  // Бэкенд может прислать дубликаты за одну дату — берём самую свежую.
+  const deduped = new Map<string, DailyHistory>();
+  serverEntries.forEach(entry => {
+    const existing = deduped.get(entry.date);
+    if (!existing || (entry.updatedAt || 0) > (existing.updatedAt || 0)) {
+      deduped.set(entry.date, entry);
+    }
+  });
+
+  Array.from(deduped.values()).forEach(srvLog => {
     const localIdx = next.findIndex(h => h.date === srvLog.date);
     if (localIdx === -1) {
       next.push(srvLog);
@@ -151,13 +160,13 @@ export const resolveMonthHistory = (
   if (requestId) {
     pendingRequests.delete(requestId);
   }
-  loadedMonths.add(month);
 
   // У месяца может быть несколько in-flight запросов (retry/reconnect).
-  // Снимаем pending только когда не осталось ни одного.
-  if (!hasPendingRequestFor(month)) {
-    pendingMonths.delete(month);
-  }
+  // Не показываем loaded, пока не ответил последний из них.
+  if (hasPendingRequestFor(month)) return;
+
+  loadedMonths.add(month);
+  pendingMonths.delete(month);
   notify(month, 'loaded');
 };
 
