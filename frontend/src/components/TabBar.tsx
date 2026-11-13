@@ -5,7 +5,7 @@ import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
 import { useAppStore } from '../store/appStore';
 
-export const TabBar = memo(() => {
+export const TabBar = memo(function TabBar() {
   const currentTab = useAppStore(state => state.mainTab);
   const setCurrentTab = useAppStore(state => state.handleTabChange);
   const rpgSubtab = useAppStore(state => state.rpgSubtab);
@@ -40,7 +40,7 @@ export const TabBar = memo(() => {
     } else {
       blinkAnim.setValue(1);
     }
-  }, [shouldBlink]);
+  }, [shouldBlink, blinkAnim]);
 
   const renderActiveIndicator = (isActive: boolean) => {
     if (!isActive) return null;

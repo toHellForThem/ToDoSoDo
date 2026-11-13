@@ -23,14 +23,14 @@ interface SwipeableRowProps {
  * Общая обёртка строки списка: одинаковые параметры свайпа для задач,
  * daily и корзины, чтобы не дублировать их в каждом табе.
  */
-export const SwipeableRow = memo(({
+export const SwipeableRow = memo(function SwipeableRow({
   leftAction,
   mode,
   onSwipeLeftOpen,
   children,
   leftThreshold = 78,
   containerStyle,
-}: SwipeableRowProps) => {
+}: SwipeableRowProps) {
   const renderLeft = useCallback(
     (progress: any, drag: any) => leftAction(progress, drag, mode),
     [leftAction, mode]

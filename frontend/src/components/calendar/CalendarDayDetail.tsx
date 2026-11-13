@@ -25,7 +25,7 @@ interface CalendarDayDetailProps {
 }
 
 /** Детали выбранного дня: настроение, прогресс и раскрывающийся список привычек. */
-export const CalendarDayDetail = memo(({
+export const CalendarDayDetail = memo(function CalendarDayDetail({
   selectedDayDetail,
   displayProgress,
   displayPosPoints,
@@ -39,7 +39,7 @@ export const CalendarDayDetail = memo(({
   styles,
   theme,
   t,
-}: CalendarDayDetailProps) => {
+}: CalendarDayDetailProps) {
   return (
     <View style={styles.dayDetailBlock}>
       <Text style={styles.dayDetailTitle}>

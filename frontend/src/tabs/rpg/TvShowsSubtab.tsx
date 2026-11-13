@@ -78,7 +78,7 @@ interface TvShowsSubtabProps {
   isActive: boolean;
 }
 
-const TvShowItem = memo(({
+const TvShowItem = memo(function TvShowItem({
   item,
   statusChangeTask,
   deleteToRecycle,
@@ -86,7 +86,7 @@ const TvShowItem = memo(({
   styles,
   theme,
   isSelected,
-}: TvShowItemProps) => {
+}: TvShowItemProps) {
   const { t } = useTranslation();
 
   const handleToggleComplete = useCallback(() => {
@@ -272,7 +272,7 @@ const TvShowItem = memo(({
   );
 });
 
-const TvShowInput = memo(({
+const TvShowInput = memo(function TvShowInput({
   handleAddShow,
   keyboardHeight,
   isKeyboardVisible,
@@ -284,7 +284,7 @@ const TvShowInput = memo(({
   setShowStartEpisode,
   isWideScreen,
   inputRef,
-}: TvShowInputProps) => {
+}: TvShowInputProps) {
   const [showTitle, setShowTitle] = useState('');
   const [isEpisodeFocused, setIsEpisodeFocused] = useState(false);
   const { t } = useTranslation();
@@ -387,7 +387,7 @@ const TvShowInput = memo(({
   );
 });
 
-export const TvShowsSubtab = memo(({
+export const TvShowsSubtab = memo(function TvShowsSubtab({
   activeShows,
   keyboardHeight,
   isKeyboardVisible,
@@ -404,10 +404,9 @@ export const TvShowsSubtab = memo(({
   isWideScreen,
   selectedTaskId,
   isActive,
-}: TvShowsSubtabProps) => {
+}: TvShowsSubtabProps) {
   const flatListRef = useRef<FlatList<Todo>>(null);
   const inputRef = useRef<TextInput>(null);
-  const { t } = useTranslation();
 
   useInputFocus('rpg', () => inputRef.current?.focus(), isActive);
 
@@ -421,14 +420,14 @@ export const TvShowsSubtab = memo(({
           viewPosition: 0.5,
           animated: true,
         });
-      } catch (err) {
+      } catch {
         try {
           flatListRef.current.scrollToOffset({
             offset: index * 120,
             animated: true,
           });
-        } catch (innerErr) {
-          console.log('Scroll to selected tv show failed:', innerErr);
+        } catch {
+          // Скролл к выбранному сериалу не критичен для работы экрана.
         }
       }
     }

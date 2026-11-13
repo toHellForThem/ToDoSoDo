@@ -9,7 +9,7 @@ interface FillProgressProps {
   progressEnd: number;
 }
 
-export const FillProgress = memo(({ progressNow, progressEnd }: FillProgressProps) => {
+export const FillProgress = memo(function FillProgress({ progressNow, progressEnd }: FillProgressProps) {
   const styles = useStyles(getStyles);
   const widthAnim = useRef(new Animated.Value(0)).current;
   const segments = useMemo(() => Array.from({ length: progressEnd }), [progressEnd]);
@@ -21,7 +21,7 @@ export const FillProgress = memo(({ progressNow, progressEnd }: FillProgressProp
       duration: 200,
       useNativeDriver: false,
     }).start();
-  }, [progressNow, progressEnd]);
+  }, [progressNow, progressEnd, widthAnim]);
 
   const widthPercent = widthAnim.interpolate({
     inputRange: [0, 100],

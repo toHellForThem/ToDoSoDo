@@ -68,7 +68,7 @@ interface HabitsSubtabProps {
   isActive: boolean;
 }
 
-const HabitItem = memo(({
+const HabitItem = memo(function HabitItem({
   item,
   statusChangeTask,
   deleteToRecycle,
@@ -76,7 +76,7 @@ const HabitItem = memo(({
   styles,
   theme,
   isSelected,
-}: HabitItemProps) => {
+}: HabitItemProps) {
   const handleReset = useCallback(() => {
     statusChangeTask(item.id, 'reset');
   }, [item.id, statusChangeTask]);
@@ -168,12 +168,12 @@ const HabitItem = memo(({
   );
 });
 
-const HabitInput = memo(({
+const HabitInput = memo(function HabitInput({
   handleAddHabit,
   styles,
   theme,
   inputRef,
-}: HabitInputProps) => {
+}: HabitInputProps) {
   const [habitName, setHabitName] = useState('');
   const [pointsOrDeposit, setPointsOrDeposit] = useState<'positive' | 'neutral' | 'negative'>('positive');
   const { t } = useTranslation();
@@ -268,7 +268,7 @@ const HabitInput = memo(({
   );
 });
 
-export const HabitsSubtab = memo(({
+export const HabitsSubtab = memo(function HabitsSubtab({
   allHabits,
   handleAddHabit,
   statusChangeTask,
@@ -278,10 +278,9 @@ export const HabitsSubtab = memo(({
   theme,
   selectedTaskId,
   isActive,
-}: HabitsSubtabProps) => {
+}: HabitsSubtabProps) {
   const flatListRef = useRef<FlatList<Todo>>(null);
   const inputRef = useRef<TextInput>(null);
-  const { t } = useTranslation();
 
   useInputFocus('rpg', () => inputRef.current?.focus(), isActive);
 
@@ -295,14 +294,14 @@ export const HabitsSubtab = memo(({
           viewPosition: 0.5,
           animated: true,
         });
-      } catch (err) {
+      } catch {
         try {
           flatListRef.current.scrollToOffset({
             offset: index * 60,
             animated: true,
           });
-        } catch (innerErr) {
-          console.log('Scroll to selected habit failed:', innerErr);
+        } catch {
+          // Скролл к выбранной привычке не критичен для работы экрана.
         }
       }
     }

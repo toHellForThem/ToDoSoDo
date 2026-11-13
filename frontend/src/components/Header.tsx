@@ -37,7 +37,7 @@ interface HeaderProps {
   isWideScreen: boolean;
 }
 
-export const Header = memo(({
+export const Header = memo(function Header({
   panGesture,
   moods,
   tailStyle,
@@ -46,7 +46,7 @@ export const Header = memo(({
   contentAnimatedStyle,
   isMoodSheetOpen,
   isWideScreen,
-}: HeaderProps) => {
+}: HeaderProps) {
   const activeView = useAppStore(state => state.activeView);
   const setActiveView = useAppStore(state => state.setActiveView);
   const toggleActiveView = useAppStore(state => state.toggleActiveView);
@@ -267,6 +267,7 @@ export const Header = memo(({
             </TouchableOpacity>
 
             <TouchableOpacity
+              testID="header-settings"
               onPress={() => {
                 if (activeView === 'settings') {
                   setActiveView('list');
@@ -442,6 +443,7 @@ export const Header = memo(({
           </TouchableOpacity>
 
           <TouchableOpacity
+            testID="header-settings"
             onPress={() => {
               if (activeView === 'settings') {
                 setActiveView('list');

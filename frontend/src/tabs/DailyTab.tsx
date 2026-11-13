@@ -69,13 +69,13 @@ interface DailyInputProps {
   inputRef: RefObject<TextInput | null>;
 }
 
-const DailyItem = memo(({
+const DailyItem = memo(function DailyItem({
   item,
   statusChangeTask,
   deleteTodo,
   leftAction,
   isSelected
-}: DailyItemProps) => {
+}: DailyItemProps) {
   const styles = useStyles(getStyles);
   const itemStyles = useStyles(getItemStyles);
   const { theme } = useAppTheme();
@@ -134,7 +134,7 @@ const DailyItem = memo(({
   );
 });
 
-const DailyInput = memo(({
+const DailyInput = memo(function DailyInput({
   onAdd,
   dailyDays,
   setDailyDays,
@@ -142,7 +142,7 @@ const DailyInput = memo(({
   setDailyProgressEnd,
   isWideScreen,
   inputRef,
-}: DailyInputProps) => {
+}: DailyInputProps) {
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();
@@ -293,7 +293,7 @@ const DailyInput = memo(({
   );
 });
 
-export const DailyTab = memo(() => {
+export const DailyTab = memo(function DailyTab() {
   const todoList = useAppStore(state => state.todoList);
   const onAdd = useAppStore(state => state.addTask);
   const statusChangeTask = useAppStore(state => state.statusChangeTask);

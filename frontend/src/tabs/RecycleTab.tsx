@@ -6,7 +6,7 @@ import {
   Dispatch,
   SetStateAction
 } from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { Text, TouchableOpacity, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getStyles } from '../styles/item.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
@@ -34,13 +34,13 @@ interface RecycleTabProps {
   context: string;
 }
 
-const RecycleItem = memo(({
+const RecycleItem = memo(function RecycleItem({
   item,
   deleteTodo,
   leftAction,
   setTodoList,
   isSelected
-}: RecycleItemProps) => {
+}: RecycleItemProps) {
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
 
@@ -102,7 +102,7 @@ const RecycleItem = memo(({
   );
 });
 
-export const RecycleTab = memo(({ context }: RecycleTabProps) => {
+export const RecycleTab = memo(function RecycleTab({ context }: RecycleTabProps) {
   const todoList = useAppStore(state => state.todoList);
   const deleteTodo = useAppStore(state => state.deleteTodo);
   const setTodoList = useAppStore(state => state.setTodoList);

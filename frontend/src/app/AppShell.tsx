@@ -42,7 +42,7 @@ export const AppShell = () => {
     } else {
       moodSheet.openSheet();
     }
-  }, [moodSheet.isActive, moodSheet.closeSheet, moodSheet.openSheet]);
+  }, [moodSheet]);
 
   const isMoodSheetActive = useCallback(
     () => Boolean(moodSheet.isActive && moodSheet.isActive.value === 1),

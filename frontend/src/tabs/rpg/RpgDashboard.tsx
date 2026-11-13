@@ -23,19 +23,19 @@ interface RpgDashboardProps {
   t: Translate;
 }
 
-const MENU_ITEMS: Array<{
+const MENU_ITEMS: {
   subtab: 'habits' | 'piggy_bank' | 'tv_shows';
   icon: string;
   titleKey: 'rpg_menu_habits' | 'rpg_menu_piggy' | 'rpg_menu_tv';
   subtitleKey: 'rpg_menu_habits_desc' | 'rpg_menu_piggy_desc' | 'rpg_menu_tv_desc';
-}> = [
+}[] = [
   { subtab: 'habits', icon: 'shield-star-outline', titleKey: 'rpg_menu_habits', subtitleKey: 'rpg_menu_habits_desc' },
   { subtab: 'piggy_bank', icon: 'piggy-bank-outline', titleKey: 'rpg_menu_piggy', subtitleKey: 'rpg_menu_piggy_desc' },
   { subtab: 'tv_shows', icon: 'television-play', titleKey: 'rpg_menu_tv', subtitleKey: 'rpg_menu_tv_desc' },
 ];
 
 /** Дашборд RPG: дата, статистика дня и карточки подтабов. */
-export const RpgDashboard = memo(({
+export const RpgDashboard = memo(function RpgDashboard({
   today,
   todayMonthGenitive,
   dailyStats,
@@ -46,7 +46,7 @@ export const RpgDashboard = memo(({
   styles,
   theme,
   t,
-}: RpgDashboardProps) => {
+}: RpgDashboardProps) {
   const hasTodayMood = todayMood && activeMoodConfig[todayMood];
   const dateBtnBg = hasTodayMood ? activeMoodConfig[todayMood].dashboardBg : theme.colors.surface;
   const dateBtnBorder = hasTodayMood ? activeMoodConfig[todayMood].color : theme.colors.primary;
@@ -57,6 +57,7 @@ export const RpgDashboard = memo(({
       <View style={styles.centralDateBlock}>
         <View style={styles.dashboardRow}>
           <TouchableOpacity
+            testID="open-calendar"
             style={[
               styles.dateButton,
               {

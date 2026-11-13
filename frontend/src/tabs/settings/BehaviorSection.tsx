@@ -11,21 +11,21 @@ interface StartPageSectionProps extends SectionStyleProps {
   activeRpgSubtab: RpgSubtab | null;
 }
 
-const MAIN_PAGES: Array<{
+const MAIN_PAGES: {
   value: 'rpg' | 'todo' | 'daily';
   icon: string;
   labelKey: 'tab_rpg' | 'tab_todo' | 'tab_daily';
-}> = [
+}[] = [
   { value: 'rpg', icon: 'sword-cross', labelKey: 'tab_rpg' },
   { value: 'todo', icon: 'checkbox-marked-circle-outline', labelKey: 'tab_todo' },
   { value: 'daily', icon: 'calendar-check', labelKey: 'tab_daily' },
 ];
 
-const RPG_SUBTABS: Array<{
+const RPG_SUBTABS: {
   value: 'habits' | 'piggy_bank' | 'tv_shows';
   icon: string;
   labelKey: 'rpg_menu_habits' | 'rpg_menu_piggy' | 'rpg_menu_tv';
-}> = [
+}[] = [
   { value: 'habits', icon: 'star-circle-outline', labelKey: 'rpg_menu_habits' },
   { value: 'piggy_bank', icon: 'piggy-bank-outline', labelKey: 'rpg_menu_piggy' },
   { value: 'tv_shows', icon: 'television-play', labelKey: 'rpg_menu_tv' },

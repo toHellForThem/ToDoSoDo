@@ -48,6 +48,7 @@ export const AccountSection = ({
           </View>
           <View style={styles.authButtonsRow}>
             <TouchableOpacity
+              testID="auth-login"
               style={styles.primaryAuthButton}
               onPress={() => {
                 setAuthState('login');
@@ -58,6 +59,7 @@ export const AccountSection = ({
               <Text style={styles.primaryAuthButtonText}>{t('set_login')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              testID="auth-register"
               style={styles.secondaryAuthButton}
               onPress={() => {
                 setAuthState('register');
@@ -117,6 +119,7 @@ export const AuthFormSection = ({
       </Text>
       <View style={styles.formContainer}>
         <PaperInput
+          testID="auth-username"
           placeholder={t('set_username_placeholder')}
           value={username}
           onChangeText={setUsername}
@@ -134,6 +137,7 @@ export const AuthFormSection = ({
           placeholderTextColor={theme.colors.text.muted}
         />
         <PaperInput
+          testID="auth-password"
           placeholder={t('set_password_placeholder')}
           value={password}
           onChangeText={setPassword}
@@ -164,6 +168,7 @@ export const AuthFormSection = ({
           placeholderTextColor={theme.colors.text.muted}
         />
         <TouchableOpacity
+          testID="auth-submit"
           onPress={authState === 'login' ? handleLogin : handleRegister}
           style={styles.submitAuthButton}
         >

@@ -1,15 +1,9 @@
 import { Platform, NativeModules } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
 import type {
-  AuthMode,
-  Language,
-  MainPage,
   RpgHistoryItem,
-  RpgSubtab,
   ShortcutSettings,
-  ThemeName,
   Todo,
-  TodoType,
   UserSettings,
 } from '../contract/types';
 
@@ -64,7 +58,7 @@ const getSystemLanguage = () => {
       return 'ru';
     }
     return 'en';
-  } catch (error) {
+  } catch {
     return 'ru';
   }
 };
@@ -74,7 +68,7 @@ const getSystemTimezone = (): string => {
     if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     }
-  } catch (error) {
+  } catch {
     // Hermes без ICU — используем UTC, пользователь сможет поменять пояс.
   }
   return 'UTC';
@@ -164,7 +158,7 @@ export const OutboxStorage = {
     try {
       const parsed = JSON.parse(data);
       return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
+    } catch {
       return [];
     }
   },
@@ -189,7 +183,7 @@ export const TombstoneStorage = {
     try {
       const parsed = JSON.parse(data);
       return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
+    } catch {
       return [];
     }
   },

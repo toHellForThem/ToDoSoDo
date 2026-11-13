@@ -16,7 +16,7 @@ interface CalendarGridProps {
 }
 
 /** Сетка дней месяца с подсветкой настроения, сегодня и выбранного дня. */
-export const CalendarGrid = memo(({
+export const CalendarGrid = memo(function CalendarGrid({
   calendarCells,
   rpgHistory,
   activeMoodConfig,
@@ -25,7 +25,7 @@ export const CalendarGrid = memo(({
   handleDayPress,
   styles,
   theme,
-}: CalendarGridProps) => {
+}: CalendarGridProps) {
   return (
     <View style={styles.calendarGrid}>
       {calendarCells.map((cell, index) => {

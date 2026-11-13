@@ -65,7 +65,7 @@ interface ThemeSectionProps extends SectionStyleProps {
   handleThemeChange: (theme: ThemeName) => void;
 }
 
-const THEMES: Array<{ value: ThemeName; labelKey: 'set_theme_blue' | 'set_theme_mint' | 'set_theme_pink' | 'set_theme_dark' }> = [
+const THEMES: { value: ThemeName; labelKey: 'set_theme_blue' | 'set_theme_mint' | 'set_theme_pink' | 'set_theme_dark' }[] = [
   { value: 'default', labelKey: 'set_theme_blue' },
   { value: 'mint', labelKey: 'set_theme_mint' },
   { value: 'pink', labelKey: 'set_theme_pink' },

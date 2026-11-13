@@ -48,13 +48,13 @@ interface TodoInputProps {
   inputRef: RefObject<TextInput | null>;
 }
 
-const TodoItem = memo(({
+const TodoItem = memo(function TodoItem({
   item,
   statusChangeTask,
   deleteTodo,
   leftAction,
   isSelected
-}: TodoItemProps) => {
+}: TodoItemProps) {
   const itemStyles = useStyles(getItemStyles);
   const { theme } = useAppTheme();
 
@@ -97,7 +97,7 @@ const TodoItem = memo(({
   );
 });
 
-const TodoInput = memo(({ onAdd, inputRef }: TodoInputProps) => {
+const TodoInput = memo(function TodoInput({ onAdd, inputRef }: TodoInputProps) {
   const styles = useStyles(getStyles);
   const { theme } = useAppTheme();
   const { t } = useTranslation();
@@ -120,6 +120,7 @@ const TodoInput = memo(({ onAdd, inputRef }: TodoInputProps) => {
   return (
     <View style={styles.inputContainer}>
       <TextInput
+        testID="todo-input"
         ref={inputRef}
         style={styles.input}
         value={task}
@@ -143,7 +144,7 @@ const TodoInput = memo(({ onAdd, inputRef }: TodoInputProps) => {
   );
 });
 
-export const TodoTab = memo(() => {
+export const TodoTab = memo(function TodoTab() {
   const todoList = useAppStore(state => state.todoList);
   const onAdd = useAppStore(state => state.addTask);
   const deleteTodo = useAppStore(state => state.handleDeleteTodo);

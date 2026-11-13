@@ -60,7 +60,7 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
   }, []);
 
   useEffect(() => {
-    const unsubscribers: Array<() => void> = [];
+    const unsubscribers: (() => void)[] = [];
     let shouldReplaceTodos = false;
 
     socket.on('connect', () => {
@@ -432,11 +432,11 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
       } else if (event === ClientEvent.BULK_SYNC_DAILY_HISTORY) {
         const results =
           (data as {
-            results?: Array<{
+            results?: {
               date: string;
               status: AckStatus;
               entry: RpgHistoryItem;
-            }>;
+            }[];
           } | null)?.results ?? [];
         results.forEach(result => {
           if (result.entry) {

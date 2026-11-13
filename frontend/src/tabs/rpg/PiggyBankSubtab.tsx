@@ -72,7 +72,7 @@ interface PiggyBankSubtabProps {
   isActive: boolean;
 }
 
-const PiggyBankItem = memo(({
+const PiggyBankItem = memo(function PiggyBankItem({
   item,
   inputValue,
   setInputValue,
@@ -86,7 +86,7 @@ const PiggyBankItem = memo(({
   theme,
   handleUpdatePiggy,
   isSelected,
-}: PiggyBankItemProps) => {
+}: PiggyBankItemProps) {
   const handleKeyPress = useCallback((e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
     if (e.nativeEvent?.key === 'Escape') {
       e.stopPropagation();
@@ -237,12 +237,12 @@ const PiggyBankItem = memo(({
   );
 });
 
-const PiggyGoalInput = memo(({
+const PiggyGoalInput = memo(function PiggyGoalInput({
   handleSavePiggyGoal,
   styles,
   theme,
   inputRef,
-}: PiggyGoalInputProps) => {
+}: PiggyGoalInputProps) {
   const [piggyGoal, setPiggyGoal] = useState('');
   const [piggyTarget, setPiggyTarget] = useState('');
   const targetInputRef = useRef<TextInput>(null);
@@ -301,7 +301,7 @@ const PiggyGoalInput = memo(({
   );
 });
 
-export const PiggyBankSubtab = memo(({
+export const PiggyBankSubtab = memo(function PiggyBankSubtab({
   piggyGoalItems,
   focusedGoalId,
   setFocusedGoalId,
@@ -320,7 +320,7 @@ export const PiggyBankSubtab = memo(({
   setPiggyInputs,
   selectedTaskId,
   isActive,
-}: PiggyBankSubtabProps) => {
+}: PiggyBankSubtabProps) {
   const inputRef = useRef<TextInput>(null);
   const { t } = useTranslation();
 
@@ -336,14 +336,14 @@ export const PiggyBankSubtab = memo(({
           viewPosition: 0.5,
           animated: true,
         });
-      } catch (err) {
+      } catch {
         try {
           flatListRef.current.scrollToOffset({
             offset: index * 150,
             animated: true,
           });
-        } catch (innerErr) {
-          console.log('Scroll to selected piggy bank item failed:', innerErr);
+        } catch {
+          // Скролл к выбранной копилке не критичен для работы экрана.
         }
       }
     }

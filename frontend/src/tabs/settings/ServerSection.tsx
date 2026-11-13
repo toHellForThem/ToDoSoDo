@@ -28,6 +28,7 @@ export const ServerSection = ({
       </View>
       <View style={{ marginTop: 12 }}>
         <PaperInput
+          testID="server-url-input"
           placeholder=" http://192.168.1.50:8000"
           value={serverUrlInput}
           onChangeText={setServerUrlInput}

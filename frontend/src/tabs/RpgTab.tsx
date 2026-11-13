@@ -33,7 +33,7 @@ import { useAppStore } from '../store/appStore';
 
 const MOOD_LABEL_KEYS = ['mood_1', 'mood_2', 'mood_3', 'mood_4', 'mood_5'] as const;
 
-export const RpgTab = memo(() => {
+export const RpgTab = memo(function RpgTab() {
   const rpgHistory = useAppStore(state => state.rpgHistory);
   const todoList = useAppStore(state => state.todoList);
   const deleteToRecycle = useAppStore(state => state.handleDeleteTodo);
@@ -132,7 +132,7 @@ export const RpgTab = memo(() => {
               viewPosition: 0.2,
               animated: true,
             });
-          } catch (err) {
+          } catch {
             try {
               flatListRef.current.scrollToOffset({
                 offset: focusedIndex * 70,

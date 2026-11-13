@@ -66,7 +66,7 @@ export const ShortcutsSection = ({
       <Text style={{ fontSize: 11, color: theme.colors.text.muted, marginTop: 4, marginBottom: 12 }}>
         {t('set_shortcuts_desc')}
       </Text>
-      {(Object.keys(DEFAULT_SHORTCUTS) as Array<keyof ShortcutSettings>).map((key) => (
+      {(Object.keys(DEFAULT_SHORTCUTS) as (keyof ShortcutSettings)[]).map((key) => (
         <View key={key} style={styles.shortcutRow}>
           <View style={styles.shortcutInfo}>
             <Text style={styles.shortcutTitle}>

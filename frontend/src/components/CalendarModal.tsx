@@ -54,7 +54,7 @@ interface CalendarModalProps {
   ) => TranslationDict[K];
 }
 
-export const CalendarModal = memo(({
+export const CalendarModal = memo(function CalendarModal({
   isCalendarVisible,
   setCalendarVisible,
   currentMonthName,
@@ -81,7 +81,7 @@ export const CalendarModal = memo(({
   styles,
   theme,
   t,
-}: CalendarModalProps) => {
+}: CalendarModalProps) {
   const closeModal = () => {
     setCalendarVisible(false);
     setSelectedDayDetail(null);
@@ -95,7 +95,7 @@ export const CalendarModal = memo(({
       animationType="fade"
       onRequestClose={closeModal}
     >
-      <View style={styles.modalContainer}>
+      <View style={styles.modalContainer} testID="calendar-modal">
         <View style={styles.modalContent}>
 
           <TouchableOpacity

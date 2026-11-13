@@ -234,7 +234,8 @@ const getActiveThemeName = (): string => {
     if (saved?.theme) {
       return saved.theme;
     }
-  } catch (e) {
+  } catch {
+    // Повреждённые настройки не должны ломать старт приложения.
   }
   return 'default';
 };

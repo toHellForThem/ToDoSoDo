@@ -41,7 +41,7 @@ const getFormatter = (timeZone: string): Intl.DateTimeFormat | null => {
       second: '2-digit',
       hourCycle: 'h23',
     });
-  } catch (error) {
+  } catch {
     // Старые сборки Hermes без полного ICU: откатываемся на пояс устройства.
     formatter = null;
   }
