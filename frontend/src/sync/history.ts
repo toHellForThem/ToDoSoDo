@@ -9,6 +9,7 @@
 
 import { ClientEvent } from '../contract/events';
 import { emit } from '../contract/socket';
+import type { DailyHistory } from '../contract/types';
 import { getSyncMode, isOnline } from './client';
 
 export type MonthHistoryStatus =
@@ -40,6 +41,57 @@ export const getMonthStatus = (month: string): MonthHistoryStatus => {
   if (loadedMonths.has(month)) return 'loaded';
   if (pendingMonths.has(month)) return 'loading';
   return 'idle';
+};
+
+const hasPendingRequestFor = (month: string): boolean =>
+  Array.from(pendingRequests.values()).includes(month);
+
+export interface HistoryMergeResult {
+  next: DailyHistory[];
+  /** Локальные записи новее серверных — их нужно дослать на сервер. */
+  localNewer: DailyHistory[];
+  changed: boolean;
+}
+
+/**
+ * Мерж серверной истории в локальную по `updatedAt` (last-write-wins).
+ * Чистая функция, чтобы применять её через функциональный апдейтер стора.
+ */
+export const mergeHistoryEntries = (
+  current: DailyHistory[],
+  serverEntries: DailyHistory[]
+): HistoryMergeResult => {
+  const next = [...current];
+  const localNewer: DailyHistory[] = [];
+  let changed = false;
+
+  serverEntries.forEach(srvLog => {
+    const localIdx = next.findIndex(h => h.date === srvLog.date);
+    if (localIdx === -1) {
+      next.push(srvLog);
+      changed = true;
+      return;
+    }
+
+    const localLog = next[localIdx];
+    if ((srvLog.updatedAt || 0) >= (localLog.updatedAt || 0)) {
+      if (
+        srvLog.updatedAt !== localLog.updatedAt ||
+        srvLog.mood !== localLog.mood ||
+        srvLog.daily_progress !== localLog.daily_progress ||
+        srvLog.pos_points !== localLog.pos_points ||
+        srvLog.neg_points !== localLog.neg_points ||
+        srvLog.habits_detail !== localLog.habits_detail
+      ) {
+        next[localIdx] = srvLog;
+        changed = true;
+      }
+    } else {
+      localNewer.push(localLog);
+    }
+  });
+
+  return { next, localNewer, changed };
 };
 
 export const subscribeMonth = (
@@ -100,16 +152,33 @@ export const resolveMonthHistory = (
     pendingRequests.delete(requestId);
   }
   loadedMonths.add(month);
-  pendingMonths.delete(month);
+
+  // У месяца может быть несколько in-flight запросов (retry/reconnect).
+  // Снимаем pending только когда не осталось ни одного.
+  if (!hasPendingRequestFor(month)) {
+    pendingMonths.delete(month);
+  }
   notify(month, 'loaded');
 };
 
 export const rejectMonthHistory = (requestId: string | null): void => {
-  if (!requestId) return;
+  if (!requestId) {
+    // Ошибка без request_id: не знаем, какой именно запрос упал, поэтому
+    // снимаем все ожидания, чтобы UI не завис в loading.
+    pendingMonths.forEach(month => notify(month, 'error'));
+    pendingMonths.clear();
+    pendingRequests.clear();
+    return;
+  }
+
   const month = pendingRequests.get(requestId);
   if (!month) return;
 
   pendingRequests.delete(requestId);
+
+  // Другой запрос за тот же месяц ещё летит — ждём его результат.
+  if (hasPendingRequestFor(month)) return;
+
   pendingMonths.delete(month);
   notify(month, 'error');
 };
@@ -141,5 +210,11 @@ export const invalidateMonthHistory = (): void => {
   loadedMonths.clear();
   pendingMonths.clear();
   pendingRequests.clear();
-  retryPendingMonths();
+  // Запросы предыдущего пользователя не должны уйти новому.
+  requestedMonths.clear();
+
+  // Активные календари перезапрашивают свой месяц уже под новой сессией.
+  Array.from(listeners.keys()).forEach(month => {
+    requestMonthHistory(month, true);
+  });
 };
