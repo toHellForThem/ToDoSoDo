@@ -54,6 +54,12 @@ export interface RpgHistoryItem {
   updatedAt: number;
 }
 
+/** Локальная метка жёсткого удаления, которую нужно дослать на сервер. */
+export interface TodoTombstone {
+  id: string;
+  updatedAt: number;
+}
+
 export const DEFAULT_SHORTCUTS: ShortcutSettings = {
   rpg_tab: 'mod+1',
   todo_tab: 'mod+2',
@@ -159,6 +165,35 @@ export const RpgStorage = {
   }
 };
 
+/**
+ * Tombstones жёстких удалений.  Хранятся отдельно от списка задач, чтобы
+ * удаление не терялось, пока сервер недоступен, и досылалось при reconnect.
+ */
+export const TombstoneStorage = {
+  getAll: (): TodoTombstone[] => {
+    const data = core.get('todo_tombstones');
+    if (!data) return [];
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  },
+  add: (id: string): void => {
+    const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
+    tombstones.push({ id, updatedAt: Date.now() });
+    core.set('todo_tombstones', JSON.stringify(tombstones));
+  },
+  remove: (id: string): void => {
+    const tombstones = TombstoneStorage.getAll().filter(item => item.id !== id);
+    core.set('todo_tombstones', JSON.stringify(tombstones));
+  },
+  clear: (): void => {
+    core.remove('todo_tombstones');
+  }
+};
+
 export const AuthStorage = {
   setUsername: (username: string): void => core.set('username', username),
   getUsername: (): string | null => core.get('username'),
@@ -187,6 +222,13 @@ export const AuthStorage = {
 
   setServerUrl: (url: string): void => core.set('server_url', url),
   getServerUrl: (): string | null => core.get('server_url'),
+
+  /** Сбрасывает только сессию, сохраняя локальные данные и настройки. */
+  clearSession: (): void => {
+    core.remove('username');
+    core.remove('user_token');
+    core.remove('server_url');
+  },
 
   logout: (): void => {
     core.remove('username');
