@@ -25,7 +25,13 @@ import {
   getLogicalDateStr,
   getLogicalDayStartMs,
 } from '../utils/date';
-import { computeDailyStats } from '../utils/dailyStats';
+import { computeDailyStats } from '../domain/daily';
+import { resetStaleTodos } from '../domain/reset';
+import {
+  getProgressEnd,
+  getProgressNow,
+  isTodoComplete,
+} from '../domain/todo';
 
 export type MainTab = 'todo' | 'daily' | 'rpg';
 export type RpgSubtab = 'dashboard' | 'habits' | 'piggy_bank' | 'tv_shows';
@@ -63,30 +69,11 @@ const loadInitialTodos = (): Todo[] => {
     localSettings?.timezone
   );
 
-  let hasChanges = false;
-  const updatedList = list.map(item => {
-    if (
-      (item.type === 'daily' || item.type === 'habit') &&
-      !item.deleted &&
-      item.updatedAt < startOfToday
-    ) {
-      hasChanges = true;
-      return {
-        ...item,
-        progressNow: 0,
-        completed: false,
-        updatedAt: startOfToday,
-      };
-    }
-    return item;
-  });
-
-  if (hasChanges) {
-    TodoStorage.saveAll(updatedList);
-    return updatedList;
+  const { todos, changed } = resetStaleTodos(list, startOfToday);
+  if (changed) {
+    TodoStorage.saveAll(todos);
   }
-
-  return list;
+  return todos;
 };
 
 const applyStatusChange = (
@@ -98,29 +85,27 @@ const applyStatusChange = (
 
   if (type === 'habit') {
     if (amount === 'reset') {
-      return { ...todo, progressNow: 0, updatedAt: Date.now() };
+      return { ...todo, progressNow: 0, completed: false, updatedAt: Date.now() };
     }
     const change = Math.abs(amount as number);
-    const newProgress = Math.max(
-      0,
-      (parseInt(String(todo.progressNow), 10) || 0) + change
-    );
-    return { ...todo, progressNow: newProgress, updatedAt: Date.now() };
+    const newProgress = Math.max(0, getProgressNow(todo) + change);
+    return {
+      ...todo,
+      progressNow: newProgress,
+      completed: false,
+      updatedAt: Date.now(),
+    };
   }
 
   if (type === 'piggy_bank') {
     const change = amount as number;
-    const newProgress = Math.max(
-      0,
-      (parseInt(String(todo.progressNow), 10) || 0) + change
-    );
-    return {
+    const newProgress = Math.max(0, getProgressNow(todo) + change);
+    const updated: Todo = {
       ...todo,
       progressNow: newProgress,
-      completed:
-        newProgress >= (parseInt(String(todo.progressEnd), 10) || 0),
       updatedAt: Date.now(),
     };
+    return { ...updated, completed: isTodoComplete(updated) };
   }
 
   if (type === 'tv_show') {
@@ -168,15 +153,15 @@ const applyStatusChange = (
     };
   }
 
-  if (Number(todo.progressEnd) > 1) {
-    const nextProgress = Number(todo.progressNow) + 1;
-    return {
+  if (getProgressEnd(todo) > 1) {
+    const nextProgress = getProgressNow(todo) + 1;
+    const updated: Todo = {
       ...todo,
       progressNow: nextProgress,
-      completed: nextProgress === Number(todo.progressEnd),
       contribution: todo.type === 'daily' ? nextProgress : todo.contribution,
       updatedAt: Date.now(),
     };
+    return { ...updated, completed: isTodoComplete(updated) };
   }
 
   return {
@@ -393,9 +378,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const merged: Todo = { ...target, ...updatedFields, updatedAt: Date.now() };
     if ('progressEnd' in updatedFields || 'progressNow' in updatedFields) {
-      const nextProgressEnd = parseInt(String(merged.progressEnd), 10) || 1;
-      const nextProgressNow = parseInt(String(merged.progressNow), 10) || 0;
-      merged.completed = nextProgressNow >= nextProgressEnd;
+      merged.completed = isTodoComplete(merged);
     }
 
     set({

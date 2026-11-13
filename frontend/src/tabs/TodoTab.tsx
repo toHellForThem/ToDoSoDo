@@ -27,6 +27,7 @@ import { useTranslation } from '../utils/LanguageContext';
 import { Todo } from '../utils/storage';
 import { useAppStore } from '../store/appStore';
 import { useLeftAction } from '../hooks/useLeftAction';
+import { selectVisibleTodos } from '../domain/visibility';
 
 
 interface TodoItemProps {
@@ -212,13 +213,13 @@ export const TodoTab = memo(() => {
     }
   }, [focusInputTrigger, isActive]);
 
-  const activeTodos = useMemo(() =>
-    todoList
-      .filter(item => item.type === 'todo' && !item.deleted)
-      .sort((a, b) => {
-        if (a.completed && !b.completed) return 1;
-        if (!a.completed && b.completed) return -1;
-        return 0;
+  const activeTodos = useMemo(
+    () =>
+      selectVisibleTodos(todoList, {
+        mainTab: 'todo',
+        rpgSubtab: 'dashboard',
+        recycle: false,
+        dayIndex: 0,
       }),
     [todoList]
   );

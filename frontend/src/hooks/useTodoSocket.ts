@@ -28,6 +28,7 @@ import {
   RpgHistoryItem,
 } from '../utils/storage';
 import { getLogicalDayStartMs } from '../utils/date';
+import { resetStaleTodos, resetTodoForNewDay } from '../domain/reset';
 import { normalizeMainTab, useAppStore } from '../store/appStore';
 
 interface UseTodoSocketOptions {
@@ -139,33 +140,21 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
       if (shouldReplaceTodos) {
         shouldReplaceTodos = false;
 
-        const processedTodos = serverTodos
-          .filter(sItem => !tombstoneIds.has(sItem.id))
-          .map(sItem => {
-            let processedItem = { ...sItem };
-            if (
-              currentSettings?.reset_enabled !== false &&
-              !processedItem.deleted &&
-              (processedItem.type === 'daily' || processedItem.type === 'habit') &&
-              processedItem.updatedAt < startOfToday
-            ) {
-              processedItem.progressNow = 0;
-              processedItem.completed = false;
-              processedItem.updatedAt = startOfToday;
-              resetTypes.add(processedItem.type);
-            }
-            return processedItem;
-          });
+        const visibleTodos = serverTodos.filter(
+          sItem => !tombstoneIds.has(sItem.id)
+        );
+        const resetResult =
+          currentSettings?.reset_enabled !== false
+            ? resetStaleTodos(visibleTodos, startOfToday)
+            : { todos: visibleTodos, resetTypes: new Set<string>() };
 
         startTransition(() => {
-          store.setTodoList(processedTodos);
+          store.setTodoList(resetResult.todos);
         });
 
-        if (resetTypes.size > 0) {
-          resetTypes.forEach(type => {
-            send(ClientEvent.CONFIRM_RESET, { type, updatedAt: startOfToday });
-          });
-        }
+        resetResult.resetTypes.forEach(type => {
+          send(ClientEvent.CONFIRM_RESET, { type, updatedAt: startOfToday });
+        });
         return;
       }
 
@@ -177,18 +166,14 @@ export const useTodoSocket = ({ onSessionCleared }: UseTodoSocketOptions = {}) =
           serverTodos.forEach(sItem => {
             if (tombstoneIds.has(sItem.id)) return;
 
-            let processedItem = { ...sItem };
+            const reset =
+              currentSettings?.reset_enabled !== false
+                ? resetTodoForNewDay(sItem, startOfToday)
+                : null;
+            const processedItem = reset ?? { ...sItem };
 
-            if (
-              currentSettings?.reset_enabled !== false &&
-              !processedItem.deleted &&
-              (processedItem.type === 'daily' || processedItem.type === 'habit') &&
-              processedItem.updatedAt < startOfToday
-            ) {
-              processedItem.progressNow = 0;
-              processedItem.completed = false;
-              processedItem.updatedAt = startOfToday;
-              resetTypes.add(processedItem.type);
+            if (reset) {
+              resetTypes.add(reset.type);
               hasChanges = true;
             }
 

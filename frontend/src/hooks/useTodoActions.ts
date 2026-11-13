@@ -15,7 +15,8 @@ import {
   getLogicalDateStr,
   getNextResetMs,
 } from '../utils/date';
-import { computeDailyStats } from '../utils/dailyStats';
+import { computeDailyStats } from '../domain/daily';
+import { resetTodosForNewDay } from '../domain/reset';
 import { useAppStore } from '../store/appStore';
 
 export const useTodoActions = () => {
@@ -64,15 +65,17 @@ export const useTodoActions = () => {
       const msUntilReset = Math.max(0, resetAt - Date.now());
 
       timerId = setTimeout(() => {
-        useAppStore.getState().setTodoList(prev =>
-          prev.map(item =>
-            (item.type === 'daily' || item.type === 'habit') && !item.deleted
-              ? { ...item, progressNow: 0, completed: false, updatedAt: resetAt }
-              : item
-          )
+        const store = useAppStore.getState();
+        const { todos, resetTypes, changed } = resetTodosForNewDay(
+          store.todoList,
+          resetAt
         );
-        send(ClientEvent.CONFIRM_RESET, { type: 'daily', updatedAt: resetAt });
-        send(ClientEvent.CONFIRM_RESET, { type: 'habit', updatedAt: resetAt });
+        if (changed) {
+          store.setTodoList(todos);
+          resetTypes.forEach(type => {
+            send(ClientEvent.CONFIRM_RESET, { type, updatedAt: resetAt });
+          });
+        }
 
         scheduleNextReset();
       }, msUntilReset);
