@@ -19,6 +19,7 @@ import { ClientEvent, ServerEvent } from '../../contract/events';
 import { send, setSyncMode, clear as clearSync } from '../../sync';
 import { useAppTheme, useStyles } from '../../theme/ThemeContext';
 import { useTranslation } from '../../utils/LanguageContext';
+import { translations } from '../../utils/translations';
 import { useAppStore, type MainTab } from '../../store/appStore';
 import { getStyles } from '../SettingsTab.styles';
 import { getStyles as getItemStyles } from '../../styles/item.styles';
@@ -136,8 +137,8 @@ export const useSettingsController = () => {
 
     Toast.show({
       type: 'success',
-      text1: 'Адрес сервера сохранен!',
-      text2: 'Переподключение к ' + formattedUrl,
+      text1: t('set_toast_server_saved'),
+      text2: t('set_toast_reconnect', { url: formattedUrl }),
       visibilityTime: 3000
     });
   };
@@ -149,8 +150,8 @@ export const useSettingsController = () => {
 
     Toast.show({
       type: 'success',
-      text1: 'Адрес сброшен по умолчанию!',
-      text2: 'Переподключение к ' + (process.env.EXPO_PUBLIC_SOCKET_URL || ''),
+      text1: t('set_toast_server_reset'),
+      text2: t('set_toast_reconnect', { url: process.env.EXPO_PUBLIC_SOCKET_URL || '' }),
       visibilityTime: 3000
     });
   };
@@ -199,7 +200,7 @@ export const useSettingsController = () => {
     Linking.openURL('https://www.donationalerts.com/r/tohellforthem').catch(() => {
       Toast.show({
         type: 'error',
-        text1: 'Не удалось открыть ссылку',
+        text1: t('set_toast_link_err'),
         visibilityTime: 2500
       });
     });
@@ -223,7 +224,7 @@ export const useSettingsController = () => {
     if (conflict) {
       Toast.show({
         type: 'error',
-        text1: settings?.language === 'ru' ? 'Комбинация уже занята' : 'Shortcut already in use',
+        text1: t('set_shortcut_conflict'),
         text2: formatShortcut(combination),
         visibilityTime: 2000
       });
@@ -238,7 +239,7 @@ export const useSettingsController = () => {
 
     Toast.show({
       type: 'success',
-      text1: settings?.language === 'ru' ? 'Горячая клавиша изменена!' : 'Shortcut changed!',
+      text1: t('set_shortcut_changed'),
       text2: formatShortcut(combination),
       visibilityTime: 2000
     });
@@ -259,7 +260,7 @@ export const useSettingsController = () => {
     setTimeout(() => {
       Toast.show({
         type: 'success',
-        text1: newLang === 'ru' ? 'Язык успешно изменен' : 'Language changed successfully',
+        text1: (translations[newLang] || translations.ru).set_toast_lang,
         visibilityTime: 2000
       });
     }, 100);

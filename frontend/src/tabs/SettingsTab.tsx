@@ -14,7 +14,6 @@ import { DailiesEditor } from './settings/DailiesEditor';
 export const SettingsTab = () => {
   const c = useSettingsController();
   const showMain = c.authState === '';
-  const isRu = c.settings?.language === 'ru';
 
   if (c.subView === 'dailies') {
     const dailies = (c.todoList || []).filter(item => item.type === 'daily' && !item.deleted);
@@ -23,7 +22,6 @@ export const SettingsTab = () => {
       <PaperProvider>
         <DailiesEditor
           dailies={dailies}
-          isRu={isRu}
           onBack={() => c.setSubView(null)}
           handleToggleDay={c.handleToggleDay}
           handleChangeProgressEnd={c.handleChangeProgressEnd}
@@ -144,8 +142,6 @@ export const SettingsTab = () => {
           )}
           {showMain && (
             <DailyConfigSection
-              settings={c.settings}
-              updateSetting={c.updateSetting}
               onEditDailies={() => c.setSubView('dailies')}
               styles={c.styles}
               theme={c.theme}

@@ -86,7 +86,7 @@ export const ShortcutsSection = ({
           updateSetting('shortcuts', DEFAULT_SHORTCUTS);
           Toast.show({
             type: 'success',
-            text1: settings?.language === 'ru' ? 'Шорткаты сброшены' : 'Shortcuts reset',
+            text1: t('set_shortcuts_reset_toast'),
             visibilityTime: 2000
           });
         }}
