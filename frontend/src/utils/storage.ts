@@ -4,6 +4,9 @@ import { createMMKV } from 'react-native-mmkv';
 
 export type TodoType = 'todo' | 'daily' | 'habit' | 'piggy_bank' | 'tv_show' | 'movie';
 
+/** Режим авторизации: локальный, авторизованный или промежуточный (пустой). */
+export type AuthMode = 'local' | 'auth' | '';
+
 export interface ShortcutSettings {
   rpg_tab: string;
   todo_tab: string;
@@ -244,5 +247,7 @@ export const AuthStorage = {
     core.remove('user_token');
     core.remove('user_settings');
     core.remove('server_url');
+    // Явный выход: tombstones прошлого пользователя не должны уйти под новым.
+    TombstoneStorage.clear();
   }
 };

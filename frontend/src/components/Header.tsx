@@ -15,7 +15,7 @@ import { getStyles } from './Header.styles';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { getLogicalDateStr } from '../utils/date';
 import { useTranslation } from '../utils/LanguageContext';
-import { RpgHistoryItem, UserSettings } from '../utils/storage';
+import { AuthMode, RpgHistoryItem, UserSettings } from '../utils/storage';
 
 
 export type ActiveViewType = 'list' | 'recycle' | 'settings';
@@ -35,8 +35,8 @@ interface HeaderProps {
   activeView: ActiveViewType;
   setActiveView: Dispatch<SetStateAction<string>>;
   setAuthState: (state: string) => void;
-  setAuthMode: (mode: string) => void;
-  authMode: string;
+  setAuthMode: (mode: AuthMode) => void;
+  authMode: AuthMode;
   onMoodChange: (mood: number) => void;
   rpgHistory: RpgHistoryItem[];
   settings: UserSettings;

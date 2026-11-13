@@ -7,7 +7,8 @@ import {
   Todo,
   RpgHistoryItem,
   UserSettings,
-  TodoType
+  TodoType,
+  AuthMode
 } from '../utils/storage';
 import { socket } from '../utils/socket';
 import { request } from '../utils/protocol';
@@ -22,7 +23,7 @@ import { computeDailyStats } from '../utils/dailyStats';
 export const useTodoActions = (
   mainTab: string,
   settings: UserSettings,
-  authMode?: string
+  authMode?: AuthMode
 ) => {
   const [todoList, setTodoList] = useState(() => {
     const local = TodoStorage.getAll();
@@ -70,10 +71,14 @@ export const useTodoActions = (
     rpgHistoryRef.current = rpgHistory;
   }, [rpgHistory]);
 
+  const resetHistorySync = useCallback(() => {
+    lastHistorySyncRef.current = null;
+  }, []);
+
   useEffect(() => {
     // Смена аккаунта/разлогин: при следующем входе историю нужно отправить заново.
-    lastHistorySyncRef.current = null;
-  }, [authMode]);
+    resetHistorySync();
+  }, [authMode, resetHistorySync]);
 
   const setRpgHistoryWrapper = useCallback((value: SetStateAction<RpgHistoryItem[]>) => {
     isHistoryLoadedRef.current = true;
@@ -408,5 +413,6 @@ export const useTodoActions = (
     rpgHistory,
     setRpgHistory: setRpgHistoryWrapper,
     handleMoodChange,
+    resetHistorySync,
   };
 };

@@ -26,6 +26,7 @@ import {
   ShortcutSettings,
   RpgHistoryItem,
   Todo,
+  AuthMode,
   DEFAULT_SHORTCUTS,
   getDefaultSettings
 } from '../utils/storage';
@@ -36,8 +37,8 @@ import { useTranslation } from '../utils/LanguageContext';
 
 
 interface SettingsTabProps {
-  authMode: string;
-  setAuthMode: (mode: string) => void;
+  authMode: AuthMode;
+  setAuthMode: (mode: AuthMode) => void;
   authState: string;
   setAuthState: (state: string) => void;
   settings: UserSettings;

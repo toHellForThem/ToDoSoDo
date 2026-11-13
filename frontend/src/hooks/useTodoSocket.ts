@@ -9,19 +9,21 @@ import {
   TombstoneStorage,
   UserSettings,
   Todo,
-  RpgHistoryItem
+  RpgHistoryItem,
+  AuthMode
 } from '../utils/storage';
 import { getLogicalDayStartMs } from '../utils/date';
 
 
 interface UseTodoSocketProps {
   setTodoList: Dispatch<SetStateAction<Todo[]>>;
-  setAuthMode: (mode: string) => void;
+  setAuthMode: (mode: AuthMode) => void;
   setAuthState: (state: string) => void;
   setRpgHistory: Dispatch<SetStateAction<RpgHistoryItem[]>>;
   setSettings: (settings: UserSettings) => void;
   settings: UserSettings;
   setMainTab?: (tab: string) => void;
+  onSessionCleared?: () => void;
 }
 
 export const useTodoSocket = ({
@@ -31,7 +33,8 @@ export const useTodoSocket = ({
   setRpgHistory,
   setSettings,
   settings,
-  setMainTab
+  setMainTab,
+  onSessionCleared
 }: UseTodoSocketProps) => {
   useEffect(() => {
     let shouldReplaceTodos = false;
@@ -236,6 +239,7 @@ export const useTodoSocket = ({
         // Истёкшая сессия не должна стирать локальные задачи и историю:
         // пользователь продолжает работать в local-режиме.
         AuthStorage.clearSession();
+        onSessionCleared?.();
         socket.auth = {};
         setAuthMode('local');
         setAuthState('login');
