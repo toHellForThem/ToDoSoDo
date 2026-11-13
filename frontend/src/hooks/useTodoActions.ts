@@ -19,7 +19,11 @@ import {
 import { computeDailyStats } from '../utils/dailyStats';
 
 
-export const useTodoActions = (mainTab: string, settings: UserSettings) => {
+export const useTodoActions = (
+  mainTab: string,
+  settings: UserSettings,
+  authMode?: string
+) => {
   const [todoList, setTodoList] = useState(() => {
     const local = TodoStorage.getAll();
     const list = Array.isArray(local) ? local : [];
@@ -65,6 +69,11 @@ export const useTodoActions = (mainTab: string, settings: UserSettings) => {
   useEffect(() => {
     rpgHistoryRef.current = rpgHistory;
   }, [rpgHistory]);
+
+  useEffect(() => {
+    // Смена аккаунта/разлогин: при следующем входе историю нужно отправить заново.
+    lastHistorySyncRef.current = null;
+  }, [authMode]);
 
   const setRpgHistoryWrapper = useCallback((value: SetStateAction<RpgHistoryItem[]>) => {
     isHistoryLoadedRef.current = true;

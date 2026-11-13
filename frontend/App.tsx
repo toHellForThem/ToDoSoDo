@@ -224,7 +224,7 @@ export default function App() {
     setRpgHistory,
     handleMoodChange,
     editTask,
-  } = useTodoActions(mainTab, settings);
+  } = useTodoActions(mainTab, settings, authMode);
 
   const handleDeleteTodo = useCallback((id: string) => {
     if (settings.soft_delete) {
