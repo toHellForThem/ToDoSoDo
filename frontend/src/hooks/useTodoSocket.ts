@@ -1,8 +1,16 @@
-import { useEffect, startTransition, Dispatch, SetStateAction } from 'react';
+import { useEffect, useRef, startTransition, Dispatch, SetStateAction } from 'react';
 import Toast from 'react-native-toast-message';
 import { socket } from '../utils/socket';
-import { emit, on } from '../contract/socket';
+import { on } from '../contract/socket';
 import { ClientEvent, ServerEvent } from '../contract/events';
+import {
+  send,
+  flush,
+  handleAck,
+  handleError,
+  onReconnect,
+  setSyncMode,
+} from '../sync';
 import type {
   AckPayload,
   AckStatus,
@@ -43,13 +51,21 @@ export const useTodoSocket = ({
   setMainTab,
   onSessionCleared
 }: UseTodoSocketProps) => {
+  // Настройки читаются обработчиками через ref, чтобы подписки не
+  // пересоздавались при каждом изменении settings.
+  const settingsRef = useRef(settings);
+  const shouldReplaceTodosRef = useRef(false);
+
   useEffect(() => {
-    let shouldReplaceTodos = false;
-    let shouldReplaceHistory = false;
+    settingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
     const unsubscribers: Array<() => void> = [];
 
     socket.on('connect', () => {
       console.log('Connected to Server!');
+      onReconnect();
     });
 
     unsubscribers.push(on(ServerEvent.LOGIN_SUCCESS, (data) => {
@@ -57,24 +73,25 @@ export const useTodoSocket = ({
 
       socket.auth = { username, token };
 
-      shouldReplaceTodos = true;
-      shouldReplaceHistory = true;
+      shouldReplaceTodosRef.current = true;
 
       const localTodos = TodoStorage.getAll();
       const localHistory = RpgStorage.getHistory();
-
-      // Сначала досылаем жёсткие удаления, накопленные офлайн.
-      TombstoneStorage.getAll().forEach(tombstone => {
-        emit(ClientEvent.DELETE_TODO, tombstone.id);
-      });
-
-      emit(ClientEvent.BULK_SYNC_TODOS, localTodos);
-      emit(ClientEvent.BULK_SYNC_DAILY_HISTORY, localHistory);
 
       setAuthMode('auth');
       setAuthState('');
       AuthStorage.setUsername(username);
       AuthStorage.setToken(token);
+      setSyncMode('auth');
+
+      // Сначала досылаем жёсткие удаления, накопленные офлайн.
+      TombstoneStorage.getAll().forEach(tombstone => {
+        send(ClientEvent.DELETE_TODO, tombstone.id);
+      });
+
+      send(ClientEvent.BULK_SYNC_TODOS, localTodos);
+      send(ClientEvent.BULK_SYNC_DAILY_HISTORY, localHistory);
+      flush();
 
       const localSettings = AuthStorage.getSettings();
       const localUpdatedAt = localSettings.updatedAt || 0;
@@ -83,7 +100,7 @@ export const useTodoSocket = ({
       let finalSettings;
       if (localUpdatedAt > serverUpdatedAt) {
         finalSettings = localSettings;
-        emit(ClientEvent.UPDATE_SETTINGS, finalSettings);
+        send(ClientEvent.UPDATE_SETTINGS, finalSettings);
       } else {
         finalSettings = { ...localSettings, ...serverSettings };
         // Если на сервере настройки ещё не кастомизировали (updatedAt = 0),
@@ -98,7 +115,7 @@ export const useTodoSocket = ({
             timezone: localSettings.timezone,
             updatedAt: Date.now()
           };
-          emit(ClientEvent.UPDATE_SETTINGS, finalSettings);
+          send(ClientEvent.UPDATE_SETTINGS, finalSettings);
         }
       }
 
@@ -110,9 +127,10 @@ export const useTodoSocket = ({
     }));
 
     unsubscribers.push(on(ServerEvent.ALL_TODOS, (serverTodos) => {
+      const currentSettings = settingsRef.current;
       const startOfToday = getLogicalDayStartMs(
-        settings?.reset_time,
-        settings?.timezone
+        currentSettings?.reset_time,
+        currentSettings?.timezone
       );
       const resetTypes = new Set<string>();
 
@@ -123,21 +141,21 @@ export const useTodoSocket = ({
       const serverIds = new Set(serverTodos.map(item => item.id));
       tombstones.forEach(tombstone => {
         if (serverIds.has(tombstone.id)) {
-          emit(ClientEvent.DELETE_TODO, tombstone.id);
+          send(ClientEvent.DELETE_TODO, tombstone.id);
         } else {
           TombstoneStorage.remove(tombstone.id);
         }
       });
 
-      if (shouldReplaceTodos) {
-        shouldReplaceTodos = false;
+      if (shouldReplaceTodosRef.current) {
+        shouldReplaceTodosRef.current = false;
 
         const processedTodos = serverTodos
           .filter(sItem => !tombstoneIds.has(sItem.id))
           .map(sItem => {
             let processedItem = { ...sItem };
             if (
-              settings?.reset_enabled !== false &&
+              currentSettings?.reset_enabled !== false &&
               !processedItem.deleted &&
               (processedItem.type === 'daily' || processedItem.type === 'habit') &&
               processedItem.updatedAt < startOfToday
@@ -156,7 +174,7 @@ export const useTodoSocket = ({
 
         if (resetTypes.size > 0) {
           resetTypes.forEach(type => {
-            emit(ClientEvent.CONFIRM_RESET, { type, updatedAt: startOfToday });
+            send(ClientEvent.CONFIRM_RESET, { type, updatedAt: startOfToday });
           });
         }
         return;
@@ -173,7 +191,7 @@ export const useTodoSocket = ({
             let processedItem = { ...sItem };
 
             if (
-              settings?.reset_enabled !== false &&
+              currentSettings?.reset_enabled !== false &&
               !processedItem.deleted &&
               (processedItem.type === 'daily' || processedItem.type === 'habit') &&
               processedItem.updatedAt < startOfToday
@@ -195,7 +213,7 @@ export const useTodoSocket = ({
                 merged[localIndex] = processedItem;
                 hasChanges = true;
               } else if ((lItem.updatedAt || 0) > processedItem.updatedAt) {
-                emit(ClientEvent.SYNC_TODO, lItem);
+                send(ClientEvent.SYNC_TODO, lItem);
               }
             }
           });
@@ -205,7 +223,7 @@ export const useTodoSocket = ({
 
       if (resetTypes.size > 0) {
         resetTypes.forEach(type => {
-          emit(ClientEvent.CONFIRM_RESET, { type, updatedAt: startOfToday });
+          send(ClientEvent.CONFIRM_RESET, { type, updatedAt: startOfToday });
         });
       }
     }));
@@ -249,6 +267,7 @@ export const useTodoSocket = ({
         AuthStorage.clearSession();
         onSessionCleared?.();
         socket.auth = {};
+        setSyncMode('local');
         setAuthMode('local');
         setAuthState('login');
         Toast.show({
@@ -263,8 +282,6 @@ export const useTodoSocket = ({
     unsubscribers.push(on(ServerEvent.MONTH_HISTORY, (data) => {
       startTransition(() => {
         if (data && data.history) {
-          shouldReplaceHistory = false;
-
           setRpgHistory(prev => {
             const merged = [...prev];
             data.history.forEach(srvLog => {
@@ -306,6 +323,7 @@ export const useTodoSocket = ({
     }));
 
     unsubscribers.push(on(ServerEvent.ACK, (ack: AckPayload) => {
+      handleAck(ack);
       const { event, status, data } = ack;
 
       if (status === 'conflict') {
@@ -419,6 +437,7 @@ export const useTodoSocket = ({
     }));
 
     unsubscribers.push(on(ServerEvent.ERROR, (error: ServerErrorPayload) => {
+      handleError(error);
       if (error.code === 'unauthorized') {
         return;
       }
@@ -434,5 +453,5 @@ export const useTodoSocket = ({
       socket.off('connect');
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [setTodoList, setAuthMode, setAuthState, setRpgHistory, setSettings, settings, setMainTab]);
+  }, [setTodoList, setAuthMode, setAuthState, setRpgHistory, setSettings, setMainTab, onSessionCleared]);
 };

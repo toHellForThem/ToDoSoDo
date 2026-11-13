@@ -139,6 +139,46 @@ export const RpgStorage = {
 };
 
 /**
+ * Запись очереди синхронизации: операция, ожидающая подтверждения сервера.
+ * `sent` — операция уже отправлена, но ack ещё не получен; `batchId` —
+ * идентификатор bulk-запроса, которым была отправлена группа операций.
+ */
+export interface OutboxRecord {
+  requestId: string;
+  event: string;
+  payload: unknown;
+  createdAt: number;
+  attempts: number;
+  sent: boolean;
+  batchId?: string;
+}
+
+/**
+ * Outbox переживает перезапуск приложения: операции, сделанные офлайн или
+ * в local-режиме, досылаются на сервер после reconnect/логина.
+ */
+export const OutboxStorage = {
+  getAll: (): OutboxRecord[] => {
+    const data = core.get('sync_outbox');
+    if (!data) return [];
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  },
+  saveAll: (items: OutboxRecord[]): void => {
+    try {
+      core.set('sync_outbox', JSON.stringify(items));
+    } catch (error) {
+      console.warn('Failed to persist sync outbox:', error);
+    }
+  },
+  clear: (): void => core.remove('sync_outbox'),
+};
+
+/**
  * Tombstones жёстких удалений.  Хранятся отдельно от списка задач, чтобы
  * удаление не терялось, пока сервер недоступен, и досылалось при reconnect.
  */

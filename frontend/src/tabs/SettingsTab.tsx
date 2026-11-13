@@ -33,8 +33,9 @@ import {
   getDefaultSettings
 } from '../utils/storage';
 import { socket, updateSocketUrlAndReconnect } from '../utils/socket';
-import { emit, emitRaw, on } from '../contract/socket';
+import { emitRaw, on } from '../contract/socket';
 import { ClientEvent, ServerEvent } from '../contract/events';
+import { send, setSyncMode, clear as clearSync } from '../sync';
 import { useAppTheme, useStyles } from '../theme/ThemeContext';
 import { useTranslation } from '../utils/LanguageContext';
 
@@ -330,6 +331,8 @@ export const SettingsTab = ({
     emitRaw(ClientEvent.LOGOUT, undefined);
     socket.auth = {};
     socket.disconnect();
+    setSyncMode('local');
+    clearSync();
 
     AuthStorage.logout();
     setAuthMode('local');
@@ -357,9 +360,8 @@ export const SettingsTab = ({
     } as UserSettings;
     setSettings(updated);
     AuthStorage.setSettings(updated);
-    if (authMode === 'auth') {
-      emit(ClientEvent.UPDATE_SETTINGS, updated);
-    }
+    // В local-режиме настройки копятся в outbox и уходят при логине.
+    send(ClientEvent.UPDATE_SETTINGS, updated);
     if (key === 'main_page' && setMainTab) {
       setMainTab(value as string);
     }

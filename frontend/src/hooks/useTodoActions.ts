@@ -10,7 +10,7 @@ import {
   TodoType,
   AuthMode
 } from '../utils/storage';
-import { emit } from '../contract/socket';
+import { send } from '../sync';
 import { ClientEvent } from '../contract/events';
 import {
   getLogicalDateStr,
@@ -113,8 +113,8 @@ export const useTodoActions = (
             ? { ...item, progressNow: 0, completed: false, updatedAt: resetAt }
             : item
         ));
-        emit(ClientEvent.CONFIRM_RESET, { type: 'daily', updatedAt: resetAt });
-        emit(ClientEvent.CONFIRM_RESET, { type: 'habit', updatedAt: resetAt });
+        send(ClientEvent.CONFIRM_RESET, { type: 'daily', updatedAt: resetAt });
+        send(ClientEvent.CONFIRM_RESET, { type: 'habit', updatedAt: resetAt });
 
         scheduleNextReset();
       }, msUntilReset);
@@ -170,7 +170,7 @@ export const useTodoActions = (
       return [...prev, updatedEntry];
     });
 
-    emit(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
+    send(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
   }, [todoList, settings?.reset_time, settings?.timezone]);
 
   const addTask = useCallback((
@@ -199,7 +199,7 @@ export const useTodoActions = (
         days: days,
       };
       setTodoList(prev => [newTodo, ...prev]);
-      emit(ClientEvent.SYNC_TODO, newTodo);
+      send(ClientEvent.SYNC_TODO, newTodo);
     }
   }, [mainTab]);
 
@@ -215,7 +215,7 @@ export const useTodoActions = (
       });
     });
     if (updated) {
-      emit(ClientEvent.SYNC_TODO, updated);
+      send(ClientEvent.SYNC_TODO, updated);
     }
   }, []);
 
@@ -337,7 +337,7 @@ export const useTodoActions = (
       });
     });
     if (updated) {
-      emit(ClientEvent.SYNC_TODO, updated);
+      send(ClientEvent.SYNC_TODO, updated);
     }
   }, []);
 
@@ -346,7 +346,7 @@ export const useTodoActions = (
     // Жёсткое удаление фиксируем локально, чтобы офлайн-удаление
     // не потерялось и дослалось на сервер при reconnect.
     TombstoneStorage.add(id);
-    emit(ClientEvent.DELETE_TODO, id);
+    send(ClientEvent.DELETE_TODO, id);
   }, []);
 
   const editTask = useCallback((id: string, updatedFields: Partial<Todo>) => {
@@ -367,7 +367,7 @@ export const useTodoActions = (
       });
     });
     if (updated) {
-      emit(ClientEvent.SYNC_TODO, updated);
+      send(ClientEvent.SYNC_TODO, updated);
     }
   }, []);
 
@@ -397,7 +397,7 @@ export const useTodoActions = (
         newHistory = [...prev, updatedEntry];
       }
 
-      emit(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
+      send(ClientEvent.SYNC_DAILY_HISTORY, updatedEntry);
       return newHistory;
     });
   }, [todoList, settings]);
