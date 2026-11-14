@@ -149,6 +149,9 @@ jobs:
       - name: Run CSP regression
         run: npm run e2e:csp
 
+      - name: Run Tauri parity
+        run: npm run e2e:tauri
+
       - name: Upload E2E report
         uses: actions/upload-artifact@v4
         if: always()
