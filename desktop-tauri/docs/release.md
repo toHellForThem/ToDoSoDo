@@ -27,10 +27,15 @@ npm run version:check
 ```
 
 Скрипт [`check-versions.mjs`](../scripts/check-versions.mjs) падает, если
-версии разошлись или если `identifier` Tauri совпал с Electron
-(`com.todosodo.desktop`). Одинаковый identifier означает, что NSIS
-перезапишет Electron-установку и откат станет невозможен; у Tauri —
+версии разошлись, если `identifier` Tauri совпал с Electron
+(`com.todosodo.desktop`) или если `productName` Tauri не совпадает с Electron
+(от него зависят релизные имена артефактов). Одинаковый identifier означает,
+что NSIS перезапишет Electron-установку и откат станет невозможен; у Tauri —
 `com.todosodo.desktop.tauri`.
+
+Платформенные `tauri.windows.conf.json` и `tauri.linux.conf.json` не должны
+переопределять `version`, `productName` или `identifier`: они сливаются поверх
+базового конфига и незаметно ломают проверки выше.
 
 ## Артефакты
 
@@ -89,6 +94,10 @@ npm run release
 
 ## Linux
 
+Минимальные версии дистрибутивов — **Ubuntu 22.04+** и **Debian 12+**: в них
+есть `libwebkit2gtk-4.1-0`, от которого зависит deb-пакет. В Debian 11
+доступен только WebKitGTK 4.0.
+
 Зависимости сборки — как в
 [`docker/linux-verify.Dockerfile`](../docker/linux-verify.Dockerfile):
 `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `librsvg2-dev`,
@@ -139,7 +148,9 @@ docker run --rm --privileged --network host \
 - [ ] Календарь, шорткаты `Ctrl+1/2/3`, свайпы мышью и тач-драг.
 - [ ] Donate-ссылка открывается в системном браузере (opener).
 - [ ] `localStorage` переживает перезапуск и установку поверх старой версии.
-- [ ] Удаление приложения вычищает профиль WebView2.
+- [ ] Удаление приложения: проверить, вычищается ли профиль WebView2 из
+      `%LOCALAPPDATA%`. В `installMode: currentUser` данные могут остаться —
+      тогда зафиксировать как известное поведение инсталлятора Tauri.
 - [ ] Electron-версия ставится рядом и запускается (разные identifier).
 
 ## Откат на Electron
