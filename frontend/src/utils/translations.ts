@@ -158,6 +158,17 @@ const ruDict = {
   set_toast_server_reset: 'Адрес сброшен по умолчанию!',
   set_toast_reconnect: 'Переподключение к {url}',
   set_toast_link_err: 'Не удалось открыть ссылку',
+  set_data_title: 'Перенос данных',
+  set_data_desc:
+    'Экспортируйте данные из старой версии и импортируйте их в новую. Токен входа не переносится — после импорта войдите заново.',
+  set_data_export: 'Экспорт данных',
+  set_data_import: 'Импорт данных',
+  set_data_exported: 'Файл с данными сохранён',
+  set_data_export_failed: 'Не удалось экспортировать данные',
+  set_data_imported:
+    'Импортировано ключей: {count}. Приложение будет перезагружено',
+  set_data_import_failed:
+    'Не удалось импортировать данные: файл повреждён или не подходит',
   desktop_rpg_title: '⚔️ РПГ-режим',
   desktop_todo_title: '📝 Список дел',
   desktop_daily_title: '⚡ Ежедневные',
@@ -326,6 +337,16 @@ export const translations: Record<string, TranslationDict> = {
     set_toast_server_reset: 'Address reset to default!',
     set_toast_reconnect: 'Reconnecting to {url}',
     set_toast_link_err: 'Failed to open link',
+    set_data_title: 'Data migration',
+    set_data_desc:
+      'Export data from the old version and import it into the new one. The login token is not transferred — sign in again after importing.',
+    set_data_export: 'Export data',
+    set_data_import: 'Import data',
+    set_data_exported: 'Data file saved',
+    set_data_export_failed: 'Failed to export data',
+    set_data_imported: 'Imported keys: {count}. The app will reload',
+    set_data_import_failed:
+      'Failed to import data: the file is corrupted or unsupported',
     desktop_rpg_title: '⚔️ RPG Mode',
     desktop_todo_title: '📝 To-Do List',
     desktop_daily_title: '⚡ Daily Tasks',

@@ -15,6 +15,7 @@ import {
   DailyConfigSection,
 } from './settings/DailyConfigSection';
 import { ShortcutsSection } from './settings/ShortcutsSection';
+import { DataMigrationSection } from './settings/DataMigrationSection';
 import { AboutSection } from './settings/AboutSection';
 import { DailiesEditor } from './settings/DailiesEditor';
 import { isWeb } from '../platform';
@@ -171,6 +172,15 @@ export const SettingsTab = () => {
               recordingKey={c.recordingKey}
               setRecordingKey={c.setRecordingKey}
               updateSetting={c.updateSetting}
+              styles={c.styles}
+              theme={c.theme}
+              t={c.t}
+            />
+          )}
+          {showMain && isWeb && (
+            <DataMigrationSection
+              handleExportData={c.handleExportData}
+              handleImportData={c.handleImportData}
               styles={c.styles}
               theme={c.theme}
               t={c.t}

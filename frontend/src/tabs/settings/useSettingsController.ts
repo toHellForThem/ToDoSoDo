@@ -20,6 +20,11 @@ import { send, setSyncMode, clear as clearSync } from '../../sync';
 import { useAppTheme, useStyles } from '../../theme/ThemeContext';
 import { useTranslation } from '../../utils/LanguageContext';
 import { isAndroid, openExternalUrl } from '../../platform';
+import {
+  downloadLocalData,
+  importLocalData,
+  pickLocalDataFile,
+} from '../../utils/dataTransfer';
 import { translations } from '../../utils/translations';
 import { useAppStore, type MainTab } from '../../store/appStore';
 import { getStyles } from '../SettingsTab.styles';
@@ -344,6 +349,44 @@ export const useSettingsController = () => {
     }
   };
 
+  const handleExportData = () => {
+    try {
+      downloadLocalData();
+      Toast.show({
+        type: 'success',
+        text1: t('set_data_exported'),
+        visibilityTime: 3000,
+      });
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: t('set_data_export_failed'),
+        visibilityTime: 3000,
+      });
+    }
+  };
+
+  const handleImportData = async () => {
+    try {
+      const raw = await pickLocalDataFile();
+      if (!raw) return;
+      const { imported } = importLocalData(raw);
+      Toast.show({
+        type: 'success',
+        text1: t('set_data_imported', { count: imported.length }),
+        visibilityTime: 3000,
+      });
+      // Перезагрузка нужна, чтобы приложение перечитало импортированные данные.
+      setTimeout(() => window.location.reload(), 800);
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: t('set_data_import_failed'),
+        visibilityTime: 4000,
+      });
+    }
+  };
+
   return {
     authMode,
     authState,
@@ -383,5 +426,7 @@ export const useSettingsController = () => {
     handleToggleDay,
     handleChangeProgressEnd,
     handleDeleteDaily,
+    handleExportData,
+    handleImportData,
   };
 };
