@@ -26,14 +26,19 @@ Electron-оболочка.
 ## Сборка
 
 ```sh
-# 1. фронтенд в frontend/dist (адрес сервера можно переопределить)
 cd desktop-tauri
-TAURI_SOCKET_URL=http://192.168.1.50:8000 npm run frontend:build
-
-# 2. оболочка
 npm install
-npm run dev      # dev-сервер Expo на :8081
+npm run dev      # Expo на :8081 (beforeDevCommand)
 npm run build    # NSIS (Windows) / AppImage + deb (Linux)
+```
+
+`beforeBuildCommand` сам пересобирает `frontend/dist` перед упаковкой, поэтому
+старый бандл в релиз не попадёт. Адрес API вшивается при сборке фронта
+(`TAURI_SOCKET_URL`, по умолчанию `http://127.0.0.1:8000`); отдельно
+пересобрать бандл с другим адресом:
+
+```sh
+TAURI_SOCKET_URL=http://192.168.1.50:8000 npm run frontend:build
 ```
 
 Сырой `cargo build --release` без CLI собирается только с фичей

@@ -5,7 +5,9 @@
   "identifier": "com.todosodo.desktop",
   "build": {
     "frontendDist": "../../frontend/dist",
-    "devUrl": "http://localhost:8081"
+    "devUrl": "http://localhost:8081",
+    "beforeDevCommand": "npm --prefix ../frontend run web",
+    "beforeBuildCommand": "npm run frontend:build"
   },
   "app": {
     "withGlobalTauri": false,
