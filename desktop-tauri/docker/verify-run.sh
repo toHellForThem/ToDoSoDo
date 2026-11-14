@@ -16,7 +16,7 @@
 #
 # Артефакты в /out:
 #   screenshot.png      — окно приложения после загрузки
-#   screenshot-typed.png— после ввода задачи (PROBE_INPUT=1)
+#   task-added.png      — после ввода задачи (PROBE_INPUT=1)
 #   sockets.txt         — установленные соединения к :8000 из webview
 #   app.log             — stdout/stderr приложения
 
@@ -49,7 +49,7 @@ if [ "${PROBE_INPUT:-0}" = "1" ]; then
   xdotool type --delay 40 "spike task"
   xdotool key Return
   sleep 2
-  import -window root "$OUT_DIR/screenshot-typed.png"
+  import -window root "$OUT_DIR/task-added.png"
 fi
 
 kill "$APP_PID" 2>/dev/null || true
