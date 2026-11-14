@@ -24,20 +24,31 @@ const csp: string = tauriConfig.app.security.csp;
 interface CspProbe {
   sheets: number;
   globalStyle: boolean;
-  userSelect: string;
+  bodyUserSelect: string;
+  inputUserSelect: string;
   fonts: number;
   iconFont: boolean;
   violations: string[];
 }
 
 test.describe('Tauri CSP', () => {
-  test('конфиг оставляет инлайновые стили для react-native-web', () => {
+  // TODO: перейти на строгий CSP с хешами вместо 'unsafe-inline' —
+  // см. desktop-tauri/docs/csp.md и завести отдельный issue.
+  test('конфиг сохраняет компромисс: unsafe-inline для rn-web', () => {
     expect(tauriConfig.app.security.dangerousDisableAssetCspModification).toBe(
       true,
     );
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     expect(csp).toContain("font-src 'self' data:");
     expect(csp).toContain("img-src 'self' data: blob:");
+  });
+
+  test('сборка не содержит meta CSP, сужающий заголовок', () => {
+    const html = readFileSync(
+      join(__dirname, '..', 'dist', 'index.html'),
+      'utf8',
+    );
+    expect(html.toLowerCase()).not.toContain('content-security-policy');
   });
 
   test('приложение стартует на tauri.localhost без нарушений CSP', async ({
@@ -64,7 +75,8 @@ test.describe('Tauri CSP', () => {
     });
 
     const response = await page.goto('/');
-    expect(response?.headers()['content-security-policy']).toBe(csp);
+    expect(response).not.toBeNull();
+    expect(response!.headers()['content-security-policy']).toBe(csp);
 
     // `todo-input` есть в обоих layout'ах — ждём, что приложение отрисовалось.
     await expect(page.getByTestId('todo-input')).toBeVisible();
@@ -72,6 +84,7 @@ test.describe('Tauri CSP', () => {
     const probe = await page.evaluate(async (): Promise<CspProbe> => {
       await document.fonts.ready;
       const target = window as unknown as { __cspViolations?: string[] };
+      const input = document.querySelector('[data-testid="todo-input"]');
       let fonts = 0;
       document.fonts.forEach(() => {
         fonts += 1;
@@ -81,7 +94,8 @@ test.describe('Tauri CSP', () => {
         globalStyle: Boolean(
           document.getElementById('todosodo-web-global-styles'),
         ),
-        userSelect: getComputedStyle(document.body).userSelect,
+        bodyUserSelect: getComputedStyle(document.body).userSelect,
+        inputUserSelect: input ? getComputedStyle(input).userSelect : '',
         fonts,
         iconFont: document.fonts.check('16px "MaterialCommunityIcons"'),
         violations: target.__cspViolations ?? [],
@@ -91,7 +105,9 @@ test.describe('Tauri CSP', () => {
     // Инлайновые стили rn-web и глобальный stylesheet применились.
     expect(probe.globalStyle).toBe(true);
     expect(probe.sheets).toBeGreaterThan(0);
-    expect(probe.userSelect).toBe('none');
+    expect(probe.bodyUserSelect).toBe('none');
+    // Инпуты — исключение из глобального `user-select: none`.
+    expect(probe.inputUserSelect).toBe('text');
     // Шрифты иконок загрузились, а не отрисовались квадратами.
     expect(probe.fonts).toBeGreaterThan(0);
     expect(probe.iconFont).toBe(true);

@@ -20,7 +20,14 @@ const configPath = join(
   'src-tauri',
   'tauri.conf.json',
 );
-const tauriConfig = JSON.parse(readFileSync(configPath, 'utf8'));
+let tauriConfig;
+try {
+  tauriConfig = JSON.parse(readFileSync(configPath, 'utf8'));
+} catch (error) {
+  throw new Error(
+    `Не удалось прочитать CSP из ${configPath}: ${error.message}`,
+  );
+}
 const csp = tauriConfig?.app?.security?.csp;
 
 if (!csp) {

@@ -53,7 +53,15 @@ export const createStaticServer = ({ root, port, headers = {} }) => {
       'Cache-Control': 'no-store',
       ...headers,
     });
-    createReadStream(filePath).pipe(res);
+
+    const stream = createReadStream(filePath);
+    stream.on('error', error => {
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      }
+      res.end(`Failed to read ${filePath}: ${error.message}`);
+    });
+    stream.pipe(res);
   }).listen(port, '127.0.0.1', () => {
     process.stdout.write(`Static server: http://127.0.0.1:${port}\n`);
   });
