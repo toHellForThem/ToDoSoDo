@@ -71,6 +71,7 @@ webview достучался до бэкенда на `127.0.0.1:8000`.
   `dangerousDisableAssetCspModification`. Без него Tauri подменяет
   `'unsafe-inline'` в `style-src` на nonce, и `react-native-web` не может
   вставить свою таблицу стилей — приложение рендерится без CSS и шрифтов.
+  Подробности и регресс-тест — в [`docs/csp.md`](docs/csp.md).
 - **Шрифты** иконок лежат в `dist/assets/node_modules/...` и отдаются
   asset-протоколом по реальным путям: `copy-fonts.js` и переписывание `.ttf`
   из Electron-оболочки не нужны.
