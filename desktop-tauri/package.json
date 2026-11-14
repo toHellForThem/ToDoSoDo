@@ -1,0 +1,19 @@
+{
+  "name": "todosodo-desktop-tauri",
+  "private": true,
+  "version": "1.0.2",
+  "description": "ToDoSoDo desktop client (Tauri v2 spike)",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:debug": "tauri build --debug --no-bundle",
+    "info": "tauri info",
+    "icons": "tauri icon build/icon.png",
+    "frontend:build": "node scripts/build-frontend.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4"
+  }
+}
