@@ -8,7 +8,7 @@ const CSP_PORT = 8082;
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'csp.spec.ts',
+  testMatch: ['csp.spec.ts', 'tauri-parity.spec.ts'],
   timeout: 60_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
