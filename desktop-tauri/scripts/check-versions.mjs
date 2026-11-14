@@ -50,6 +50,7 @@ const versionSources = [
 const tauriConfig = readJson('desktop-tauri/src-tauri/tauri.conf.json');
 const electronConfig = readJson('desktop/package.json');
 const electronAppId = electronConfig.build?.appId;
+const electronProductName = electronConfig.build?.productName;
 
 const errors = [];
 
@@ -79,9 +80,46 @@ if (!tauriIdentifier) {
   );
 }
 
+// productName попадает в имена артефактов (`rename-artifacts.mjs`), поэтому
+// он должен совпадать с Electron: иначе релизные имена разъедутся.
+const tauriProductName = tauriConfig.productName;
+if (!tauriProductName) {
+  console.error('  FAIL desktop-tauri/src-tauri/tauri.conf.json: пустой productName');
+  errors.push('productName');
+} else if (!electronProductName) {
+  console.error('  FAIL desktop/package.json: не найден build.productName');
+  errors.push('productName');
+} else if (tauriProductName !== electronProductName) {
+  console.error(
+    `  FAIL productName Tauri (${tauriProductName}) не совпадает с Electron ` +
+      `(${electronProductName})`,
+  );
+  errors.push('productName');
+} else {
+  console.log(`  ok   productName: ${tauriProductName}`);
+}
+
+// Платформенные конфиги сливаются поверх базового. Version, productName и
+// identifier в них переопределять нельзя: релизные имена и установку рядом
+// с Electron они меняют незаметно для таблицы версий выше.
+const platformConfigs = [
+  'desktop-tauri/src-tauri/tauri.windows.conf.json',
+  'desktop-tauri/src-tauri/tauri.linux.conf.json',
+];
+const reservedKeys = ['version', 'productName', 'identifier'];
+for (const path of platformConfigs) {
+  const platformConfig = readJson(path);
+  for (const key of reservedKeys) {
+    if (key in platformConfig) {
+      console.error(`  FAIL ${path}: платформенный конфиг не должен переопределять ${key}`);
+      errors.push(`${path}:${key}`);
+    }
+  }
+}
+
 if (errors.length > 0) {
   console.error(`\nРасхождения: ${errors.join(', ')}`);
   process.exit(1);
 }
 
-console.log('\nВерсии и identifier согласованы.');
+console.log('\nВерсии, identifier и productName согласованы.');
