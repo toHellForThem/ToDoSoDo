@@ -23,19 +23,6 @@
 set -euo pipefail
 
 OUT_DIR=${OUT_DIR:-/out}
-export DEBIAN_FRONTEND=noninteractive
-
-apt-get update >/dev/null
-apt-get install -y --no-install-recommends \
-  xvfb \
-  imagemagick \
-  libgl1-mesa-dri \
-  x11-utils \
-  xdotool \
-  iproute2 \
-  bubblewrap \
-  dbus-x11 \
-  >/dev/null
 
 export DISPLAY=:99
 export LIBGL_ALWAYS_SOFTWARE=1

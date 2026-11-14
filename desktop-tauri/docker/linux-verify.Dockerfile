@@ -13,6 +13,8 @@ FROM rust:1.98-bookworm AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+# В образ запекаются и зависимости сборки, и утилиты запуска
+# (`verify-run.sh`): Xvfb, скриншоты, эмуляция ввода, `ss`.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       libwebkit2gtk-4.1-dev \
@@ -22,6 +24,14 @@ RUN apt-get update \
       patchelf \
       pkg-config \
       libssl-dev \
+      xvfb \
+      imagemagick \
+      libgl1-mesa-dri \
+      x11-utils \
+      xdotool \
+      iproute2 \
+      bubblewrap \
+      dbus-x11 \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
