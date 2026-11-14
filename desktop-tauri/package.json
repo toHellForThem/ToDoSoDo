@@ -8,9 +8,12 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build",
+    "release": "tauri build && node scripts/rename-artifacts.mjs",
+    "artifacts:rename": "node scripts/rename-artifacts.mjs",
     "build:debug": "tauri build --debug --no-bundle",
     "info": "tauri info",
     "icons": "tauri icon build/icon.png",
+    "version:check": "node scripts/check-versions.mjs",
     "frontend:build": "node scripts/build-frontend.mjs"
   },
   "devDependencies": {
