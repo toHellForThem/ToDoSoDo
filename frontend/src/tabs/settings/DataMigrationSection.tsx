@@ -69,6 +69,17 @@ export const DataMigrationSection = ({
           </Text>
         </TouchableOpacity>
       </View>
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: '700',
+          color: theme.colors.danger,
+          lineHeight: 17,
+          marginTop: 12,
+        }}
+      >
+        {t('set_data_overwrite_warning')}
+      </Text>
     </View>
   );
 };

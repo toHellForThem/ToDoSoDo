@@ -371,6 +371,14 @@ export const useSettingsController = () => {
       const raw = await pickLocalDataFile();
       if (!raw) return;
       const { imported } = importLocalData(raw);
+      if (imported.length === 0) {
+        Toast.show({
+          type: 'info',
+          text1: t('set_data_nothing_to_import'),
+          visibilityTime: 3000,
+        });
+        return;
+      }
       Toast.show({
         type: 'success',
         text1: t('set_data_imported', { count: imported.length }),

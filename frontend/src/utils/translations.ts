@@ -169,6 +169,9 @@ const ruDict = {
     'Импортировано ключей: {count}. Приложение будет перезагружено',
   set_data_import_failed:
     'Не удалось импортировать данные: файл повреждён или не подходит',
+  set_data_nothing_to_import: 'В файле нет данных для импорта',
+  set_data_overwrite_warning:
+    'Внимание! Импорт полностью перезапишет текущий список задач и неотправленные изменения.',
   desktop_rpg_title: '⚔️ РПГ-режим',
   desktop_todo_title: '📝 Список дел',
   desktop_daily_title: '⚡ Ежедневные',
@@ -347,6 +350,9 @@ export const translations: Record<string, TranslationDict> = {
     set_data_imported: 'Imported keys: {count}. The app will reload',
     set_data_import_failed:
       'Failed to import data: the file is corrupted or unsupported',
+    set_data_nothing_to_import: 'The file contains no data to import',
+    set_data_overwrite_warning:
+      'Warning! Importing will completely overwrite the current task list and unsent changes.',
     desktop_rpg_title: '⚔️ RPG Mode',
     desktop_todo_title: '📝 To-Do List',
     desktop_daily_title: '⚡ Daily Tasks',
