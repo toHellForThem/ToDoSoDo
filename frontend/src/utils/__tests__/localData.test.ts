@@ -116,6 +116,42 @@ describe('parseLocalData', () => {
       expect.objectContaining({ code: 'invalid-value', key: 'todo_list' }),
     );
   });
+
+  it('отклоняет JSON неверной структуры', () => {
+    const raw = JSON.stringify({
+      format: LOCAL_DATA_FORMAT,
+      version: LOCAL_DATA_VERSION,
+      data: { todo_list: '42' },
+    });
+    expect(() => parseLocalData(raw)).toThrowError(
+      expect.objectContaining({ code: 'invalid-value', key: 'todo_list' }),
+    );
+  });
+
+  it('отклоняет массив вместо объекта в user_settings', () => {
+    const raw = JSON.stringify({
+      format: LOCAL_DATA_FORMAT,
+      version: LOCAL_DATA_VERSION,
+      data: { user_settings: '[]' },
+    });
+    expect(() => parseLocalData(raw)).toThrowError(
+      expect.objectContaining({ code: 'invalid-value', key: 'user_settings' }),
+    );
+  });
+
+  it('подставляет текущую дату при невалидном exportedAt', () => {
+    const raw = JSON.stringify({
+      format: LOCAL_DATA_FORMAT,
+      version: LOCAL_DATA_VERSION,
+      exportedAt: 'not-a-date',
+      data: {},
+    });
+
+    const parsed = parseLocalData(raw);
+
+    expect(Number.isNaN(Date.parse(parsed.exportedAt))).toBe(false);
+    expect(parsed.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
 });
 
 describe('applyLocalData', () => {

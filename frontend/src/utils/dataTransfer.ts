@@ -43,7 +43,9 @@ export const exportLocalData = (): LocalDataFile =>
   buildLocalDataFile(collectLocalData(), { source: detectSource() });
 
 const buildFileName = (exportedAt: string): string => {
-  const date = exportedAt.slice(0, 10) || 'backup';
+  const date = /^\d{4}-\d{2}-\d{2}/.test(exportedAt)
+    ? exportedAt.slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
   return `todosodo-backup-${date}.json`;
 };
 
@@ -100,5 +102,7 @@ export const pickLocalDataFile = (): Promise<string | null> =>
 /** Применяет содержимое файла к текущему хранилищу. */
 export const importLocalData = (raw: string): ApplyLocalDataResult => {
   const file = parseLocalData(raw);
-  return applyLocalData(file, { set: platformStorage.set });
+  return applyLocalData(file, {
+    set: (key, value) => platformStorage.set(key, value),
+  });
 };

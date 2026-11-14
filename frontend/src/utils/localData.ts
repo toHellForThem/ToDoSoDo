@@ -31,14 +31,16 @@ export type LocalDataKey = (typeof LOCAL_DATA_KEYS)[number];
 export const TRANSFERABLE_KEYS: readonly LocalDataKey[] =
   LOCAL_DATA_KEYS.filter(key => key !== 'user_token');
 
-/** Значения этих ключей — JSON; проверяем, что файл не повреждён. */
-const JSON_VALUE_KEYS: readonly LocalDataKey[] = [
-  'user_settings',
-  'todo_list',
-  'rpg_history',
-  'sync_outbox',
-  'todo_tombstones',
-];
+type JsonValueKind = 'array' | 'object';
+
+/** Значения этих ключей — JSON; проверяем и структуру, а не только парсинг. */
+const JSON_VALUE_KINDS: Partial<Record<LocalDataKey, JsonValueKind>> = {
+  user_settings: 'object',
+  todo_list: 'array',
+  rpg_history: 'array',
+  sync_outbox: 'array',
+  todo_tombstones: 'array',
+};
 
 export interface LocalDataFile {
   format: typeof LOCAL_DATA_FORMAT;
@@ -70,6 +72,17 @@ export class LocalDataParseError extends Error {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** Приводит дату экспорта к ISO; невалидное значение заменяет текущей датой. */
+const normalizeExportedAt = (value: unknown): string => {
+  if (typeof value === 'string' && value.length > 0) {
+    const timestamp = Date.parse(value);
+    if (!Number.isNaN(timestamp)) {
+      return new Date(timestamp).toISOString();
+    }
+  }
+  return new Date().toISOString();
+};
+
 const pickTransferable = (
   data: Partial<Record<LocalDataKey, string>>,
 ): Partial<Record<LocalDataKey, string>> => {
@@ -90,7 +103,9 @@ export const buildLocalDataFile = (
 ): LocalDataFile => ({
   format: LOCAL_DATA_FORMAT,
   version: LOCAL_DATA_VERSION,
-  exportedAt: options.exportedAt ?? new Date().toISOString(),
+  exportedAt: normalizeExportedAt(
+    options.exportedAt ?? new Date().toISOString(),
+  ),
   source: options.source ?? 'unknown',
   data: pickTransferable(data),
 });
@@ -135,10 +150,19 @@ export const parseLocalData = (raw: string): LocalDataFile => {
     if (typeof value !== 'string') {
       throw new LocalDataParseError('invalid-value', key);
     }
-    if (JSON_VALUE_KEYS.includes(key)) {
+    const expectedKind = JSON_VALUE_KINDS[key];
+    if (expectedKind) {
+      let jsonValue: unknown;
       try {
-        JSON.parse(value);
+        jsonValue = JSON.parse(value);
       } catch {
+        throw new LocalDataParseError('invalid-value', key);
+      }
+      const matches =
+        expectedKind === 'array'
+          ? Array.isArray(jsonValue)
+          : isRecord(jsonValue);
+      if (!matches) {
         throw new LocalDataParseError('invalid-value', key);
       }
     }
@@ -148,7 +172,7 @@ export const parseLocalData = (raw: string): LocalDataFile => {
   return {
     format: LOCAL_DATA_FORMAT,
     version,
-    exportedAt: typeof parsed.exportedAt === 'string' ? parsed.exportedAt : '',
+    exportedAt: normalizeExportedAt(parsed.exportedAt),
     source: typeof parsed.source === 'string' ? parsed.source : 'unknown',
     data,
   };
