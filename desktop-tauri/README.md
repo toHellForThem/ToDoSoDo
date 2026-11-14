@@ -12,6 +12,8 @@ Electron-оболочка.
 | [`src-tauri/src/lib.rs`](src-tauri/src/lib.rs) | `tauri::Builder` без плагинов |
 | [`src-tauri/capabilities/default.json`](src-tauri/capabilities/default.json) | права окна — только `core:default` |
 | [`scripts/build-frontend.mjs`](scripts/build-frontend.mjs) | `expo export --platform web` с `EXPO_PUBLIC_SOCKET_URL` |
+| [`scripts/check-versions.mjs`](scripts/check-versions.mjs) | сверка версий и identifier перед релизом |
+| [`scripts/rename-artifacts.mjs`](scripts/rename-artifacts.mjs) | релизные имена бандлов в стиле Electron |
 | [`docker/linux-verify.Dockerfile`](docker/linux-verify.Dockerfile) | сборка под Linux в Debian-контейнере |
 | [`docker/verify-run.sh`](docker/verify-run.sh) | запуск бинарника в Xvfb + скриншот + снимок сокетов |
 
@@ -28,9 +30,14 @@ Electron-оболочка.
 ```sh
 cd desktop-tauri
 npm install
-npm run dev      # Expo на :8081 (beforeDevCommand)
-npm run build    # NSIS (Windows) / AppImage + deb (Linux)
+npm run dev            # Expo на :8081 (beforeDevCommand)
+npm run build          # NSIS (Windows) / AppImage + deb (Linux)
+npm run release        # то же + релизные имена артефактов
+npm run version:check  # версии и identifier перед релизом
 ```
+
+Порядок релиза, состав артефактов и чек-лист Windows-VM — в
+[`docs/release.md`](docs/release.md).
 
 `beforeBuildCommand` сам пересобирает `frontend/dist` перед упаковкой, поэтому
 старый бандл в релиз не попадёт. Адрес API вшивается при сборке фронта
