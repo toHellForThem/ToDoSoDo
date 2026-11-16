@@ -182,10 +182,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          draft: true
           files: |
             artifacts/tauri-windows/*-setup.exe
-            artifacts/tauri-linux/*.AppImage
-            artifacts/tauri-linux/*.deb
+            artifacts/tauri-linux/appimage/*.AppImage
+            artifacts/tauri-linux/deb/*.deb
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
