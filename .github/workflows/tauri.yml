@@ -1,0 +1,161 @@
+name: Tauri
+
+on:
+  push:
+    branches: ["main", "epic/tauri"]
+    paths:
+      - "desktop-tauri/**"
+      - "frontend/**"
+      - ".github/workflows/tauri.yml"
+    # Теги существующих релизов — `1.0.2`, `1.0.1`, ... (без `v`).
+    # Для push тегов GitHub не применяет paths-фильтры, поэтому тег
+    # собирает установщики даже без изменений в перечисленных путях.
+    tags: ["*.*.*"]
+  pull_request:
+    branches: ["main", "epic/tauri"]
+    paths:
+      - "desktop-tauri/**"
+      - "frontend/**"
+      - ".github/workflows/tauri.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tauri-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: "1"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            desktop-tauri/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install desktop-tauri dependencies
+        working-directory: ./desktop-tauri
+        run: npm ci
+
+      - name: Check versions and identifier
+        working-directory: ./desktop-tauri
+        run: npm run version:check
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            file \
+            libayatana-appindicator3-dev \
+            libfuse2 \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            pkg-config \
+          || sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            file \
+            libayatana-appindicator3-dev \
+            libfuse2t64 \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            pkg-config
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop-tauri/src-tauri
+          cache-on-failure: true
+
+      # Регресс «запаковался старый бандл»: beforeBuildCommand обязан
+      # пересобрать frontend/dist, поэтому удаляем его перед сборкой.
+      - name: Remove stale frontend bundle
+        shell: bash
+        run: rm -rf frontend/dist
+
+      - name: Build and bundle
+        working-directory: ./desktop-tauri
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: npm run release
+
+      - name: Assert frontend bundle was rebuilt
+        shell: bash
+        run: test -f frontend/dist/index.html
+
+      - name: Windows smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exe = "desktop-tauri/src-tauri/target/release/todosodo-desktop.exe"
+          if (!(Test-Path $exe)) {
+            throw "exe not found: $exe"
+          }
+
+          $process = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 15
+            $running = Get-Process -Id $process.Id -ErrorAction SilentlyContinue
+            if (-not $running) {
+              throw "process exited before smoke check"
+            }
+            if (-not $running.MainWindowTitle) {
+              throw "no main window title (WebView2 or frontendDist is broken)"
+            }
+            Write-Host "window: $($running.MainWindowTitle)"
+          }
+          finally {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-windows
+          path: desktop-tauri/src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Linux bundles
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-linux
+          path: |
+            desktop-tauri/src-tauri/target/release/bundle/appimage/*.AppImage
+            desktop-tauri/src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error
+          retention-days: 7
