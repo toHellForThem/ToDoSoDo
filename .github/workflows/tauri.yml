@@ -10,7 +10,9 @@ on:
     # Теги существующих релизов — `1.0.2`, `1.0.1`, ... (без `v`).
     # Для push тегов GitHub не применяет paths-фильтры, поэтому тег
     # собирает установщики даже без изменений в перечисленных путях.
-    tags: ["*.*.*"]
+    # Glob не умеет `+`, поэтому строгость SemVer проверяется шагом
+    # `Validate release tag` ниже.
+    tags: ["[0-9]*.[0-9]*.[0-9]*", "v[0-9]*.[0-9]*.[0-9]*"]
   pull_request:
     branches: ["main", "epic/tauri"]
     paths:
@@ -24,7 +26,9 @@ permissions:
 
 concurrency:
   group: tauri-${{ github.ref }}
-  cancel-in-progress: true
+  # Не отменяем релизные сборки: Rust-компиляция не должна обрываться
+  # из-за нового тега/коммита. Отменяем только черновые PR-прогоны.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   EXPO_NO_TELEMETRY: "1"
@@ -42,6 +46,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if ! [[ "${GITHUB_REF_NAME}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -68,23 +81,15 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          FUSE_PKG=libfuse2
+          if apt-cache show libfuse2t64 >/dev/null 2>&1; then
+            FUSE_PKG=libfuse2t64
+          fi
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             file \
             libayatana-appindicator3-dev \
-            libfuse2 \
-            libgtk-3-dev \
-            librsvg2-dev \
-            libssl-dev \
-            libwebkit2gtk-4.1-dev \
-            libxdo-dev \
-            patchelf \
-            pkg-config \
-          || sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            file \
-            libayatana-appindicator3-dev \
-            libfuse2t64 \
+            "$FUSE_PKG" \
             libgtk-3-dev \
             librsvg2-dev \
             libssl-dev \
@@ -159,3 +164,28 @@ jobs:
             desktop-tauri/src-tauri/target/release/bundle/deb/*.deb
           if-no-files-found: error
           retention-days: 7
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/tauri-windows/*-setup.exe
+            artifacts/tauri-linux/*.AppImage
+            artifacts/tauri-linux/*.deb
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
