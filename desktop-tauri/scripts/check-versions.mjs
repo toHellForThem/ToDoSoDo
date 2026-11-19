@@ -32,6 +32,24 @@ const readCargoVersion = path => {
   return match[1];
 };
 
+const readEnvVersion = path => {
+  const text = readFileSync(join(repoRoot, path), 'utf8');
+  const match = text.match(/^APP_VERSION=(.+)$/m);
+  if (!match) {
+    throw new Error(`Не найден APP_VERSION: ${path}`);
+  }
+  return match[1].trim();
+};
+
+const readPythonDefaultVersion = path => {
+  const text = readFileSync(join(repoRoot, path), 'utf8');
+  const match = text.match(/app_version:\s*str\s*=\s*"([^"]+)"/);
+  if (!match) {
+    throw new Error(`Не найден app_version: ${path}`);
+  }
+  return match[1];
+};
+
 const appVersion = readJson('frontend/app.json').expo?.version;
 if (!appVersion) {
   console.error('frontend/app.json: не найден expo.version');
@@ -45,6 +63,8 @@ const versionSources = [
   ['desktop-tauri/package.json', readJson('desktop-tauri/package.json').version],
   ['desktop-tauri/src-tauri/Cargo.toml', readCargoVersion('desktop-tauri/src-tauri/Cargo.toml')],
   ['desktop-tauri/src-tauri/tauri.conf.json', readJson('desktop-tauri/src-tauri/tauri.conf.json').version],
+  ['backend/.env.example', readEnvVersion('backend/.env.example')],
+  ['backend/app/config.py', readPythonDefaultVersion('backend/app/config.py')],
 ];
 
 const tauriConfig = readJson('desktop-tauri/src-tauri/tauri.conf.json');
