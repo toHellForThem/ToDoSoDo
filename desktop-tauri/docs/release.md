@@ -122,13 +122,18 @@ docker run --rm --privileged --network host \
 1. Поднять версию в `frontend/app.json` и синхронно — в остальных манифестах
    из таблицы выше.
 2. `npm run version:check` — версии и identifier согласованы.
-3. Собрать `npm run release` на Windows и Linux (после #48 — CI на тег).
-4. Прогнать smoke:
+3. Смерджить в `main` и поставить тег `vX.Y.Z` (ровно как в `app.json`):
+   ```sh
+   git tag v1.0.3
+   git push origin v1.0.3
+   ```
+4. CI `Tauri` соберёт Windows/Linux и создаст **draft**-релиз с
+   `*-setup.exe`, `.AppImage` и `.deb`. Тег, не совпадающий с версией
+   приложения, падает на шаге `Validate tag matches app version`.
+5. Прогнать smoke:
    - Linux: `verify-run.sh` в контейнере (скриншот, ввод задачи, сокеты);
    - Windows: чек-лист на чистой VM ниже.
-5. Поставить тег в формате существующих (`1.0.2`, `1.0.1`, `1.0.0`).
-6. Приложить к релизу `ToDoSoDo-<version>-x64-setup.exe`, `.deb` и
-   `.AppImage`.
+6. Опубликовать draft-релиз после проверки.
 
 ## Чек-лист на чистой Windows VM
 
