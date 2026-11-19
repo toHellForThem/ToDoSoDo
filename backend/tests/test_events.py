@@ -114,6 +114,10 @@ async def _register_and_login(client, recorder, username="alice", password="secr
         ClientEvent.REGISTER, {"username": username, "password": password}
     )
     await recorder.wait(ServerEvent.REGISTER_SUCCESS)
+    # AUTH_MESSAGE приходит после REGISTER_SUCCESS отдельным событием.
+    # Без ожидания он может попасть в recorder уже после clear() и
+    # перепутаться с ответом следующего запроса.
+    await recorder.wait(ServerEvent.AUTH_MESSAGE)
 
     recorder.clear()
     await client.emit(ClientEvent.LOGIN, {"username": username, "password": password})
@@ -208,6 +212,9 @@ async def test_register_rate_limit_by_sid(connect):
             {"username": f"user{index}", "password": "secret"},
         )
         await recorder.wait(ServerEvent.REGISTER_SUCCESS)
+        # Дожидаемся второго события регистрации, иначе его можно
+        # поймать как ответ на следующую попытку.
+        await recorder.wait(ServerEvent.AUTH_MESSAGE)
         recorder.clear()
 
     await client.emit(
@@ -223,6 +230,7 @@ async def test_login_rate_limit(connect):
         ClientEvent.REGISTER, {"username": "alice", "password": "secret"}
     )
     await recorder.wait(ServerEvent.REGISTER_SUCCESS)
+    await recorder.wait(ServerEvent.AUTH_MESSAGE)
     recorder.clear()
 
     for _ in range(5):
