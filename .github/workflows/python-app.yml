@@ -2,9 +2,9 @@ name: Python application
 
 on:
   push:
-    branches: ["main", "epic/backend-contract", "epic/backend-refactor"]
+    branches: ["main"]
   pull_request:
-    branches: ["main", "epic/backend-contract", "epic/backend-refactor"]
+    branches: ["main"]
 
 permissions:
   contents: read
