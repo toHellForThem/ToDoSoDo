@@ -1,5 +1,6 @@
 services:
   backend:
+    image: ghcr.io/tohellforthem/todosodo/backend:latest
     build: .
     container_name: todo_sodo_backend
     env_file:

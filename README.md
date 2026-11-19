@@ -84,7 +84,8 @@
 ### Требования
 - Docker Engine 24+ и Docker Compose v2
 
-### Быстрый старт
+### Быстрый старт (сборка из исходников)
+Docker сам собирает образ из `Dockerfile` и кода — нужен репозиторий.
 ```bash
 git clone https://github.com/toHellForThem/ToDoSoDo.git
 cd ToDoSoDo/backend
@@ -93,3 +94,31 @@ printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
 docker compose up -d --build
 docker compose ps
 docker compose logs -f backend
+```
+
+### Готовый образ (GHCR)
+Исходники не нужны: образ уже собран в CI. Нужны только Docker и `.env` с `JWT_SECRET_KEY`.
+
+Вариант 1 — `docker run`, вообще без файлов проекта:
+```bash
+mkdir -p ~/todosodo/data && cd ~/todosodo
+printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
+docker run -d --name todo_sodo_backend \
+  --env-file .env \
+  -p 8000:8000 \
+  -v "$PWD/data:/app/data" \
+  --restart unless-stopped \
+  ghcr.io/tohellforthem/todosodo/backend:latest
+```
+
+Вариант 2 — compose: скачивается только compose-файл, без репозитория:
+```bash
+mkdir -p ~/todosodo/data && cd ~/todosodo
+curl -fsSLO https://raw.githubusercontent.com/toHellForThem/ToDoSoDo/main/backend/docker-compose.yml
+printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
+docker compose pull
+docker compose up -d --no-build
+```
+
+Теги: `latest` (последний `main`), `main`, `sha-<commit>`.
+Проверка: `curl http://127.0.0.1:8000/health`.
