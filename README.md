@@ -93,3 +93,24 @@ printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
 docker compose up -d --build
 docker compose ps
 docker compose logs -f backend
+```
+
+### Готовый образ (GHCR)
+Образ публичный, авторизация не нужна:
+```bash
+docker compose pull
+docker compose up -d --no-build
+```
+Теги: `latest` (последний `main`), `main`, `sha-<commit>`.
+
+Без compose:
+```bash
+docker run -d --name todo_sodo_backend \
+  -p 8000:8000 \
+  -e JWT_SECRET_KEY="$(openssl rand -hex 32)" \
+  -v "$PWD/data:/app/data" \
+  --restart unless-stopped \
+  ghcr.io/tohellforthem/todosodo/backend:latest
+```
+
+Проверка: `curl http://127.0.0.1:8000/health`.
