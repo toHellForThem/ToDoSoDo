@@ -24,7 +24,7 @@
       },
       "jsEngine": "hermes",
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.ToDoSoDo",
+      "package": "com.anonymous.toDoSoDo",
       "versionCode": 4,
       "softwareKeyboardLayoutMode": "resize"
     },
