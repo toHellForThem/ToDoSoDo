@@ -348,19 +348,35 @@ async def test_reset_by_type_resets_progress(services, make_user):
 async def test_history_sync_uses_lww(services, make_user):
     user_id = await make_user()
 
-    _, updated = await services.daily_history.sync(
+    _, status = await services.daily_history.sync(
         user_id, {"date": "2026-01-15", "mood": 2, "updatedAt": 10}
     )
-    assert updated is True
+    assert status == "applied"
 
-    entry, updated = await services.daily_history.sync(
+    entry, status = await services.daily_history.sync(
         user_id, {"date": "2026-01-15", "mood": 1, "updatedAt": 5}
     )
-    assert updated is False
+    assert status == "conflict"
     assert entry["mood"] == 2
 
     entries = await services.daily_history.get_month(user_id, "2026-01")
     assert entries[0]["mood"] == 2
+
+
+async def test_history_sync_identical_content_is_noop(services, make_user):
+    user_id = await make_user()
+
+    await services.daily_history.sync(
+        user_id, {"date": "2026-01-15", "mood": 2, "updatedAt": 10}
+    )
+
+    entry, status = await services.daily_history.sync(
+        user_id, {"date": "2026-01-15", "mood": 2, "updatedAt": 5}
+    )
+
+    assert status == "noop"
+    assert entry["mood"] == 2
+    assert entry["updatedAt"] == 10
 
 
 async def test_history_bulk_sync(services, make_user):
@@ -374,7 +390,7 @@ async def test_history_bulk_sync(services, make_user):
         ],
     )
 
-    assert [updated for _, updated in results] == [True, True]
+    assert [status for _, status in results] == ["applied", "applied"]
     assert len(await services.daily_history.get_month(user_id, "2026-01")) == 2
 
 
