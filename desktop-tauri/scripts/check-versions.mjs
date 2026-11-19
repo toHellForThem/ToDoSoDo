@@ -3,13 +3,12 @@
  * Проверяет релизный контракт версий и идентификаторов.
  *
  * Источник истины для версии приложения — `frontend/app.json` (Expo). Все
- * манифесты, из которых собираются артефакты (web, Electron, Tauri), должны
+ * манифесты, из которых собираются артефакты (web, Tauri, backend), должны
  * нести ту же версию, иначе установщик Tauri окажется «старее» или «новее»
  * бандла, а NSIS обновит приложение поверх другой версии.
  *
- * Идентификатор Tauri обязан отличаться от Electron: установщики с одинаковым
- * identifier ставятся в одну папку и перезаписывают друг друга, а Electron
- * остаётся для отката (#46).
+ * `identifier` и `productName` Tauri не должны быть пустыми: от них зависят
+ * установка и релизные имена артефактов.
  *
  * Запуск: `npm run version:check` из `desktop-tauri` (или `node scripts/...`).
  */
@@ -59,7 +58,6 @@ if (!appVersion) {
 const versionSources = [
   ['frontend/app.json', appVersion],
   ['frontend/package.json', readJson('frontend/package.json').version],
-  ['desktop/package.json', readJson('desktop/package.json').version],
   ['desktop-tauri/package.json', readJson('desktop-tauri/package.json').version],
   ['desktop-tauri/src-tauri/Cargo.toml', readCargoVersion('desktop-tauri/src-tauri/Cargo.toml')],
   ['desktop-tauri/src-tauri/tauri.conf.json', readJson('desktop-tauri/src-tauri/tauri.conf.json').version],
@@ -68,9 +66,6 @@ const versionSources = [
 ];
 
 const tauriConfig = readJson('desktop-tauri/src-tauri/tauri.conf.json');
-const electronConfig = readJson('desktop/package.json');
-const electronAppId = electronConfig.build?.appId;
-const electronProductName = electronConfig.build?.productName;
 
 const errors = [];
 
@@ -88,40 +83,22 @@ const tauriIdentifier = tauriConfig.identifier;
 if (!tauriIdentifier) {
   console.error('  FAIL desktop-tauri/src-tauri/tauri.conf.json: пустой identifier');
   errors.push('identifier');
-} else if (electronAppId && tauriIdentifier === electronAppId) {
-  console.error(
-    `  FAIL identifier Tauri совпадает с Electron (${electronAppId}): ` +
-      'установщики перезапишут друг друга, откат на Electron невозможен',
-  );
-  errors.push('identifier');
 } else {
-  console.log(
-    `  ok   identifier: ${tauriIdentifier} (Electron: ${electronAppId ?? 'не задан'})`,
-  );
+  console.log(`  ok   identifier: ${tauriIdentifier}`);
 }
 
-// productName попадает в имена артефактов (`rename-artifacts.mjs`), поэтому
-// он должен совпадать с Electron: иначе релизные имена разъедутся.
+// productName попадает в имена артефактов (`rename-artifacts.mjs`).
 const tauriProductName = tauriConfig.productName;
 if (!tauriProductName) {
   console.error('  FAIL desktop-tauri/src-tauri/tauri.conf.json: пустой productName');
-  errors.push('productName');
-} else if (!electronProductName) {
-  console.error('  FAIL desktop/package.json: не найден build.productName');
-  errors.push('productName');
-} else if (tauriProductName !== electronProductName) {
-  console.error(
-    `  FAIL productName Tauri (${tauriProductName}) не совпадает с Electron ` +
-      `(${electronProductName})`,
-  );
   errors.push('productName');
 } else {
   console.log(`  ok   productName: ${tauriProductName}`);
 }
 
 // Платформенные конфиги сливаются поверх базового. Version, productName и
-// identifier в них переопределять нельзя: релизные имена и установку рядом
-// с Electron они меняют незаметно для таблицы версий выше.
+// identifier в них переопределять нельзя: релизные имена и установку они
+// меняют незаметно для таблицы версий выше.
 const platformConfigs = [
   'desktop-tauri/src-tauri/tauri.windows.conf.json',
   'desktop-tauri/src-tauri/tauri.linux.conf.json',
