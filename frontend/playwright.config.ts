@@ -16,6 +16,10 @@ const EXTERNAL_BACKEND = process.env.E2E_BACKEND_URL;
 
 export default defineConfig({
   testDir: './e2e',
+  // Smoke-прогон не должен подхватывать конфиг-тесты: `csp.spec.ts` требует
+  // CSP-сервер и origin `tauri.localhost`, `tauri-parity.spec.ts` — свой
+  // конфиг без webServer. У них отдельные конфиги и скрипты.
+  testMatch: 'smoke.spec.ts',
   timeout: 60_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
