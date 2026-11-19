@@ -1,7 +1,7 @@
 {
   "name": "todosodo-desktop-tauri",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "ToDoSoDo desktop client (Tauri v2 spike)",
   "type": "module",
   "scripts": {
