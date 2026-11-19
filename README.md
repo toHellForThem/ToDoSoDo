@@ -44,10 +44,10 @@
 
 ### Что было выбрано
 
-- **Кроссплатформенность** - JavaScript (позже TypeScript) + React Native + Electron.
+- **Кроссплатформенность** - TypeScript + React Native + Tauri.
 - **Self-hosting** - простой сервер на Python + FastAPI.
 - **Хранилище на сервере** - SQLite в режиме WAL: простая база, но с упором на отказоустойчивость при множестве конкурентных запросов.
-- **Локальное хранилище** - MMKV для Android, localStorage для Electron.
+- **Локальное хранилище** - MMKV для Android, localStorage для web/Tauri.
 - **Приватность** - авторизация с JWT-токенами.
 - **Связь клиентов** - WebSocket через Socket.IO.
 

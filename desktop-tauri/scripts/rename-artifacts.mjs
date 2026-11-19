@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Переименовывает артефакты `tauri build` в релизные имена в стиле Electron.
+ * Переименовывает артефакты `tauri build` в релизные имена.
  *
  * Tauri v2 не предоставляет настройку `artifactName`: бандлер всегда собирает
- * файлы как `<productName>_<version>_<arch>...`. Чтобы имя установщика
- * совпадало с Electron (`${productName}-${version}-${arch}-setup.${ext}`),
- * скрипт заменяет разделители в префиксе после сборки:
+ * файлы как `<productName>_<version>_<arch>...`. Чтобы имя установщика было
+ * `${productName}-${version}-${arch}-setup.${ext}`, скрипт заменяет
+ * разделители в префиксе после сборки:
  *
  *   ToDoSoDo_1.0.2_x64-setup.exe  -> ToDoSoDo-1.0.2-x64-setup.exe
  *   ToDoSoDo_1.0.2_amd64.deb      -> ToDoSoDo-1.0.2-amd64.deb

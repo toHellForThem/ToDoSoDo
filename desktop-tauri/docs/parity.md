@@ -11,7 +11,7 @@
 
 ## Окно и меню
 
-| Параметр | Electron (`desktop/main.js`) | Tauri |
+| Параметр | Electron (удалён) | Tauri |
 | --- | --- | --- |
 | Размер | 1100×750 | `width: 1100`, `height: 750` |
 | Заголовок | `ToDoSoDo` | `title: "ToDoSoDo"` |
