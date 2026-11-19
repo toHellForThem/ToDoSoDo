@@ -1,6 +1,9 @@
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import appConfig from '../../../app.json';
 import { SectionStyleProps } from './types';
+
+const APP_VERSION = appConfig.expo.version;
 
 interface AboutSectionProps extends SectionStyleProps {
   handleDonate: () => void;
@@ -45,7 +48,9 @@ export const AboutSection = ({
             fontWeight: '600',
           }}
         >
-          {t('set_about') === 'О программе' ? 'Версия 1.0.2' : 'Version 1.0.2'}
+          {t('set_about') === 'О программе'
+            ? `Версия ${APP_VERSION}`
+            : `Version ${APP_VERSION}`}
         </Text>
         <Text
           style={{
