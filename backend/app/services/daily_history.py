@@ -59,14 +59,33 @@ class DailyHistoryService:
     ) -> tuple[dict[str, Any], str]:
         payload = entry.model_dump()
         server_entry = await self._history.get_by_date(user_id, entry.date)
+        server_updated_at = server_entry["updatedAt"] if server_entry else None
         if server_entry is None or entry.updatedAt > server_entry["updatedAt"]:
             await self._history.upsert(payload, user_id)
+            logger.debug(
+                "История %s: applied client.updatedAt=%s server.updatedAt=%s",
+                entry.date,
+                entry.updatedAt,
+                server_updated_at,
+            )
             return payload, SYNC_APPLIED
 
         if _same_content(payload, server_entry):
             # Эхо удалённого изменения: содержимое совпадает, конфликта нет.
+            logger.debug(
+                "История %s: noop client.updatedAt=%s server.updatedAt=%s",
+                entry.date,
+                entry.updatedAt,
+                server_updated_at,
+            )
             return server_entry, SYNC_NOOP
 
+        logger.debug(
+            "История %s: conflict client.updatedAt=%s server.updatedAt=%s",
+            entry.date,
+            entry.updatedAt,
+            server_updated_at,
+        )
         return server_entry, SYNC_CONFLICT
 
     @staticmethod
