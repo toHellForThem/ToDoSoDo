@@ -60,8 +60,7 @@ WebKitGTK 2.50.6, CLI `@tauri-apps/cli` 2.12.4.
 
 ## Что переносится без изменений
 
-- `desktop/copy-fonts.js` и ttf-маршрутизация в
-  [`desktop/main.js`](../../desktop/main.js:68) не нужны: шрифты в
+- `copy-fonts.js` и ttf-маршрутизация не нужны: шрифты в
   `dist/assets/node_modules/...` отдаются asset-протоколом по реальным путям.
 - `app://`-протокол и `Menu.setApplicationMenu(null)` не нужны: Tauri не
   создаёт меню по умолчанию.

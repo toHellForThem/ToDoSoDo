@@ -2,9 +2,9 @@ name: Frontend
 
 on:
   push:
-    branches: ["main", "epic/frontend-refactor", "epic/tauri"]
+    branches: ["main"]
   pull_request:
-    branches: ["main", "epic/frontend-refactor", "epic/tauri"]
+    branches: ["main"]
 
 permissions:
   contents: read

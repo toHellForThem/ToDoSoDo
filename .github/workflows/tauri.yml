@@ -2,7 +2,7 @@ name: Tauri
 
 on:
   push:
-    branches: ["main", "epic/tauri"]
+    branches: ["main"]
     paths:
       - "desktop-tauri/**"
       - "frontend/**"
@@ -14,7 +14,7 @@ on:
     # `Validate release tag` ниже.
     tags: ["[0-9]*.[0-9]*.[0-9]*", "v[0-9]*.[0-9]*.[0-9]*"]
   pull_request:
-    branches: ["main", "epic/tauri"]
+    branches: ["main"]
     paths:
       - "desktop-tauri/**"
       - "frontend/**"

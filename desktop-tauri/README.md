@@ -1,8 +1,7 @@
 # ToDoSoDo — оболочка Tauri v2
 
-Spike-оболочка для замены Electron ([`desktop/`](../desktop)). Приложение не
-переписывается: Tauri грузит тот же web-бандл `frontend/dist`, что и
-Electron-оболочка.
+Оболочка Tauri v2. Приложение не переписывается: Tauri грузит тот же
+web-бандл `frontend/dist`.
 
 ## Что внутри
 
@@ -13,7 +12,7 @@ Electron-оболочка.
 | [`src-tauri/capabilities/default.json`](src-tauri/capabilities/default.json) | права окна — только `core:default` |
 | [`scripts/build-frontend.mjs`](scripts/build-frontend.mjs) | `expo export --platform web` с `EXPO_PUBLIC_SOCKET_URL` |
 | [`scripts/check-versions.mjs`](scripts/check-versions.mjs) | сверка версий и identifier перед релизом |
-| [`scripts/rename-artifacts.mjs`](scripts/rename-artifacts.mjs) | релизные имена бандлов в стиле Electron |
+| [`scripts/rename-artifacts.mjs`](scripts/rename-artifacts.mjs) | релизные имена бандлов |
 | [`docker/linux-verify.Dockerfile`](docker/linux-verify.Dockerfile) | сборка под Linux в Debian-контейнере |
 | [`docker/verify-run.sh`](docker/verify-run.sh) | запуск бинарника в Xvfb + скриншот + снимок сокетов |
 
@@ -81,11 +80,11 @@ webview достучался до бэкенда на `127.0.0.1:8000`.
   Подробности и регресс-тест — в [`docs/csp.md`](docs/csp.md).
 - **Шрифты** иконок лежат в `dist/assets/node_modules/...` и отдаются
   asset-протоколом по реальным путям: `copy-fonts.js` и переписывание `.ttf`
-  из Electron-оболочки не нужны.
+  не нужны.
 - **Локальные данные**: origin в Tauri — `tauri://localhost` (Linux) и
   `http://tauri.localhost` (Windows), а в Electron был `app://`. Перенос
   `localStorage` — отдельная задача миграции.
-- **Меню**: Tauri не создаёт нативное меню по умолчанию — паритет с
-  `Menu.setApplicationMenu(null)` в Electron достигнут без кода.
+- **Меню**: Tauri не создаёт нативное меню по умолчанию — паритет достигнут
+  без кода.
 
 Результаты спайка — в [`docs/spike-report.md`](docs/spike-report.md).

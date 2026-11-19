@@ -14,7 +14,6 @@
 | --- | --- |
 | [`frontend/app.json`](../../frontend/app.json) | `expo.version` |
 | [`frontend/package.json`](../../frontend/package.json) | `version` |
-| [`desktop/package.json`](../../desktop/package.json) | `version` |
 | [`desktop-tauri/package.json`](../package.json) | `version` |
 | [`src-tauri/Cargo.toml`](../src-tauri/Cargo.toml) | `[package].version` |
 | [`src-tauri/tauri.conf.json`](../src-tauri/tauri.conf.json) | `version` |
@@ -27,10 +26,8 @@ npm run version:check
 ```
 
 Скрипт [`check-versions.mjs`](../scripts/check-versions.mjs) падает, если
-версии разошлись, если `identifier` Tauri совпал с Electron
-(`com.todosodo.desktop`) или если `productName` Tauri не совпадает с Electron
-(от него зависят релизные имена артефактов). Одинаковый identifier означает,
-что NSIS перезапишет Electron-установку и откат станет невозможен; у Tauri —
+версии разошлись или если `identifier`/`productName` Tauri пустые. От
+`productName` зависят релизные имена артефактов; у Tauri —
 `com.todosodo.desktop.tauri`.
 
 Платформенные `tauri.windows.conf.json` и `tauri.linux.conf.json` не должны
@@ -54,9 +51,9 @@ npm run version:check
 ### Имена файлов
 
 Tauri v2 не предоставляет настройку `artifactName`: бандлер всегда собирает
-`<productName>_<version>_<arch>...`. Чтобы имя Windows-установщика совпадало с
-Electron (`${productName}-${version}-${arch}-setup.${ext}`), после сборки
-запускается [`rename-artifacts.mjs`](../scripts/rename-artifacts.mjs):
+`<productName>_<version>_<arch>...`. Чтобы имя Windows-установщика было
+`${productName}-${version}-${arch}-setup.${ext}`, после сборки запускается
+[`rename-artifacts.mjs`](../scripts/rename-artifacts.mjs):
 
 ```sh
 cd desktop-tauri
@@ -151,11 +148,9 @@ docker run --rm --privileged --network host \
 - [ ] Удаление приложения: проверить, вычищается ли профиль WebView2 из
       `%LOCALAPPDATA%`. В `installMode: currentUser` данные могут остаться —
       тогда зафиксировать как известное поведение инсталлятора Tauri.
-- [ ] Electron-версия ставится рядом и запускается (разные identifier).
+## Откат
 
-## Откат на Electron
-
-Electron и Tauri используют разные identifier и профили, поэтому ставятся
-рядом. Данные между ними не переносятся автоматически — только экспортом и
-импортом, см. [`migration.md`](migration.md). При откате Electron-версия
-остаётся рабочей, настройки Tauri-профиля не затрагиваются.
+Откат — установка предыдущего релиза Tauri поверх текущего. Профиль WebView2
+(`%LOCALAPPDATA%/com.todosodo.desktop.tauri`) при этом сохраняется. Для
+пользователей, перешедших с Electron, данные переносятся экспортом/импортом,
+см. [`migration.md`](migration.md).
