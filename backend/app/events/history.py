@@ -9,6 +9,7 @@ from app.events.errors import handle_service_errors
 from app.events.names import ClientEvent, ServerEvent
 from app.events.protocol import AckStatus, emit_ack, parse_request
 from app.services import Services
+from app.services.daily_history import SYNC_APPLIED, SYNC_NOOP
 
 
 def register(sio: socketio.AsyncServer, services: Services) -> None:
@@ -45,17 +46,21 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
     @authenticated(sio, ClientEvent.SYNC_DAILY_HISTORY)
     async def handle_sync_daily_history(sid, user_id, data):
         request = parse_request(data)
-        entry, updated = await services.daily_history.sync(user_id, request.payload)
-        if updated:
+        entry, sync_status = await services.daily_history.sync(
+            user_id, request.payload
+        )
+        if sync_status == SYNC_APPLIED:
             await sio.emit(
                 ServerEvent.DAILY_HISTORY_UPDATED,
                 entry,
                 room=user_id,
                 skip_sid=sid,
             )
-            status = AckStatus.APPLIED
-        else:
-            status = AckStatus.CONFLICT
+        status = (
+            AckStatus.APPLIED
+            if sync_status in (SYNC_APPLIED, SYNC_NOOP)
+            else AckStatus.CONFLICT
+        )
 
         await emit_ack(
             sio,
@@ -72,10 +77,10 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
     async def handle_bulk_sync_daily_history(sid, user_id, client_history):
         request = parse_request(client_history)
         results = []
-        for entry, updated in await services.daily_history.bulk_sync(
+        for entry, sync_status in await services.daily_history.bulk_sync(
             user_id, request.payload
         ):
-            if updated:
+            if sync_status == SYNC_APPLIED:
                 await sio.emit(
                     ServerEvent.DAILY_HISTORY_UPDATED,
                     entry,
@@ -85,7 +90,11 @@ def register(sio: socketio.AsyncServer, services: Services) -> None:
             results.append(
                 {
                     "date": entry["date"],
-                    "status": AckStatus.APPLIED if updated else AckStatus.CONFLICT,
+                    "status": (
+                        AckStatus.APPLIED
+                        if sync_status in (SYNC_APPLIED, SYNC_NOOP)
+                        else AckStatus.CONFLICT
+                    ),
                     "entry": entry,
                 }
             )
