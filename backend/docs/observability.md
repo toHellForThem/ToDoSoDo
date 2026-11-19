@@ -5,7 +5,7 @@
 - `GET /health` — проверяет приложение и БД (`SELECT 1`).
   - `200 {"status": "ok", "database": "ok"}`
   - `503 {"status": "error", "database": "error"}` при недоступной БД.
-- `GET /version` — `{"version": "1.0.2"}` из `APP_VERSION`.
+- `GET /version` — `{"version": "1.1.0"}` из `APP_VERSION`.
 
 Docker Compose использует `/health` как healthcheck.
 

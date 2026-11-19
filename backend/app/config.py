@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS512"
     jwt_expire_days: int = 7
 
-    app_version: str = "1.0.2"
+    app_version: str = "1.1.0"
 
     database_path: str = "data/tasks.db"
 

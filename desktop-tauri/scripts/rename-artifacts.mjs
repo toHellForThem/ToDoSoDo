@@ -7,9 +7,9 @@
  * `${productName}-${version}-${arch}-setup.${ext}`, скрипт заменяет
  * разделители в префиксе после сборки:
  *
- *   ToDoSoDo_1.0.2_x64-setup.exe  -> ToDoSoDo-1.0.2-x64-setup.exe
- *   ToDoSoDo_1.0.2_amd64.deb      -> ToDoSoDo-1.0.2-amd64.deb
- *   ToDoSoDo_1.0.2_amd64.AppImage -> ToDoSoDo-1.0.2-amd64.AppImage
+ *   ToDoSoDo_1.1.0_x64-setup.exe  -> ToDoSoDo-1.1.0-x64-setup.exe
+ *   ToDoSoDo_1.1.0_amd64.deb      -> ToDoSoDo-1.1.0-amd64.deb
+ *   ToDoSoDo_1.1.0_amd64.AppImage -> ToDoSoDo-1.1.0-amd64.AppImage
  *
  * Запускается из `npm run release` после `tauri build`; повторный запуск
  * безопасен (уже переименованные файлы пропускаются). Корень бандлов можно
