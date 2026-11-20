@@ -13,6 +13,11 @@
 - Релиз по тегу `vX.Y.Z`: CI собирает Windows/Linux и создаёт draft-релиз.
 - Версия в «О программе» читается из `frontend/app.json`.
 - `check-versions.mjs` сверяет версии frontend, Tauri и backend.
+- Android: релиз в RuStore (`versionCode` 5), сборка подписанного AAB.
+- Android: CI собирает и подписывает APK на тегах `vX.Y.Z`.
+- Android: убраны неиспользуемые разрешения `SYSTEM_ALERT_WINDOW` и
+  `READ/WRITE_EXTERNAL_STORAGE`.
+- Android: cleartext HTTP для self-hosted сервера в локальной сети.
 
 ## [1.0.2] - 2026-11-13
 
